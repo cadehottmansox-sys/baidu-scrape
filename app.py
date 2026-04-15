@@ -53,12 +53,18 @@ def create_app() -> Flask:
     @app.post("/request-access")
     def request_access():
         data   = request.get_json(silent=True) or {}
-        name   = (data.get("name") or "").strip()
-        email  = (data.get("email") or "").strip()
-        reason = (data.get("reason") or "").strip()
+        name    = (data.get("name") or "").strip()
+        email   = (data.get("email") or "").strip()
+        reason  = (data.get("reason") or "").strip()
+        discord = (data.get("discord") or "").strip()
+        wechat  = (data.get("wechat") or "").strip()
+        country = (data.get("country") or "").strip()
+        source  = (data.get("source") or "").strip()
         if not name or not email:
             return jsonify({"error": "Name and email required."}), 400
-        result = auth.submit_request(name, email, reason, get_ip())
+        if not discord and not wechat:
+            return jsonify({"error": "Discord or WeChat required."}), 400
+        result = auth.submit_request(name, email, reason, get_ip(), discord=discord, wechat=wechat, country=country, source=source)
         return jsonify(result), 200
 
     @app.post("/login")

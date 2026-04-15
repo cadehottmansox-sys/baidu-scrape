@@ -58,7 +58,7 @@
   </div>
 
   <h2>Pending Requests</h2>
-  <table class="table"><thead><tr><th>Name</th><th>Email</th><th>IP</th><th>Reason</th><th>Time</th><th>Actions</th></tr></thead>
+  <table class="table"><thead><tr><th>Name</th><th>Email</th><th>Discord / WeChat</th><th>Country</th><th>Source</th><th>IP</th><th>Reason</th><th>Time</th><th>Actions</th></tr></thead>
   <tbody id="pendingTbl"><tr><td colspan="6" class="empty">Loading...</td></tr></tbody></table>
 
   <h2>Approved Users</h2>
@@ -135,8 +135,11 @@
       <tr>
         <td style="font-weight:600">${r.name||"—"}</td>
         <td>${r.email}</td>
+      <td style="font-size:11px;color:#a78bfa">${[r.discord,r.wechat].filter(Boolean).join(' / ')||"—"}</td>
+        <td style="font-size:11px;color:#7aa5be">${r.country||"—"}</td>
+        <td style="font-size:11px;color:#2e5870">${r.source||"—"}</td>
         <td class="ip">${r.ip}</td>
-        <td style="max-width:200px;color:#7aa5be">${r.reason||"—"}</td>
+        <td style="max-width:140px;color:#7aa5be">${r.reason||"—"}</td>
         <td style="white-space:nowrap;color:#2e5870;font-size:12px">${fmt(r.timestamp)}</td>
         <td style="display:flex;gap:6px">
           <button class="btn-sm btn-approve" onclick="openApproveModal('${r.id}')">Approve + set password</button>

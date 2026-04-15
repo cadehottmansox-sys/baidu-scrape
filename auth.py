@@ -28,7 +28,7 @@ def _hash(password: str) -> str:
     return hashlib.sha256(password.encode()).hexdigest()
 
 
-def submit_request(name: str, email: str, reason: str, ip: str) -> dict:
+def submit_request(name: str, email: str, reason: str, ip: str, discord: str = "", wechat: str = "", country: str = "", source: str = "") -> dict:
     data = _load()
     if any(u["email"] == email for u in data["approved"]):
         return {"status": "already_approved"}
@@ -39,6 +39,10 @@ def submit_request(name: str, email: str, reason: str, ip: str) -> dict:
         "name":      name,
         "email":     email,
         "reason":    reason,
+        "discord":   discord,
+        "wechat":    wechat,
+        "country":   country,
+        "source":    source,
         "ip":        ip,
         "timestamp": time.time(),
         "status":    "pending",
