@@ -8,106 +8,68 @@
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
     :root{--bg:#030d1a;--blue:#7dd3fc;--blue-dim:#1a6fa4;--border:rgba(125,211,252,.14);--text:#e8f4ff;--text2:#7aa5be;--text3:#2e5870;--green:#4ade80;--purple:#a78bfa}
-    html,body{min-height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);overflow-x:hidden}
+    html,body{min-height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);overflow:hidden;height:100vh}
     canvas{position:fixed;inset:0;z-index:0;pointer-events:none}
     .aurora{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
     .aurora::before,.aurora::after{content:"";position:absolute;border-radius:50%;filter:blur(80px);opacity:.1;animation:drift 18s ease-in-out infinite}
     .aurora::before{width:600px;height:350px;background:radial-gradient(ellipse,#0ea5e9,#6366f1,transparent);top:-100px;left:-100px}
     .aurora::after{width:500px;height:300px;background:radial-gradient(ellipse,#06b6d4,#8b5cf6,transparent);bottom:-80px;right:-80px;animation-delay:-9s}
     @keyframes drift{0%,100%{transform:translate(0,0)}33%{transform:translate(50px,30px)}66%{transform:translate(-30px,15px)}}
-    .page{position:relative;z-index:1;min-height:100vh;display:grid;grid-template-columns:1fr 420px 1fr;grid-template-rows:1fr;align-items:center;padding:40px 24px;gap:40px}
-    .reviews-left,.reviews-right{display:flex;flex-direction:column;gap:16px}
-    .card{background:rgba(7,20,40,.92);border:1px solid var(--border);border-radius:20px;padding:36px;width:100%;backdrop-filter:blur(18px)}
-    .logo-row{display:flex;align-items:center;gap:10px;margin-bottom:6px}
-    .logo{font-size:26px;font-weight:800;letter-spacing:-1px;background:linear-gradient(130deg,#e8f4ff,#7dd3fc,#38bdf8);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
-    .lock-icon{font-size:20px}
-    .sub{font-size:13px;color:var(--text2);margin-bottom:22px;line-height:1.5}
-    .tabs{display:flex;gap:4px;margin-bottom:22px;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:10px;padding:4px}
-    .tab{flex:1;height:34px;border:none;border-radius:7px;background:transparent;color:var(--text3);font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;transition:all .18s}
+
+    /* Floating reviews */
+    .review{position:fixed;z-index:1;width:220px;background:rgba(7,20,40,.88);border:1px solid rgba(125,211,252,.12);border-radius:14px;padding:14px;pointer-events:none;backdrop-filter:blur(12px);transition:opacity .3s}
+    .review-header{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+    .avatar{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0}
+    .review-name{font-size:12px;font-weight:600;color:var(--text)}
+    .review-handle{font-size:10px;color:var(--text3)}
+    .stars{color:#fbbf24;font-size:11px;margin-bottom:6px}
+    .review-text{font-size:11px;color:var(--text2);line-height:1.55}
+    .review-tag{display:inline-block;font-size:9px;font-weight:600;border-radius:5px;padding:2px 7px;margin-top:7px}
+
+    /* Center card */
+    .center{position:fixed;z-index:10;top:50%;left:50%;transform:translate(-50%,-50%);width:100%;max-width:400px;padding:0 16px}
+    .card{background:rgba(7,20,40,.95);border:1px solid var(--border);border-radius:20px;padding:32px;backdrop-filter:blur(20px)}
+    .logo-row{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+    .logo{font-size:24px;font-weight:800;letter-spacing:-1px;background:linear-gradient(130deg,#e8f4ff,#7dd3fc,#38bdf8);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+    .sub{font-size:12px;color:var(--text2);margin-bottom:18px;line-height:1.5}
+    .stats-row{display:flex;gap:8px;margin-bottom:18px}
+    .stat-pill{flex:1;text-align:center;background:rgba(125,211,252,.06);border:1px solid rgba(125,211,252,.1);border-radius:8px;padding:8px 4px}
+    .stat-num{font-size:16px;font-weight:800;color:var(--blue)}
+    .stat-lbl{font-size:9px;color:var(--text3);margin-top:1px}
+    .tabs{display:flex;gap:4px;margin-bottom:18px;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:10px;padding:4px}
+    .tab{flex:1;height:32px;border:none;border-radius:7px;background:transparent;color:var(--text3);font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;transition:all .18s}
     .tab.active{background:var(--blue-dim);color:var(--text)}
     .panel{display:none}.panel.active{display:block}
-    label{display:block;font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--text3);margin-bottom:5px}
-    .opt-label{font-weight:400;text-transform:none;letter-spacing:0;color:#1e4060;font-size:10px}
-    input,textarea{width:100%;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;font-family:inherit;outline:none;padding:0 14px;margin-bottom:12px;transition:border-color .2s}
-    input{height:42px}
-    textarea{height:72px;padding:10px 14px;resize:none}
+    label{display:block;font-size:10px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:var(--text3);margin-bottom:5px}
+    input,textarea{width:100%;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:9px;color:var(--text);font-size:13px;font-family:inherit;outline:none;padding:0 12px;margin-bottom:10px;transition:border-color .2s}
+    input{height:40px}textarea{height:64px;padding:9px 12px;resize:none}
     input:focus,textarea:focus{border-color:rgba(125,211,252,.45)}
     input::placeholder,textarea::placeholder{color:var(--text3)}
-    input.error-field{border-color:rgba(248,113,113,.5)}
-    .contact-row{display:flex;gap:8px;margin-bottom:12px}
+    input.error-field{border-color:rgba(248,113,113,.5)!important}
+    .contact-row{display:flex;gap:6px;margin-bottom:10px}
     .contact-row input{margin-bottom:0;flex:1}
-    .contact-or{display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:11px;font-weight:600;padding:0 4px;flex-shrink:0;padding-top:11px}
-    .btn{width:100%;height:44px;background:var(--blue-dim);border:1px solid rgba(125,211,252,.22);border-radius:10px;color:var(--text);font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;transition:background .18s,transform .1s;margin-top:4px}
+    .contact-or{display:flex;align-items:center;color:var(--text3);font-size:10px;font-weight:600;flex-shrink:0;padding-top:10px}
+    .btn{width:100%;height:42px;background:var(--blue-dim);border:1px solid rgba(125,211,252,.22);border-radius:9px;color:var(--text);font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;transition:background .18s,transform .1s;margin-top:2px}
     .btn:hover{background:#2596d4}
     .btn:active{transform:scale(.98)}
     .btn:disabled{background:rgba(26,111,164,.22);color:var(--text3);cursor:not-allowed}
-    .msg{margin-top:12px;font-size:13px;text-align:center;min-height:18px}
+    .msg{margin-top:10px;font-size:12px;text-align:center;min-height:16px}
     .msg.success{color:var(--green)}.msg.error{color:#f87171}
-    .stats-row{display:flex;gap:12px;margin-bottom:22px}
-    .stat-pill{flex:1;text-align:center;background:rgba(125,211,252,.06);border:1px solid rgba(125,211,252,.1);border-radius:10px;padding:10px 8px}
-    .stat-num{font-size:18px;font-weight:800;color:var(--blue)}
-    .stat-lbl{font-size:10px;color:var(--text3);margin-top:2px}
-
-    /* Review cards */
-    .review{background:rgba(7,20,40,.85);border:1px solid rgba(125,211,252,.1);border-radius:14px;padding:16px;opacity:.85;transition:opacity .2s}
-    .review:hover{opacity:1}
-    .review-header{display:flex;align-items:center;gap:10px;margin-bottom:10px}
-    .avatar{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex-shrink:0}
-    .review-name{font-size:13px;font-weight:600;color:var(--text)}
-    .review-handle{font-size:11px;color:var(--text3)}
-    .stars{color:#fbbf24;font-size:12px;margin-bottom:8px}
-    .review-text{font-size:12px;color:var(--text2);line-height:1.6}
-    .review-tag{display:inline-block;font-size:10px;font-weight:600;color:var(--purple);background:rgba(167,139,250,.1);border:1px solid rgba(167,139,250,.2);border-radius:6px;padding:2px 8px;margin-top:8px}
-
-    @media(max-width:1100px){
-      .page{grid-template-columns:1fr;grid-template-rows:auto}
-      .reviews-left,.reviews-right{display:none}
-    }
   </style>
 </head>
 <body>
   <canvas id="bg-canvas"></canvas>
   <div class="aurora"></div>
-  <div class="page">
 
-    <!-- LEFT REVIEWS -->
-    <div class="reviews-left">
-      <div class="review">
-        <div class="review-header">
-          <div class="avatar" style="background:rgba(125,211,252,.15);color:#7dd3fc">MK</div>
-          <div><div class="review-name">Marcus K.</div><div class="review-handle">@marcusk_resell</div></div>
-        </div>
-        <div class="stars">★★★★★</div>
-        <div class="review-text">Found a Jordan 4 factory with NFC chips in like 10 minutes. Used to spend hours on WeChat groups. This thing is insane</div>
-        <span class="review-tag">Passing / NFC</span>
-      </div>
-      <div class="review">
-        <div class="review-header">
-          <div class="avatar" style="background:rgba(167,139,250,.15);color:#a78bfa">TL</div>
-          <div><div class="review-name">Tyler L.</div><div class="review-handle">@tyler_drip</div></div>
-        </div>
-        <div class="stars">★★★★★</div>
-        <div class="review-text">The deep scan actually pulled a WeChat ID from an image on the product page. Literally couldn't believe it. Contacted the supplier same day</div>
-        <span class="review-tag">Deep Scan OCR</span>
-      </div>
-      <div class="review">
-        <div class="review-header">
-          <div class="avatar" style="background:rgba(74,222,128,.15);color:#4ade80">AJ</div>
-          <div><div class="review-name">Alex J.</div><div class="review-handle">@alexj_imports</div></div>
-        </div>
-        <div class="stars">★★★★★</div>
-        <div class="review-text">FF tab found me a freight forwarder from Guangzhou to LA for way cheaper than what I was paying. Already shipped 3 orders through them</div>
-        <span class="review-tag">Freight Forwarder</span>
-      </div>
-    </div>
+  <!-- Floating reviews injected by JS -->
 
-    <!-- CENTER CARD -->
+  <div class="center">
     <div class="card">
       <div class="logo-row">
-        <span class="lock-icon">🔒</span>
+        <span style="font-size:18px">🔒</span>
         <div class="logo">SourceFinder</div>
       </div>
-      <p class="sub">Private Chinese supplier sourcing tool. Request access or login below.</p>
+      <p class="sub">Private Chinese supplier sourcing tool. Request access or login.</p>
 
       <div class="stats-row">
         <div class="stat-pill"><div class="stat-num">2.4k+</div><div class="stat-lbl">Suppliers found</div></div>
@@ -120,7 +82,6 @@
         <button class="tab" onclick="switchTab('request')">Request Access</button>
       </div>
 
-      <!-- LOGIN -->
       <div class="panel active" id="panel-login">
         <label for="loginEmail">Email</label>
         <input type="email" id="loginEmail" placeholder="you@example.com"/>
@@ -130,136 +91,209 @@
         <p class="msg" id="loginMsg"></p>
       </div>
 
-      <!-- REQUEST -->
       <div class="panel" id="panel-request">
         <label for="reqName">Full name</label>
         <input type="text" id="reqName" placeholder="John Smith"/>
         <label for="reqEmail">Email</label>
         <input type="email" id="reqEmail" placeholder="you@example.com"/>
-
-        <label>Discord or WeChat <span style="color:#f87171;font-size:11px">(at least one required)</span></label>
+        <label>Discord or WeChat <span style="color:#f87171;font-size:10px;font-weight:400;text-transform:none;letter-spacing:0">(required — how we send your password)</span></label>
         <div class="contact-row">
           <input type="text" id="reqDiscord" placeholder="Discord username"/>
           <span class="contact-or">or</span>
           <input type="text" id="reqWechat" placeholder="WeChat ID"/>
         </div>
-
-        <label for="reqUseCase">How will you use this? <span class="opt-label">(optional)</span></label>
-        <textarea id="reqUseCase" placeholder="e.g. I source sneakers and clothing from China for my store..."></textarea>
-
+        <label for="reqUseCase" style="margin-top:0">How will you use this? <span style="color:var(--text3);font-weight:400;text-transform:none;letter-spacing:0;font-size:10px">(optional)</span></label>
+        <textarea id="reqUseCase" placeholder="Sourcing sneakers, clothing, electronics..."></textarea>
         <button class="btn" id="reqBtn" onclick="doRequest()">Request Access</button>
         <p class="msg" id="reqMsg"></p>
       </div>
     </div>
-
-    <!-- RIGHT REVIEWS -->
-    <div class="reviews-right">
-      <div class="review">
-        <div class="review-header">
-          <div class="avatar" style="background:rgba(251,191,36,.15);color:#fbbf24">RW</div>
-          <div><div class="review-name">Ryan W.</div><div class="review-handle">@ryanw_fits</div></div>
-        </div>
-        <div class="stars">★★★★★</div>
-        <div class="review-text">Smart refresh is underrated. Hit it 3 times and had 30+ different suppliers. Found my main plug through the 2nd refresh on Xianyu mode</div>
-        <span class="review-tag">Smart Refresh</span>
-      </div>
-      <div class="review">
-        <div class="review-header">
-          <div class="avatar" style="background:rgba(45,212,191,.15);color:#2dd4bf">SK</div>
-          <div><div class="review-name">Sophie K.</div><div class="review-handle">@sophiek_source</div></div>
-        </div>
-        <div class="stars">★★★★★</div>
-        <div class="review-text">I was skeptical but the QR code scanner actually works. Decoded a WeChat QR from a product banner image on the first try. Wild</div>
-        <span class="review-tag">QR Decoder</span>
-      </div>
-      <div class="review">
-        <div class="review-header">
-          <div class="avatar" style="background:rgba(248,113,113,.15);color:#f87171">DM</div>
-          <div><div class="review-name">Dev M.</div><div class="review-handle">@devm_wholesale</div></div>
-        </div>
-        <div class="stars">★★★★★</div>
-        <div class="review-text">Searched Xiaohongshu mode for luxury bag factories. Got 8 verified WeChat contacts in one search. This is the plug for sourcing fr</div>
-        <span class="review-tag">Xiaohongshu</span>
-      </div>
-    </div>
-
   </div>
 
   <script>
-    // Particles
-    (function(){
-      const c=document.getElementById("bg-canvas"),ctx=c.getContext("2d");
-      let W,H,dots=[],mouse={x:-999,y:-999};
-      const resize=()=>{W=c.width=window.innerWidth;H=c.height=window.innerHeight};
-      const mk=()=>({x:Math.random()*W,y:Math.random()*H,r:Math.random()*1.5+.3,vx:(Math.random()-.5)*.22,vy:(Math.random()-.5)*.22,a:Math.random()*.4+.08});
-      const init=()=>{resize();dots=Array.from({length:100},mk)};
-      const frame=()=>{
-        ctx.clearRect(0,0,W,H);
-        for(const d of dots){
-          const dx=d.x-mouse.x,dy=d.y-mouse.y,dist=Math.sqrt(dx*dx+dy*dy);
-          if(dist<100){d.vx+=(dx/dist)*.4;d.vy+=(dy/dist)*.4}
-          d.vx*=.98;d.vy*=.98;d.x+=d.vx;d.y+=d.vy;
-          if(d.x<-4)d.x=W+4;else if(d.x>W+4)d.x=-4;
-          if(d.y<-4)d.y=H+4;else if(d.y>H+4)d.y=-4;
-          ctx.beginPath();ctx.arc(d.x,d.y,d.r,0,Math.PI*2);ctx.fillStyle=`rgba(180,220,255,${d.a})`;ctx.fill();
-        }
-        requestAnimationFrame(frame);
-      };
-      window.addEventListener("mousemove",e=>{mouse.x=e.clientX;mouse.y=e.clientY});
-      init();frame();window.addEventListener("resize",resize);
-    })();
-
-    function switchTab(tab){
-      document.querySelectorAll(".tab").forEach((t,i)=>t.classList.toggle("active",(i===0&&tab==="login")||(i===1&&tab==="request")));
-      document.getElementById("panel-login").classList.toggle("active",tab==="login");
-      document.getElementById("panel-request").classList.toggle("active",tab==="request");
-    }
-
-    async function doLogin(){
-      const btn=document.getElementById("loginBtn"),msg=document.getElementById("loginMsg");
-      const email=document.getElementById("loginEmail").value.trim();
-      const password=document.getElementById("loginPass").value.trim();
-      if(!email||!password){msg.className="msg error";msg.textContent="Enter email and password.";return}
-      btn.disabled=true;btn.textContent="Logging in...";msg.className="msg";msg.textContent="";
-      try{
-        const r=await fetch("/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email,password})});
-        const data=await r.json();
-        if(r.ok){msg.className="msg success";msg.textContent="Welcome back! Loading...";setTimeout(()=>location.reload(),700)}
-        else{msg.className="msg error";msg.textContent=data.error||"Invalid credentials.";btn.disabled=false;btn.textContent="Login"}
-      }catch{msg.className="msg error";msg.textContent="Network error.";btn.disabled=false;btn.textContent="Login"}
-    }
-
-    async function doRequest(){
-      const btn=document.getElementById("reqBtn"),msg=document.getElementById("reqMsg");
-      const name=document.getElementById("reqName").value.trim();
-      const email=document.getElementById("reqEmail").value.trim();
-      const discord=document.getElementById("reqDiscord").value.trim();
-      const wechat=document.getElementById("reqWechat").value.trim();
-      const usecase=document.getElementById("reqUseCase").value.trim();
-
-      // Validation
-      if(!name){msg.className="msg error";msg.textContent="Please enter your name.";return}
-      if(!email){msg.className="msg error";msg.textContent="Please enter your email.";return}
-      if(!discord&&!wechat){
-        document.getElementById("reqDiscord").classList.add("error-field");
-        document.getElementById("reqWechat").classList.add("error-field");
-        msg.className="msg error";msg.textContent="Enter your Discord or WeChat — we need a way to reach you.";return
+  // ── Particles ────────────────────────────────────────────────
+  (function(){
+    const c=document.getElementById("bg-canvas"),ctx=c.getContext("2d");
+    let W,H,dots=[],mouse={x:-999,y:-999};
+    const resize=()=>{W=c.width=window.innerWidth;H=c.height=window.innerHeight};
+    const mk=()=>({x:Math.random()*W,y:Math.random()*H,r:Math.random()*1.5+.3,vx:(Math.random()-.5)*.22,vy:(Math.random()-.5)*.22,a:Math.random()*.4+.08});
+    const init=()=>{resize();dots=Array.from({length:120},mk)};
+    const frame=()=>{
+      ctx.clearRect(0,0,W,H);
+      for(const d of dots){
+        const dx=d.x-mouse.x,dy=d.y-mouse.y,dist=Math.sqrt(dx*dx+dy*dy);
+        if(dist<110){d.vx+=(dx/dist)*.35;d.vy+=(dy/dist)*.35}
+        d.vx*=.98;d.vy*=.98;d.x+=d.vx;d.y+=d.vy;
+        if(d.x<-4)d.x=W+4;else if(d.x>W+4)d.x=-4;
+        if(d.y<-4)d.y=H+4;else if(d.y>H+4)d.y=-4;
+        ctx.beginPath();ctx.arc(d.x,d.y,d.r,0,Math.PI*2);
+        ctx.fillStyle=`rgba(180,220,255,${d.a})`;ctx.fill();
       }
-      document.getElementById("reqDiscord").classList.remove("error-field");
-      document.getElementById("reqWechat").classList.remove("error-field");
+      for(let i=0;i<dots.length;i++)for(let j=i+1;j<dots.length;j++){
+        const a=dots[i],b=dots[j],dx=a.x-b.x,dy=a.y-b.y,dist=Math.sqrt(dx*dx+dy*dy);
+        if(dist<90){ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.strokeStyle=`rgba(80,170,230,${.07*(1-dist/90)})`;ctx.lineWidth=.5;ctx.stroke()}
+      }
+      requestAnimationFrame(frame);
+    };
+    window.addEventListener("mousemove",e=>{mouse.x=e.clientX;mouse.y=e.clientY});
+    init();frame();window.addEventListener("resize",resize);
+  })();
 
-      btn.disabled=true;btn.textContent="Sending...";msg.className="msg";msg.textContent="";
-      try{
-        const r=await fetch("/request-access",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name,email,discord,wechat,reason:usecase})});
-        const data=await r.json();
-        if(data.status==="submitted"){msg.className="msg success";msg.textContent="Request sent! We'll reach out on Discord or WeChat with your password.";btn.textContent="Sent ✓"}
-        else if(data.status==="already_requested"){msg.className="msg";msg.textContent="Already requested — sit tight!";btn.disabled=false;btn.textContent="Request Access"}
-        else if(data.status==="already_approved"){msg.className="msg success";msg.textContent="You're already approved! Use the Login tab.";btn.textContent="Already approved ✓"}
-        else{msg.className="msg error";msg.textContent=data.error||"Error.";btn.disabled=false;btn.textContent="Request Access"}
-      }catch{msg.className="msg error";msg.textContent="Network error.";btn.disabled=false;btn.textContent="Request Access"}
+  // ── Floating reviews ─────────────────────────────────────────
+  const REVIEWS = [
+    {name:"Marcus K.",handle:"@marcusk_resell",avatar:"MK",color:"#7dd3fc",bg:"rgba(125,211,252,.15)",stars:5,text:"Found a Jordan 4 factory with NFC chips in 10 minutes. Used to spend hours on WeChat groups. Insane tool",tag:"Passing / NFC",tagColor:"#a78bfa",tagBg:"rgba(167,139,250,.1)"},
+    {name:"Tyler L.",handle:"@tyler_drip",avatar:"TL",color:"#a78bfa",bg:"rgba(167,139,250,.15)",stars:5,text:"Deep scan pulled a WeChat ID from an image on the product page. Contacted the supplier same day 🔥",tag:"Deep Scan OCR",tagColor:"#2dd4bf",tagBg:"rgba(45,212,191,.1)"},
+    {name:"Alex J.",handle:"@alexj_imports",avatar:"AJ",color:"#4ade80",bg:"rgba(74,222,128,.15)",stars:5,text:"FF tab found me a freight forwarder from Guangzhou to LA way cheaper than what I was paying. Already shipped 3 orders",tag:"Freight Forwarder",tagColor:"#4ade80",tagBg:"rgba(74,222,128,.1)"},
+    {name:"Ryan W.",handle:"@ryanw_fits",avatar:"RW",color:"#fbbf24",bg:"rgba(251,191,36,.15)",stars:5,text:"Smart refresh is underrated. Hit it 3 times, got 30+ different suppliers. Found my main plug on 2nd refresh",tag:"Smart Refresh",tagColor:"#fbbf24",tagBg:"rgba(251,191,36,.1)"},
+    {name:"Sophie K.",handle:"@sophiek_source",avatar:"SK",color:"#2dd4bf",bg:"rgba(45,212,191,.15)",stars:5,text:"QR code scanner actually works. Decoded a WeChat QR from a product banner on the first try. Wild",tag:"QR Decoder",tagColor:"#7dd3fc",tagBg:"rgba(125,211,252,.1)"},
+    {name:"Dev M.",handle:"@devm_wholesale",avatar:"DM",color:"#f87171",bg:"rgba(248,113,113,.15)",stars:5,text:"Searched Xiaohongshu mode for luxury bag factories. Got 8 verified WeChat contacts in one search 🙌",tag:"Xiaohongshu",tagColor:"#f87171",tagBg:"rgba(248,113,113,.1)"},
+    {name:"Jamie T.",handle:"@jamiet_resell",avatar:"JT",color:"#38bdf8",bg:"rgba(56,189,248,.15)",stars:5,text:"The confidence scores are actually accurate. Green checkmark WeChats have been legit every time for me",tag:"WeChat Scoring",tagColor:"#38bdf8",tagBg:"rgba(56,189,248,.1)"},
+    {name:"Chris V.",handle:"@chrisv_source",avatar:"CV",color:"#c084fc",bg:"rgba(192,132,252,.15)",stars:5,text:"Xianyu mode is a goldmine for factory overstock. Found Dunk samples for like nothing through this",tag:"Xianyu",tagColor:"#c084fc",tagBg:"rgba(192,132,252,.1)"},
+  ];
+
+  const CARD_W = 220, CARD_H = 150;
+  const CENTER_X = window.innerWidth / 2, CENTER_Y = window.innerHeight / 2;
+  const CARD_ZONE = { x: CENTER_X - 220, y: CENTER_Y - 280, w: 440, h: 560 };
+
+  function overlapsCenter(x, y) {
+    return x < CARD_ZONE.x + CARD_ZONE.w && x + CARD_W > CARD_ZONE.x &&
+           y < CARD_ZONE.y + CARD_ZONE.h && y + CARD_H > CARD_ZONE.y;
+  }
+
+  function randomStart() {
+    let x, y, tries = 0;
+    do {
+      x = Math.random() * (window.innerWidth - CARD_W);
+      y = Math.random() * (window.innerHeight - CARD_H);
+      tries++;
+    } while (overlapsCenter(x, y) && tries < 50);
+    return { x, y };
+  }
+
+  const floaters = REVIEWS.map((r, i) => {
+    const { x, y } = randomStart();
+    const speed = 0.18 + Math.random() * 0.18;
+    const angle = Math.random() * Math.PI * 2;
+    return {
+      ...r, x, y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      el: null,
+    };
+  });
+
+  function buildEl(r) {
+    const div = document.createElement("div");
+    div.className = "review";
+    div.innerHTML = `
+      <div class="review-header">
+        <div class="avatar" style="background:${r.bg};color:${r.color}">${r.avatar}</div>
+        <div><div class="review-name">${r.name}</div><div class="review-handle">${r.handle}</div></div>
+      </div>
+      <div class="stars">${"★".repeat(r.stars)}</div>
+      <div class="review-text">${r.text}</div>
+      <span class="review-tag" style="color:${r.tagColor};background:${r.tagBg};border:1px solid ${r.tagColor}33">${r.tag}</span>`;
+    document.body.appendChild(div);
+    return div;
+  }
+
+  floaters.forEach(f => {
+    f.el = buildEl(f);
+    f.el.style.left = f.x + "px";
+    f.el.style.top  = f.y + "px";
+  });
+
+  function animateFloaters() {
+    const W = window.innerWidth, H = window.innerHeight;
+    const cx = W / 2, cy = H / 2;
+    const zx = cx - 220, zy = cy - 280, zw = 440, zh = 560;
+
+    floaters.forEach(f => {
+      f.x += f.vx;
+      f.y += f.vy;
+
+      // Bounce off walls
+      if (f.x <= 0) { f.x = 0; f.vx = Math.abs(f.vx); }
+      if (f.x + CARD_W >= W) { f.x = W - CARD_W; f.vx = -Math.abs(f.vx); }
+      if (f.y <= 0) { f.y = 0; f.vy = Math.abs(f.vy); }
+      if (f.y + CARD_H >= H) { f.y = H - CARD_H; f.vy = -Math.abs(f.vy); }
+
+      // Steer away from center card zone
+      const cx2 = f.x + CARD_W / 2, cy2 = f.y + CARD_H / 2;
+      const zoneCX = zx + zw / 2, zoneCY = zy + zh / 2;
+      const dx = cx2 - zoneCX, dy = cy2 - zoneCY;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < 340) {
+        const force = (340 - dist) / 340 * 0.025;
+        f.vx += (dx / dist) * force;
+        f.vy += (dy / dist) * force;
+      }
+
+      // Speed cap
+      const spd = Math.sqrt(f.vx * f.vx + f.vy * f.vy);
+      if (spd > 0.5) { f.vx = f.vx / spd * 0.5; f.vy = f.vy / spd * 0.5; }
+
+      f.el.style.left = f.x + "px";
+      f.el.style.top  = f.y + "px";
+    });
+
+    requestAnimationFrame(animateFloaters);
+  }
+  animateFloaters();
+
+  // ── Tab switch ────────────────────────────────────────────────
+  function switchTab(tab) {
+    document.querySelectorAll(".tab").forEach((t,i)=>t.classList.toggle("active",(i===0&&tab==="login")||(i===1&&tab==="request")));
+    document.getElementById("panel-login").classList.toggle("active",tab==="login");
+    document.getElementById("panel-request").classList.toggle("active",tab==="request");
+  }
+
+  // ── Login ─────────────────────────────────────────────────────
+  async function doLogin() {
+    const btn=document.getElementById("loginBtn"),msg=document.getElementById("loginMsg");
+    const email=document.getElementById("loginEmail").value.trim();
+    const password=document.getElementById("loginPass").value.trim();
+    if(!email||!password){msg.className="msg error";msg.textContent="Enter email and password.";return}
+    btn.disabled=true;btn.textContent="Logging in...";msg.className="msg";msg.textContent="";
+    try{
+      const r=await fetch("/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email,password})});
+      const data=await r.json();
+      if(r.ok){msg.className="msg success";msg.textContent="Welcome! Loading...";setTimeout(()=>location.reload(),700)}
+      else{msg.className="msg error";msg.textContent=data.error||"Invalid credentials.";btn.disabled=false;btn.textContent="Login"}
+    }catch{msg.className="msg error";msg.textContent="Network error.";btn.disabled=false;btn.textContent="Login"}
+  }
+
+  // ── Request ───────────────────────────────────────────────────
+  async function doRequest() {
+    const btn=document.getElementById("reqBtn"),msg=document.getElementById("reqMsg");
+    const name=document.getElementById("reqName").value.trim();
+    const email=document.getElementById("reqEmail").value.trim();
+    const discord=document.getElementById("reqDiscord").value.trim();
+    const wechat=document.getElementById("reqWechat").value.trim();
+    const usecase=document.getElementById("reqUseCase").value.trim();
+
+    if(!name){msg.className="msg error";msg.textContent="Please enter your name.";return}
+    if(!email){msg.className="msg error";msg.textContent="Please enter your email.";return}
+    if(!discord&&!wechat){
+      document.getElementById("reqDiscord").classList.add("error-field");
+      document.getElementById("reqWechat").classList.add("error-field");
+      msg.className="msg error";msg.textContent="Enter Discord or WeChat — we need this to send your password.";return
     }
+    document.getElementById("reqDiscord").classList.remove("error-field");
+    document.getElementById("reqWechat").classList.remove("error-field");
 
-    document.addEventListener("keydown",e=>{if(e.key==="Enter"&&document.getElementById("panel-login").classList.contains("active"))doLogin()});
+    btn.disabled=true;btn.textContent="Sending...";msg.className="msg";msg.textContent="";
+    try{
+      const r=await fetch("/request-access",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name,email,discord,wechat,reason:usecase})});
+      const data=await r.json();
+      if(data.status==="submitted"){msg.className="msg success";msg.textContent="Sent! We'll message you on Discord or WeChat with your password.";btn.textContent="Sent ✓"}
+      else if(data.status==="already_requested"){msg.className="msg";msg.textContent="Already requested — sit tight!";btn.disabled=false;btn.textContent="Request Access"}
+      else if(data.status==="already_approved"){msg.className="msg success";msg.textContent="You're approved! Use the Login tab.";btn.textContent="Already approved ✓"}
+      else{msg.className="msg error";msg.textContent=data.error||"Error.";btn.disabled=false;btn.textContent="Request Access"}
+    }catch{msg.className="msg error";msg.textContent="Network error.";btn.disabled=false;btn.textContent="Request Access"}
+  }
+
+  document.addEventListener("keydown",e=>{if(e.key==="Enter"&&document.getElementById("panel-login").classList.contains("active"))doLogin()});
   </script>
 </body>
 </html>
