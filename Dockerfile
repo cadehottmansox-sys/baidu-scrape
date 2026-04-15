@@ -21,8 +21,6 @@ ENV HEADLESS=true
 ENV MAX_RESULTS=10
 ENV ACTION_DELAY_SECONDS=1.2
 ENV PLAYWRIGHT_TIMEOUT_MS=30000
-ENV ADMIN_SECRET=change-this-to-something-secret
-ENV APP_URL=https://your-app.railway.app
 
 EXPOSE 8080
-CMD ["sh", "-c", "gunicorn app:app --bind 0.0.0.0:${PORT:-8080} --workers 1 --timeout 180"]
+CMD ["sh", "-c", "gunicorn app:app --bind 0.0.0.0:${PORT:-8080} --workers 1 --worker-class gthread --threads 4 --timeout 300 --keep-alive 5"]
