@@ -86,6 +86,8 @@
     .fp-stats{display:flex;gap:14px;color:#536471;font-size:10px}
     .fp-stat{display:flex;align-items:center;gap:3px}
 
+
+    .blur{filter:blur(4px);user-select:none;-webkit-filter:blur(4px);display:inline-block}
     @media(max-width:1050px){.why-panel{display:none}}
     @media(max-width:750px){.feed-panel{display:none}.page{grid-template-columns:1fr}}
     @media(max-width:500px){.page{padding:14px}}
@@ -223,18 +225,18 @@
 
   // ── Feed posts data ────────────────────────────────────────────
   const POSTS=[
-    {name:"Marcus K.",handle:"marcusk_resell",initials:"MK",color:"#1d9bf0",bg:"rgba(29,155,240,.2)",verified:true,text:'Found a Jordan 4 factory with <span class="hl">NFC chips</span> in 10 min. Used to spend hours digging. Actual cheat code 🔥',tag:"Passing / NFC",tagColor:"#a78bfa",tagBg:"rgba(167,139,250,.1)",likes:"847",reposts:"234",replies:"91"},
-    {name:"Tyler L.",handle:"tyler_drip",initials:"TL",color:"#a78bfa",bg:"rgba(167,139,250,.2)",verified:false,text:'<span class="hl">OCR pulled a WeChat</span> straight from a product banner image. I genuinely thought it was broken then it worked 👀',tag:"OCR Scanner",tagColor:"#2dd4bf",tagBg:"rgba(45,212,191,.1)",likes:"1.2k",reposts:"389",replies:"145"},
-    {name:"Alex J.",handle:"alexj_imports",initials:"AJ",color:"#4ade80",bg:"rgba(74,222,128,.2)",verified:true,text:'FF tab found a forwarder from <span class="hl">Guangzhou to LA</span> for way less than my last agent. Already shipped 3 orders',tag:"Freight",tagColor:"#4ade80",tagBg:"rgba(74,222,128,.1)",likes:"2.1k",reposts:"567",replies:"203"},
-    {name:"Ryan W.",handle:"ryanw_fits",initials:"RW",color:"#fbbf24",bg:"rgba(251,191,36,.2)",verified:false,text:'Smart refresh on <span class="hl">Xianyu mode</span> = 30+ suppliers in like 3 clicks. Found my main plug on the second refresh',tag:"Smart Refresh",tagColor:"#fbbf24",tagBg:"rgba(251,191,36,.1)",likes:"934",reposts:"278",replies:"88"},
-    {name:"Sophie K.",handle:"sophiek_source",initials:"SK",color:"#2dd4bf",bg:"rgba(45,212,191,.2)",verified:true,text:'QR decoder got a WeChat from a <span class="hl">product image banner</span> on literally the first try. Was fully skeptical',tag:"QR Decoder",tagColor:"#7dd3fc",tagBg:"rgba(125,211,252,.1)",likes:"1.8k",reposts:"445",replies:"167"},
-    {name:"Dev M.",handle:"devm_wholesale",initials:"DM",color:"#f87171",bg:"rgba(248,113,113,.2)",verified:false,text:'<span class="hl">Xiaohongshu mode</span> for bags — 8 verified WeChat contacts in one search. This is the actual plug',tag:"Xiaohongshu",tagColor:"#f87171",tagBg:"rgba(248,113,113,.1)",likes:"3.4k",reposts:"891",replies:"312"},
-    {name:"Jamie T.",handle:"jamiet_resell",initials:"JT",color:"#38bdf8",bg:"rgba(56,189,248,.2)",verified:true,text:'Every <span class="hl">green checkmark WeChat</span> I hit has been a legit factory. Confidence scores are actually accurate',tag:"WeChat Scoring",tagColor:"#38bdf8",tagBg:"rgba(56,189,248,.1)",likes:"654",reposts:"189",replies:"72"},
-    {name:"Chris V.",handle:"chrisv_source",initials:"CV",color:"#c084fc",bg:"rgba(192,132,252,.2)",verified:false,text:'Xianyu mode for <span class="hl">factory overstock</span> is a goldmine. Found Dunk samples for basically nothing fr',tag:"Xianyu",tagColor:"#c084fc",tagBg:"rgba(192,132,252,.1)",likes:"1.1k",reposts:"334",replies:"128"},
-    {name:"Mia R.",handle:"mia_sourcing",initials:"MR",color:"#fb923c",bg:"rgba(251,146,60,.2)",verified:true,text:'Deep scan on a <span class="hl">Made-in-China page</span> found 3 WeChats the normal search missed. Worth the extra wait',tag:"Deep Scan",tagColor:"#fb923c",tagBg:"rgba(251,146,60,.1)",likes:"743",reposts:"201",replies:"64"},
+    {name:"Marcus K.",handle:"marcusk_resell",initials:"MK",color:"#1d9bf0",bg:"rgba(29,155,240,.2)",verified:true,text:'Found a Jordan 4 factory with <span class="hl blur">NFC chips</span> in 10 min. Used to spend hours digging. Actual cheat code 🔥',tag:"Passing / NFC",tagColor:"#a78bfa",tagBg:"rgba(167,139,250,.1)",likes:"847",reposts:"234",replies:"91"},
+    {name:"Tyler L.",handle:"tyler_drip",initials:"TL",color:"#a78bfa",bg:"rgba(167,139,250,.2)",verified:false,text:'<span class="hl blur">OCR pulled a WeChat</span> straight from a product banner image. I genuinely thought it was broken then it worked 👀',tag:"OCR Scanner",tagColor:"#2dd4bf",tagBg:"rgba(45,212,191,.1)",likes:"1.2k",reposts:"389",replies:"145"},
+    {name:"Alex J.",handle:"alexj_imports",initials:"AJ",color:"#4ade80",bg:"rgba(74,222,128,.2)",verified:true,text:'FF tab found a forwarder from <span class="hl blur">Guangzhou to LA</span> for way less than my last agent. Already shipped 3 orders',tag:"Freight",tagColor:"#4ade80",tagBg:"rgba(74,222,128,.1)",likes:"2.1k",reposts:"567",replies:"203"},
+    {name:"Ryan W.",handle:"ryanw_fits",initials:"RW",color:"#fbbf24",bg:"rgba(251,191,36,.2)",verified:false,text:'Smart refresh on <span class="hl blur">Xianyu mode</span> = 30+ suppliers in like 3 clicks. Found my main plug on the second refresh',tag:"Smart Refresh",tagColor:"#fbbf24",tagBg:"rgba(251,191,36,.1)",likes:"934",reposts:"278",replies:"88"},
+    {name:"Sophie K.",handle:"sophiek_source",initials:"SK",color:"#2dd4bf",bg:"rgba(45,212,191,.2)",verified:true,text:'QR decoder got a WeChat from a <span class="hl blur">product image banner</span> on literally the first try. Was fully skeptical',tag:"QR Decoder",tagColor:"#7dd3fc",tagBg:"rgba(125,211,252,.1)",likes:"1.8k",reposts:"445",replies:"167"},
+    {name:"Dev M.",handle:"devm_wholesale",initials:"DM",color:"#f87171",bg:"rgba(248,113,113,.2)",verified:false,text:'<span class="hl blur">Xiaohongshu mode</span> for bags — 8 verified WeChat contacts in one search. This is the actual plug',tag:"Xiaohongshu",tagColor:"#f87171",tagBg:"rgba(248,113,113,.1)",likes:"3.4k",reposts:"891",replies:"312"},
+    {name:"Jamie T.",handle:"jamiet_resell",initials:"JT",color:"#38bdf8",bg:"rgba(56,189,248,.2)",verified:true,text:'Every <span class="hl blur">green checkmark WeChat</span> I hit has been a legit factory. Confidence scores are actually accurate',tag:"WeChat Scoring",tagColor:"#38bdf8",tagBg:"rgba(56,189,248,.1)",likes:"654",reposts:"189",replies:"72"},
+    {name:"Chris V.",handle:"chrisv_source",initials:"CV",color:"#c084fc",bg:"rgba(192,132,252,.2)",verified:false,text:'Xianyu mode for <span class="hl blur">factory overstock</span> is a goldmine. Found Dunk samples for basically nothing fr',tag:"Xianyu",tagColor:"#c084fc",tagBg:"rgba(192,132,252,.1)",likes:"1.1k",reposts:"334",replies:"128"},
+    {name:"Mia R.",handle:"mia_sourcing",initials:"MR",color:"#fb923c",bg:"rgba(251,146,60,.2)",verified:true,text:'Deep scan on a <span class="hl blur">Made-in-China page</span> found 3 WeChats the normal search missed. Worth the extra wait',tag:"Deep Scan",tagColor:"#fb923c",tagBg:"rgba(251,146,60,.1)",likes:"743",reposts:"201",replies:"64"},
     {name:"Kai B.",handle:"kaib_resell",initials:"KB",color:"#34d399",bg:"rgba(52,211,153,.2)",verified:false,text:'Copy all WeChats button is so underrated. Grabbed 12 contacts from one search and messaged them all in 5 min',tag:"Copy All",tagColor:"#34d399",tagBg:"rgba(52,211,153,.1)",likes:"512",reposts:"143",replies:"47"},
-    {name:"Priya S.",handle:"priyas_import",initials:"PS",color:"#e879f9",bg:"rgba(232,121,249,.2)",verified:true,text:'Used the <span class="hl">1688 keyword mode</span> and got factory direct pricing. Saving like 40% vs what I was paying before',tag:"1688",tagColor:"#e879f9",tagBg:"rgba(232,121,249,.1)",likes:"1.5k",reposts:"412",replies:"189"},
-    {name:"Sam K.",handle:"samk_plugs",initials:"SK",color:"#60a5fa",bg:"rgba(96,165,250,.2)",verified:false,text:'Found a <span class="hl">passing StockX shoe</span> supplier through the NFC mode. Contacts are legit and responsive',tag:"Passing",tagColor:"#60a5fa",tagBg:"rgba(96,165,250,.1)",likes:"2.8k",reposts:"734",replies:"267"},
+    {name:"Priya S.",handle:"priyas_import",initials:"PS",color:"#e879f9",bg:"rgba(232,121,249,.2)",verified:true,text:'Used the <span class="hl blur">1688 keyword mode</span> and got factory direct pricing. Saving like 40% vs what I was paying before',tag:"1688",tagColor:"#e879f9",tagBg:"rgba(232,121,249,.1)",likes:"1.5k",reposts:"412",replies:"189"},
+    {name:"Sam K.",handle:"samk_plugs",initials:"SK",color:"#60a5fa",bg:"rgba(96,165,250,.2)",verified:false,text:'Found a <span class="hl blur">passing StockX shoe</span> supplier through the NFC mode. Contacts are legit and responsive',tag:"Passing",tagColor:"#60a5fa",tagBg:"rgba(96,165,250,.1)",likes:"2.8k",reposts:"734",replies:"267"},
   ];
 
   const TIMES=["just now","1m ago","2m ago","3m ago","5m ago","7m ago","10m ago","14m ago","18m ago","23m ago","31m ago","42m ago","1h ago"];
@@ -252,7 +254,7 @@
         <div class="fp-time">${TIMES[timeIdx%TIMES.length]}</div>
       </div>
       <div class="fp-text">${p.text}</div>
-      <div class="fp-tag" style="color:${p.tagColor};background:${p.tagBg};border:1px solid ${p.tagColor}33">${p.tag}</div>
+      <div class="fp-tag blur" style="color:${p.tagColor};background:${p.tagBg};border:1px solid ${p.tagColor}33">${p.tag}</div>
       <div class="fp-stats">
         <span class="fp-stat">💬 ${p.replies}</span>
         <span class="fp-stat">🔁 ${p.reposts}</span>
