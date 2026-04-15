@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>SourceFinder — Request Access</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{--bg:#030d1a;--blue:#7dd3fc;--blue-dim:#1a6fa4;--border:rgba(125,211,252,.14);--text:#e8f4ff;--text2:#7aa5be;--text3:#2e5870}
+    html,body{min-height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);overflow-x:hidden}
+    canvas{position:fixed;inset:0;z-index:0;pointer-events:none}
+    .wrap{position:relative;z-index:1;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+    .card{background:rgba(7,20,40,.92);border:1px solid var(--border);border-radius:20px;padding:40px;width:100%;max-width:440px;backdrop-filter:blur(18px)}
+    .logo{font-size:28px;font-weight:800;letter-spacing:-1px;background:linear-gradient(130deg,#e8f4ff,#7dd3fc,#38bdf8);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:6px}
+    .sub{font-size:14px;color:var(--text2);margin-bottom:28px}
+    label{display:block;font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--text3);margin-bottom:6px}
+    input,textarea{width:100%;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;font-family:inherit;outline:none;padding:0 14px;margin-bottom:16px;transition:border-color .2s}
+    input{height:44px}
+    textarea{height:90px;padding:12px 14px;resize:none}
+    input:focus,textarea:focus{border-color:rgba(125,211,252,.45)}
+    input::placeholder,textarea::placeholder{color:var(--text3)}
+    .btn{width:100%;height:46px;background:var(--blue-dim);border:1px solid rgba(125,211,252,.22);border-radius:10px;color:var(--text);font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;transition:background .18s,transform .1s;margin-top:4px}
+    .btn:hover{background:#2596d4}
+    .btn:active{transform:scale(.98)}
+    .btn:disabled{background:rgba(26,111,164,.22);color:var(--text3);cursor:not-allowed}
+    .msg{margin-top:16px;font-size:13px;text-align:center;min-height:20px}
+    .msg.success{color:#4ade80}
+    .msg.error{color:#f87171}
+    .lock{font-size:32px;margin-bottom:16px;opacity:.7}
+  </style>
+</head>
+<body>
+  <canvas id="bg-canvas"></canvas>
+  <div class="wrap">
+    <div class="card">
+      <div class="lock">🔒</div>
+      <div class="logo">SourceFinder</div>
+      <p class="sub">This tool is private. Request access below and you'll hear back shortly.</p>
+      <form id="accessForm">
+        <label for="name">Your name</label>
+        <input type="text" id="name" placeholder="John Smith" required/>
+        <label for="email">Email address</label>
+        <input type="email" id="email" placeholder="you@example.com" required/>
+        <label for="reason">Why do you need access?</label>
+        <textarea id="reason" placeholder="I'm sourcing products from China for..."></textarea>
+        <button type="submit" class="btn" id="submitBtn">Request Access</button>
+        <p class="msg" id="msg"></p>
+      </form>
+    </div>
+  </div>
+  <script>
+    // Mini particle canvas
+    (function(){
+      const c=document.getElementById("bg-canvas"),ctx=c.getContext("2d");
+      let W,H,dots=[];
+      const resize=()=>{W=c.width=window.innerWidth;H=c.height=window.innerHeight};
+      const mk=()=>({x:Math.random()*W,y:Math.random()*H,r:Math.random()*1.4+.3,vx:(Math.random()-.5)*.25,vy:(Math.random()-.5)*.25,a:Math.random()*.4+.08});
+      const init=()=>{resize();dots=Array.from({length:80},mk)};
+      const frame=()=>{
+        ctx.clearRect(0,0,W,H);
+        for(const d of dots){ctx.beginPath();ctx.arc(d.x,d.y,d.r,0,Math.PI*2);ctx.fillStyle=`rgba(180,220,255,${d.a})`;ctx.fill();d.x+=d.vx;d.y+=d.vy;if(d.x<-4)d.x=W+4;else if(d.x>W+4)d.x=-4;if(d.y<-4)d.y=H+4;else if(d.y>H+4)d.y=-4}
+        requestAnimationFrame(frame);
+      };
+      init();frame();window.addEventListener("resize",resize);
+    })();
+
+    document.getElementById("accessForm").addEventListener("submit",async e=>{
+      e.preventDefault();
+      const btn=document.getElementById("submitBtn"),msg=document.getElementById("msg");
+      btn.disabled=true;btn.textContent="Sending...";msg.className="msg";msg.textContent="";
+      try{
+        const r=await fetch("/request-access",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name:document.getElementById("name").value.trim(),email:document.getElementById("email").value.trim(),reason:document.getElementById("reason").value.trim()})});
+        const data=await r.json();
+        if(data.status==="submitted"){msg.className="msg success";msg.textContent="Request sent! You'll get an email when approved.";btn.textContent="Request sent ✓"}
+        else if(data.status==="already_requested"){msg.className="msg";msg.textContent="Already requested — check your email.";btn.disabled=false;btn.textContent="Request Access"}
+        else if(data.status==="already_approved"){msg.className="msg success";msg.textContent="You're already approved! Check your email for your login link.";btn.textContent="Already approved ✓"}
+        else{msg.className="msg error";msg.textContent=data.error||"Something went wrong.";btn.disabled=false;btn.textContent="Request Access"}
+      }catch{msg.className="msg error";msg.textContent="Network error. Try again.";btn.disabled=false;btn.textContent="Request Access"}
+    });
+  </script>
+</body>
+</html>

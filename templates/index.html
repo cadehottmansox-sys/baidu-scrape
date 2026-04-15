@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>SourceFinder</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"/>
+</head>
+<body>
+  <canvas id="bg-canvas"></canvas>
+  <div class="aurora"></div>
+  <main class="app">
+
+    <header class="hero">
+      <div class="hero-eyebrow">Private · Zero API keys · Powered by Baidu</div>
+      <h1 class="hero-title" id="heroTitle"></h1>
+      <p class="hero-sub">Find Chinese suppliers, factories, freight forwarders &amp; passing goods</p>
+    </header>
+
+    <nav class="tab-nav">
+      <button class="tab-btn active" data-tab="supplier">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><rect x="2" y="8" width="3" height="6" rx="1" fill="currentColor"/><rect x="6.5" y="5" width="3" height="9" rx="1" fill="currentColor"/><rect x="11" y="2" width="3" height="12" rx="1" fill="currentColor"/></svg>
+        Supplier
+      </button>
+      <button class="tab-btn" data-tab="ff">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M2 8h8M8 5l3 3-3 3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M13 3v10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        Freight
+      </button>
+      <button class="tab-btn" data-tab="passing">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><rect x="3" y="3" width="10" height="10" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M6 8h4M8 6v4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        Passing / NFC
+      </button>
+    </nav>
+
+    <!-- SUPPLIER TAB -->
+    <section class="tab-panel active" id="tab-supplier">
+      <div class="search-card">
+        <form id="supplierForm" autocomplete="off">
+          <div class="field-row">
+            <div class="field"><label for="brandInput">Brand name</label><input type="text" id="brandInput" placeholder="e.g. Nike"/></div>
+            <div class="field field--wide"><label for="queryInput">Product / keywords</label><input type="text" id="queryInput" placeholder="e.g. Jordan 4, leather belt, hoodies" required/></div>
+          </div>
+          <div class="platform-row">
+            <label class="row-label">Platform</label>
+            <div class="chips" id="supplierChips">
+              <button type="button" class="chip active" data-platform="baidu">Baidu</button>
+              <button type="button" class="chip" data-platform="1688">1688</button>
+              <button type="button" class="chip" data-platform="xianyu">Xianyu</button>
+              <button type="button" class="chip" data-platform="xiaohongshu">Xiaohongshu</button>
+              <button type="button" class="chip" data-platform="taobao">Taobao</button>
+              <button type="button" class="chip" data-platform="made-in-china">Made-in-China</button>
+              <button type="button" class="chip" data-platform="globalsources">Global Sources</button>
+              <button type="button" class="chip" data-platform="wechat">WeChat</button>
+            </div>
+            <input type="hidden" id="supplierPlatform" value="baidu"/>
+          </div>
+          <div class="action-row">
+            <button type="submit" class="btn-search" id="supplierBtn">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" stroke-width="1.6"/><path d="M10 10L14 14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+              Search
+            </button>
+            <label class="toggle-wrap" title="Visits each page + OCR + QR scan on every image">
+              <input type="checkbox" id="supplierDeepScan"/>
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+              <span class="toggle-label">Deep scan<span class="toggle-sub">OCR + QR all images</span></span>
+            </label>
+            <label class="toggle-wrap" title="Only show results with WeChat IDs">
+              <input type="checkbox" id="supplierWcOnly"/>
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+              <span class="toggle-label">WeChat only<span class="toggle-sub">hide no-contact results</span></span>
+            </label>
+            <div class="status-wrap">
+              <span class="status-dot" id="supplierDot"></span>
+              <span class="status-txt" id="supplierStatus">Ready.</span>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="filters-bar" id="supplierFilters" style="display:none">
+        <span class="filters-label">Filter</span>
+        <button class="filter-pill active" data-filter="all">All</button>
+        <button class="filter-pill" data-filter="has_wechat">Has WeChat</button>
+        <button class="filter-pill" data-filter="verified_wechat">Verified WeChat</button>
+        <button class="filter-pill" data-filter="qr_wechat">QR WeChat</button>
+        <button class="filter-pill" data-filter="ocr_wechat">OCR WeChat</button>
+        <button class="filter-pill" data-filter="factory_like">Factory-like</button>
+        <div class="score-filter">
+          <label>Min score <span id="scoreVal">0</span></label>
+          <input type="range" id="scoreFilter" min="0" max="20" value="0" step="1"/>
+        </div>
+      </div>
+      <div class="query-hint" id="supplierHint"></div>
+      <section class="results" id="supplierResults"></section>
+    </section>
+
+    <!-- FF TAB -->
+    <section class="tab-panel" id="tab-ff">
+      <div class="search-card">
+        <form id="ffForm" autocomplete="off">
+          <div class="field-row">
+            <div class="field field--wide"><label for="ffQuery">Route / cargo / keywords</label><input type="text" id="ffQuery" placeholder="e.g. China to USA electronics, apparel" required/></div>
+            <div class="field"><label for="ffOrigin">Origin city</label><input type="text" id="ffOrigin" placeholder="e.g. Guangzhou"/></div>
+          </div>
+          <div class="platform-row">
+            <label class="row-label">Platform</label>
+            <div class="chips" id="ffChips">
+              <button type="button" class="chip active" data-platform="baidu">Baidu</button>
+              <button type="button" class="chip" data-platform="1688">1688</button>
+              <button type="button" class="chip" data-platform="globalsources">Global Sources</button>
+            </div>
+            <input type="hidden" id="ffPlatform" value="baidu"/>
+          </div>
+          <div class="action-row">
+            <button type="submit" class="btn-search" id="ffBtn">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" stroke-width="1.6"/><path d="M10 10L14 14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+              Find Forwarders
+            </button>
+            <label class="toggle-wrap">
+              <input type="checkbox" id="ffDeepScan"/>
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+              <span class="toggle-label">Deep scan<span class="toggle-sub">OCR + QR all images</span></span>
+            </label>
+            <div class="status-wrap">
+              <span class="status-dot" id="ffDot"></span>
+              <span class="status-txt" id="ffStatus">Ready.</span>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="filters-bar" id="ffFilters" style="display:none">
+        <span class="filters-label">Filter</span>
+        <button class="filter-pill active" data-filter="all">All</button>
+        <button class="filter-pill" data-filter="has_wechat">Has WeChat</button>
+        <button class="filter-pill" data-filter="verified_wechat">Verified WeChat</button>
+      </div>
+      <div class="query-hint" id="ffHint"></div>
+      <section class="results" id="ffResults"></section>
+    </section>
+
+    <!-- PASSING TAB -->
+    <section class="tab-panel" id="tab-passing">
+      <div class="passing-banner">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="3" y="3" width="10" height="10" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M6 8h4M8 6v4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        Passing / NFC mode — searches for suppliers with NFC chips, passing authentication &amp; 1:1 quality
+      </div>
+      <div class="search-card">
+        <form id="passingForm" autocomplete="off">
+          <div class="field-row">
+            <div class="field"><label for="passingBrand">Brand</label><input type="text" id="passingBrand" placeholder="e.g. Nike, Jordan"/></div>
+            <div class="field field--wide"><label for="passingQuery">Product</label><input type="text" id="passingQuery" placeholder="e.g. Jordan 4, Yeezy 350, AJ1" required/></div>
+          </div>
+          <div class="platform-row">
+            <label class="row-label">Platform</label>
+            <div class="chips" id="passingChips">
+              <button type="button" class="chip active" data-platform="baidu">Baidu</button>
+            </div>
+            <input type="hidden" id="passingPlatform" value="baidu"/>
+          </div>
+          <div class="action-row">
+            <button type="submit" class="btn-search btn-passing" id="passingBtn">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" stroke-width="1.6"/><path d="M10 10L14 14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+              Search
+            </button>
+            <label class="toggle-wrap">
+              <input type="checkbox" id="passingDeepScan"/>
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+              <span class="toggle-label">Deep scan<span class="toggle-sub">OCR + QR all images</span></span>
+            </label>
+            <label class="toggle-wrap">
+              <input type="checkbox" id="passingWcOnly"/>
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+              <span class="toggle-label">WeChat only</span>
+            </label>
+            <div class="status-wrap">
+              <span class="status-dot" id="passingDot"></span>
+              <span class="status-txt" id="passingStatus">Ready.</span>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="filters-bar" id="passingFilters" style="display:none">
+        <span class="filters-label">Filter</span>
+        <button class="filter-pill active" data-filter="all">All</button>
+        <button class="filter-pill" data-filter="has_wechat">Has WeChat</button>
+        <button class="filter-pill" data-filter="verified_wechat">Verified WeChat</button>
+        <button class="filter-pill" data-filter="qr_wechat">QR WeChat</button>
+        <button class="filter-pill" data-filter="ocr_wechat">OCR WeChat</button>
+      </div>
+      <div class="query-hint" id="passingHint"></div>
+      <section class="results" id="passingResults"></section>
+    </section>
+
+  </main>
+  <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
