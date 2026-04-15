@@ -26,7 +26,7 @@ def create_app() -> Flask:
     def require_auth(f):
         @wraps(f)
         def decorated(*args, **kwargs):
-            token = request.cookies.get("sf_token") or request.args.get("token")
+            token = request.cookies.get("sf_token")
             result = auth.validate_token(token or "", get_ip())
             if not result["valid"]:
                 return redirect("/")
@@ -42,10 +42,10 @@ def create_app() -> Flask:
             return f(*args, **kwargs)
         return decorated
 
-    # ── Root — shows access page OR app depending on auth ────────
+    # ── Root — access page or app ─────────────────────────────────
     @app.get("/")
     def root():
-        token = request.cookies.get("sf_token") or request.args.get("token")
+        token = request.cookies.get("sf_token")
         if token and auth.validate_token(token, get_ip())["valid"]:
             return render_template("index.html")
         return render_template("access.html")
@@ -61,17 +61,27 @@ def create_app() -> Flask:
         result = auth.submit_request(name, email, reason, get_ip())
         return jsonify(result), 200
 
-    @app.get("/login")
+    @app.post("/login")
     def login():
-        token = request.args.get("token", "")
-        result = auth.validate_token(token, get_ip())
+        data     = request.get_json(silent=True) or {}
+        email    = (data.get("email") or "").strip()
+        password = (data.get("password") or "").strip()
+        if not email or not password:
+            return jsonify({"error": "Email and password required."}), 400
+        result = auth.login_user(email, password, get_ip())
         if not result["valid"]:
-            return redirect("/?error=invalid")
-        resp = make_response(redirect("/"))
-        resp.set_cookie("sf_token", token, max_age=60*60*24*30, httponly=True, samesite="Lax")
+            return jsonify({"error": result.get("error", "Invalid credentials.")}), 401
+        resp = make_response(jsonify({"status": "ok", "name": result["name"]}))
+        resp.set_cookie("sf_token", result["token"], max_age=60*60*24*30, httponly=True, samesite="Lax")
         return resp
 
-    # ── Main app ─────────────────────────────────────────────────
+    @app.post("/logout")
+    def logout():
+        resp = make_response(jsonify({"status": "ok"}))
+        resp.delete_cookie("sf_token")
+        return resp
+
+    # ── Main search ───────────────────────────────────────────────
     @app.post("/search")
     @require_auth
     def search() -> tuple[Any, int]:
@@ -90,8 +100,6 @@ def create_app() -> Flask:
             return jsonify({"error": "Please enter a search query."}), 400
         if mode not in {"supplier", "ff", "passing"}:
             return jsonify({"error": "Invalid mode."}), 400
-
-        app.logger.info("Search | mode=%s platform=%s page=%d var=%d deep=%s wc_only=%s", mode, platform, page_num, variation, deep_scan, wechat_only)
 
         try:
             results = asyncio.run(search_platform(
@@ -115,7 +123,7 @@ def create_app() -> Flask:
             app.logger.exception("Search failed: %s", exc)
             return jsonify({"error": "Something went wrong. Try again."}), 500
 
-    # ── Admin routes ─────────────────────────────────────────────
+    # ── Admin ─────────────────────────────────────────────────────
     @app.get("/admin")
     @require_admin
     def admin_dashboard():
@@ -126,17 +134,19 @@ def create_app() -> Flask:
     def admin_data():
         return jsonify(auth.get_admin_data())
 
-    @app.get("/admin/approve/<req_id>")
+    @app.post("/admin/approve/<req_id>")
     @require_admin
     def admin_approve(req_id):
-        result = auth.approve_request(req_id)
-        return render_template("admin_action.html", action="approved", result=result, secret=ADMIN_SECRET)
+        data     = request.get_json(silent=True) or {}
+        password = (data.get("password") or "").strip()
+        result   = auth.approve_request(req_id, password)
+        return jsonify(result)
 
     @app.get("/admin/deny/<req_id>")
     @require_admin
     def admin_deny(req_id):
         result = auth.deny_request(req_id)
-        return render_template("admin_action.html", action="denied", result=result, secret=ADMIN_SECRET)
+        return jsonify(result)
 
     @app.post("/admin/revoke")
     @require_admin
@@ -144,6 +154,14 @@ def create_app() -> Flask:
         data  = request.get_json(silent=True) or {}
         email = data.get("email", "")
         return jsonify(auth.revoke_user(email))
+
+    @app.post("/admin/update-password")
+    @require_admin
+    def admin_update_password():
+        data     = request.get_json(silent=True) or {}
+        email    = data.get("email", "")
+        password = data.get("password", "")
+        return jsonify(auth.update_password(email, password))
 
     return app
 

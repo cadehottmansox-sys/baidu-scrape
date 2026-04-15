@@ -11,16 +11,16 @@
     html,body{min-height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);padding:32px 20px}
     h1{font-size:24px;font-weight:800;color:var(--blue);margin-bottom:4px}
     .sub{font-size:13px;color:var(--text3);margin-bottom:32px}
-    h2{font-size:15px;font-weight:700;color:var(--text2);margin-bottom:12px;margin-top:32px;letter-spacing:.3px}
+    h2{font-size:14px;font-weight:700;color:var(--text2);margin-bottom:12px;margin-top:32px;letter-spacing:.3px;text-transform:uppercase}
     .table{width:100%;border-collapse:collapse;font-size:13px}
     .table th{text-align:left;padding:8px 12px;font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border)}
-    .table td{padding:10px 12px;border-bottom:1px solid rgba(125,211,252,.06);vertical-align:top}
+    .table td{padding:10px 12px;border-bottom:1px solid rgba(125,211,252,.06);vertical-align:middle}
     .table tr:hover td{background:rgba(125,211,252,.03)}
     .badge{font-size:10px;font-weight:700;border-radius:6px;padding:2px 8px;display:inline-block}
     .badge-pending{color:var(--amber);background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.2)}
     .badge-approved{color:var(--green);background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.2)}
     .badge-denied{color:var(--red);background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.2)}
-    .btn-sm{font-size:11px;font-weight:600;font-family:inherit;border-radius:6px;padding:4px 10px;cursor:pointer;border:1px solid;transition:all .15s;text-decoration:none;display:inline-block}
+    .btn-sm{font-size:11px;font-weight:600;font-family:inherit;border-radius:6px;padding:5px 12px;cursor:pointer;border:1px solid;transition:all .15s}
     .btn-approve{color:var(--green);background:rgba(74,222,128,.1);border-color:rgba(74,222,128,.22)}
     .btn-approve:hover{background:rgba(74,222,128,.2)}
     .btn-deny{color:var(--red);background:rgba(248,113,113,.1);border-color:rgba(248,113,113,.22)}
@@ -29,19 +29,29 @@
     .btn-revoke:hover{color:var(--red);border-color:rgba(248,113,113,.22)}
     .ip{font-family:monospace;font-size:11px;color:var(--text3)}
     .empty{color:var(--text3);font-size:13px;padding:20px 0}
-    .wrap{max-width:1000px;margin:0 auto}
+    .wrap{max-width:1100px;margin:0 auto}
     .stat-row{display:flex;gap:16px;margin-bottom:24px}
-    .stat{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 20px;flex:1}
+    .stat{background:rgba(7,20,40,.9);border:1px solid var(--border);border-radius:12px;padding:16px 20px;flex:1}
     .stat-num{font-size:28px;font-weight:800;color:var(--blue)}
     .stat-label{font-size:11px;color:var(--text3);margin-top:2px}
+    .pw-input{height:32px;padding:0 10px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:12px;font-family:inherit;outline:none;width:140px;margin-right:6px}
+    .pw-input:focus{border-color:rgba(125,211,252,.4)}
+    .modal{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px}
+    .modal-card{background:#0a1929;border:1px solid var(--border);border-radius:16px;padding:28px;max-width:380px;width:100%}
+    .modal-card h3{font-size:16px;font-weight:700;margin-bottom:16px;color:var(--blue)}
+    .modal-card label{display:block;font-size:11px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;color:var(--text3);margin-bottom:6px}
+    .modal-card input{width:100%;height:40px;padding:0 12px;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;font-family:inherit;outline:none;margin-bottom:16px}
+    .modal-card input:focus{border-color:rgba(125,211,252,.4)}
+    .modal-btns{display:flex;gap:10px}
+    .modal-btns button{flex:1;height:38px;border-radius:8px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;border:1px solid}
   </style>
 </head>
 <body>
 <div class="wrap">
   <h1>SourceFinder Admin</h1>
-  <p class="sub">Access request dashboard</p>
+  <p class="sub">Manage access requests and approved users</p>
 
-  <div class="stat-row" id="stats">
+  <div class="stat-row">
     <div class="stat"><div class="stat-num" id="statPending">—</div><div class="stat-label">Pending</div></div>
     <div class="stat"><div class="stat-num" id="statApproved">—</div><div class="stat-label">Approved</div></div>
     <div class="stat"><div class="stat-num" id="statDenied">—</div><div class="stat-label">Denied</div></div>
@@ -60,67 +70,104 @@
   <tbody id="deniedTbl"><tr><td colspan="4" class="empty">Loading...</td></tr></tbody></table>
 </div>
 
+<!-- Approve modal -->
+<div class="modal" id="approveModal" style="display:none">
+  <div class="modal-card">
+    <h3>Approve & set password</h3>
+    <label>Set a password for this user</label>
+    <input type="text" id="approvePassword" placeholder="e.g. sourcing2024" />
+    <p style="font-size:12px;color:#2e5870;margin-bottom:16px">Share this password with them manually (text, DM, etc.)</p>
+    <div class="modal-btns">
+      <button style="background:rgba(74,222,128,.1);border-color:rgba(74,222,128,.22);color:#4ade80" onclick="confirmApprove()">Approve</button>
+      <button style="background:rgba(255,255,255,.04);border-color:rgba(125,211,252,.14);color:#2e5870" onclick="closeModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <script>
   const secret = "{{ secret }}";
   const fmt = ts => ts ? new Date(ts*1000).toLocaleString() : "Never";
+  let pendingReqId = null;
 
-  async function load(){
-    const r = await fetch(`/admin/data?secret=${secret}`);
+  function closeModal(){ document.getElementById("approveModal").style.display="none"; pendingReqId=null; }
+  function openApproveModal(reqId){ pendingReqId=reqId; document.getElementById("approvePassword").value=""; document.getElementById("approveModal").style.display="flex"; setTimeout(()=>document.getElementById("approvePassword").focus(),100); }
+
+  async function confirmApprove(){
+    const pw = document.getElementById("approvePassword").value.trim();
+    if(!pw){alert("Please set a password!");return}
+    const r = await fetch(`/admin/approve/${pendingReqId}?secret=${secret}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({password:pw})});
     const data = await r.json();
-    const requests = data.requests || [], approved = data.approved || [];
-    const pending = requests.filter(r=>r.status==="pending");
-    const denied  = requests.filter(r=>r.status==="denied");
+    if(data.status==="approved"){closeModal();alert(`Approved! Share this password with them: ${pw}`);load()}
+    else alert("Error: "+data.status);
+  }
 
-    document.getElementById("statPending").textContent  = pending.length;
-    document.getElementById("statApproved").textContent = approved.length;
-    document.getElementById("statDenied").textContent   = denied.length;
-
-    // Pending
-    const pTbl = document.getElementById("pendingTbl");
-    pTbl.innerHTML = pending.length ? pending.map(r=>`
-      <tr>
-        <td style="font-weight:600">${r.name}</td>
-        <td>${r.email}</td>
-        <td class="ip">${r.ip}</td>
-        <td style="max-width:220px;color:#7aa5be">${r.reason||"—"}</td>
-        <td style="white-space:nowrap;color:#2e5870">${fmt(r.timestamp)}</td>
-        <td style="display:flex;gap:6px">
-          <a class="btn-sm btn-approve" href="/admin/approve/${r.id}?secret=${secret}" target="_blank">Approve</a>
-          <a class="btn-sm btn-deny" href="/admin/deny/${r.id}?secret=${secret}" target="_blank">Deny</a>
-        </td>
-      </tr>`).join("") : `<tr><td colspan="6" class="empty">No pending requests.</td></tr>`;
-
-    // Approved
-    const aTbl = document.getElementById("approvedTbl");
-    aTbl.innerHTML = approved.length ? approved.map(u=>`
-      <tr>
-        <td style="font-weight:600">${u.name}</td>
-        <td>${u.email}</td>
-        <td class="ip">${(u.ip_history||[]).join("<br>")}</td>
-        <td style="white-space:nowrap;color:#2e5870">${fmt(u.approved_at)}</td>
-        <td style="white-space:nowrap;color:#2e5870">${fmt(u.last_login)}</td>
-        <td><button class="btn-sm btn-revoke" onclick="revoke('${u.email}')">Revoke</button></td>
-      </tr>`).join("") : `<tr><td colspan="6" class="empty">No approved users.</td></tr>`;
-
-    // Denied
-    const dTbl = document.getElementById("deniedTbl");
-    dTbl.innerHTML = denied.length ? denied.map(r=>`
-      <tr>
-        <td style="font-weight:600">${r.name}</td>
-        <td>${r.email}</td>
-        <td class="ip">${r.ip}</td>
-        <td style="white-space:nowrap;color:#2e5870">${fmt(r.timestamp)}</td>
-      </tr>`).join("") : `<tr><td colspan="4" class="empty">None.</td></tr>`;
+  async function deny(reqId){
+    if(!confirm("Deny this request?"))return;
+    await fetch(`/admin/deny/${reqId}?secret=${secret}`);
+    load();
   }
 
   async function revoke(email){
-    if(!confirm(`Revoke access for ${email}?`)) return;
+    if(!confirm(`Revoke access for ${email}?`))return;
     await fetch(`/admin/revoke?secret=${secret}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email})});
     load();
   }
 
+  async function updatePw(email){
+    const pw = prompt(`New password for ${email}:`);
+    if(!pw)return;
+    await fetch(`/admin/update-password?secret=${secret}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email,password:pw})});
+    alert("Password updated!");
+  }
+
+  async function load(){
+    const r = await fetch(`/admin/data?secret=${secret}`);
+    const data = await r.json();
+    const requests=data.requests||[], approved=data.approved||[];
+    const pending=requests.filter(r=>r.status==="pending");
+    const denied=requests.filter(r=>r.status==="denied");
+
+    document.getElementById("statPending").textContent=pending.length;
+    document.getElementById("statApproved").textContent=approved.length;
+    document.getElementById("statDenied").textContent=denied.length;
+
+    document.getElementById("pendingTbl").innerHTML=pending.length?pending.map(r=>`
+      <tr>
+        <td style="font-weight:600">${r.name||"—"}</td>
+        <td>${r.email}</td>
+        <td class="ip">${r.ip}</td>
+        <td style="max-width:200px;color:#7aa5be">${r.reason||"—"}</td>
+        <td style="white-space:nowrap;color:#2e5870;font-size:12px">${fmt(r.timestamp)}</td>
+        <td style="display:flex;gap:6px">
+          <button class="btn-sm btn-approve" onclick="openApproveModal('${r.id}')">Approve + set password</button>
+          <button class="btn-sm btn-deny" onclick="deny('${r.id}')">Deny</button>
+        </td>
+      </tr>`).join(""):`<tr><td colspan="6" class="empty">No pending requests.</td></tr>`;
+
+    document.getElementById("approvedTbl").innerHTML=approved.length?approved.map(u=>`
+      <tr>
+        <td style="font-weight:600">${u.name||"—"}</td>
+        <td>${u.email}</td>
+        <td class="ip">${(u.ip_history||[]).join("<br>")}</td>
+        <td style="white-space:nowrap;color:#2e5870;font-size:12px">${fmt(u.approved_at)}</td>
+        <td style="white-space:nowrap;color:#2e5870;font-size:12px">${fmt(u.last_login)}</td>
+        <td style="display:flex;gap:6px">
+          <button class="btn-sm btn-approve" onclick="updatePw('${u.email}')">Change pw</button>
+          <button class="btn-sm btn-revoke" onclick="revoke('${u.email}')">Revoke</button>
+        </td>
+      </tr>`).join(""):`<tr><td colspan="6" class="empty">No approved users.</td></tr>`;
+
+    document.getElementById("deniedTbl").innerHTML=denied.length?denied.map(r=>`
+      <tr>
+        <td style="font-weight:600">${r.name||"—"}</td>
+        <td>${r.email}</td>
+        <td class="ip">${r.ip}</td>
+        <td style="white-space:nowrap;color:#2e5870;font-size:12px">${fmt(r.timestamp)}</td>
+      </tr>`).join(""):`<tr><td colspan="4" class="empty">None.</td></tr>`;
+  }
+
   load();
-  setInterval(load, 15000); // auto refresh every 15s
+  setInterval(load,15000);
 </script>
 </body>
 </html>
