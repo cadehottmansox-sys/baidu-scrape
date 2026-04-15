@@ -6,6 +6,7 @@ RUN apt-get update && apt-get install -y \
     libcups2 libdrm2 libxkbcommon0 libxcomposite1 \
     libxdamage1 libxfixes3 libxrandr2 libgbm1 \
     libpango-1.0-0 libcairo2 libasound2 \
+    fonts-liberation fonts-unifont \
     tesseract-ocr tesseract-ocr-chi-sim tesseract-ocr-eng \
     libzbar0 \
     --no-install-recommends && rm -rf /var/lib/apt/lists/*
@@ -14,7 +15,6 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 RUN python -m playwright install chromium
-RUN python -m playwright install-deps chromium
 COPY . .
 
 ENV HEADLESS=true
