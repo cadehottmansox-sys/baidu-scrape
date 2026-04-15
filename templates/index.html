@@ -12,8 +12,11 @@
 <body>
   <canvas id="bg-canvas"></canvas>
   <div class="aurora"></div>
-  <main class="app">
 
+  <!-- Keyboard shortcut hint -->
+  <div class="kb-hint" id="kbHint">Press <kbd>/</kbd> to search · <kbd>F</kbd> for finds · <kbd>Esc</kbd> to close</div>
+
+  <main class="app">
     <header class="hero">
       <div class="hero-eyebrow">Private · Zero API keys · Powered by Baidu</div>
       <h1 class="hero-title" id="heroTitle"></h1>
@@ -31,7 +34,11 @@
       </button>
       <button class="tab-btn" data-tab="passing">
         <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><rect x="3" y="3" width="10" height="10" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M6 8h4M8 6v4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-        Passing / NFC
+        Passing
+      </button>
+      <button class="tab-btn" data-tab="finds">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M8 2l1.5 3 3.5.5-2.5 2.5.5 3.5L8 10l-3 1.5.5-3.5L3 5.5l3.5-.5z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
+        Finds
       </button>
     </nav>
 
@@ -62,36 +69,54 @@
               <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" stroke-width="1.6"/><path d="M10 10L14 14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
               Search
             </button>
-            <label class="toggle-wrap" title="Visits each page + OCR + QR scan on every image">
+            <label class="toggle-wrap" title="Visits each page + OCR + QR. Max 90 seconds total.">
               <input type="checkbox" id="supplierDeepScan"/>
               <span class="toggle-track"><span class="toggle-thumb"></span></span>
-              <span class="toggle-label">Deep scan<span class="toggle-sub">OCR + QR all images</span></span>
+              <span class="toggle-label">Deep scan<span class="toggle-sub">OCR + QR · 90s max</span></span>
             </label>
-            <label class="toggle-wrap" title="Only show results with WeChat IDs">
+            <label class="toggle-wrap">
               <input type="checkbox" id="supplierWcOnly"/>
               <span class="toggle-track"><span class="toggle-thumb"></span></span>
-              <span class="toggle-label">WeChat only<span class="toggle-sub">hide no-contact results</span></span>
+              <span class="toggle-label">WeChat only</span>
             </label>
             <div class="status-wrap">
               <span class="status-dot" id="supplierDot"></span>
-              <span class="status-txt" id="supplierStatus">Ready.</span>
+              <span class="status-txt" id="supplierStatus">Ready. <kbd class="kb">/</kbd></span>
             </div>
           </div>
         </form>
       </div>
-      <div class="filters-bar" id="supplierFilters" style="display:none">
-        <span class="filters-label">Filter</span>
-        <button class="filter-pill active" data-filter="all">All</button>
-        <button class="filter-pill" data-filter="has_wechat">Has WeChat</button>
-        <button class="filter-pill" data-filter="verified_wechat">Verified WeChat</button>
-        <button class="filter-pill" data-filter="qr_wechat">QR WeChat</button>
-        <button class="filter-pill" data-filter="ocr_wechat">OCR WeChat</button>
-        <button class="filter-pill" data-filter="factory_like">Factory-like</button>
-        <div class="score-filter">
-          <label>Min score <span id="scoreVal">0</span></label>
-          <input type="range" id="scoreFilter" min="0" max="20" value="0" step="1"/>
+
+      <div class="toolbar" id="supplierToolbar" style="display:none">
+        <div class="filters-bar" id="supplierFilters">
+          <span class="filters-label">Filter</span>
+          <button class="filter-pill active" data-filter="all">All</button>
+          <button class="filter-pill" data-filter="has_wechat">Has WeChat</button>
+          <button class="filter-pill" data-filter="verified_wechat">Verified</button>
+          <button class="filter-pill" data-filter="qr_wechat">QR</button>
+          <button class="filter-pill" data-filter="ocr_wechat">OCR</button>
+          <button class="filter-pill" data-filter="factory_like">Factory</button>
+          <div class="score-filter">
+            <label>Min score <span id="scoreVal">0</span></label>
+            <input type="range" id="scoreFilter" min="0" max="20" value="0" step="1"/>
+          </div>
+        </div>
+        <div class="toolbar-actions">
+          <button class="tool-btn" id="copyAllWc" title="Copy all WeChat IDs">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><rect x="5" y="5" width="9" height="9" rx="1.5" stroke="currentColor" stroke-width="1.5"/><path d="M11 5V3.5A1.5 1.5 0 009.5 2h-6A1.5 1.5 0 002 3.5v6A1.5 1.5 0 003.5 11H5" stroke="currentColor" stroke-width="1.5"/></svg>
+            Copy all WeChats
+          </button>
+          <button class="tool-btn" id="exportCsv" title="Export to CSV">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M3 12l3-3 2 2 4-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><rect x="1.5" y="1.5" width="13" height="13" rx="2" stroke="currentColor" stroke-width="1.5"/></svg>
+            Export CSV
+          </button>
+          <button class="tool-btn" id="showHistory" title="Search history">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"/><path d="M8 5v3l2 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            History
+          </button>
         </div>
       </div>
+
       <div class="query-hint" id="supplierHint"></div>
       <section class="results" id="supplierResults"></section>
     </section>
@@ -121,7 +146,7 @@
             <label class="toggle-wrap">
               <input type="checkbox" id="ffDeepScan"/>
               <span class="toggle-track"><span class="toggle-thumb"></span></span>
-              <span class="toggle-label">Deep scan<span class="toggle-sub">OCR + QR all images</span></span>
+              <span class="toggle-label">Deep scan<span class="toggle-sub">OCR + QR · 90s max</span></span>
             </label>
             <div class="status-wrap">
               <span class="status-dot" id="ffDot"></span>
@@ -134,7 +159,7 @@
         <span class="filters-label">Filter</span>
         <button class="filter-pill active" data-filter="all">All</button>
         <button class="filter-pill" data-filter="has_wechat">Has WeChat</button>
-        <button class="filter-pill" data-filter="verified_wechat">Verified WeChat</button>
+        <button class="filter-pill" data-filter="verified_wechat">Verified</button>
       </div>
       <div class="query-hint" id="ffHint"></div>
       <section class="results" id="ffResults"></section>
@@ -143,8 +168,8 @@
     <!-- PASSING TAB -->
     <section class="tab-panel" id="tab-passing">
       <div class="passing-banner">
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="3" y="3" width="10" height="10" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M6 8h4M8 6v4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-        Passing / NFC mode — searches for suppliers with NFC chips, passing authentication &amp; 1:1 quality
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><rect x="3" y="3" width="10" height="10" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M6 8h4M8 6v4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        Passing / NFC mode — searches for suppliers with NFC chips, passing auth &amp; 1:1 quality
       </div>
       <div class="search-card">
         <form id="passingForm" autocomplete="off">
@@ -167,7 +192,7 @@
             <label class="toggle-wrap">
               <input type="checkbox" id="passingDeepScan"/>
               <span class="toggle-track"><span class="toggle-thumb"></span></span>
-              <span class="toggle-label">Deep scan<span class="toggle-sub">OCR + QR all images</span></span>
+              <span class="toggle-label">Deep scan<span class="toggle-sub">OCR + QR · 90s max</span></span>
             </label>
             <label class="toggle-wrap">
               <input type="checkbox" id="passingWcOnly"/>
@@ -185,15 +210,64 @@
         <span class="filters-label">Filter</span>
         <button class="filter-pill active" data-filter="all">All</button>
         <button class="filter-pill" data-filter="has_wechat">Has WeChat</button>
-        <button class="filter-pill" data-filter="verified_wechat">Verified WeChat</button>
-        <button class="filter-pill" data-filter="qr_wechat">QR WeChat</button>
-        <button class="filter-pill" data-filter="ocr_wechat">OCR WeChat</button>
+        <button class="filter-pill" data-filter="verified_wechat">Verified</button>
+        <button class="filter-pill" data-filter="qr_wechat">QR</button>
+        <button class="filter-pill" data-filter="ocr_wechat">OCR</button>
       </div>
       <div class="query-hint" id="passingHint"></div>
       <section class="results" id="passingResults"></section>
     </section>
 
+    <!-- FINDS TAB -->
+    <section class="tab-panel" id="tab-finds">
+      <div class="finds-header">
+        <div>
+          <h2 class="finds-title">Community Finds</h2>
+          <p class="finds-sub">Share supplier leads, WeChat contacts, and sourcing wins with the community</p>
+        </div>
+        <button class="btn-search" id="newFindBtn" onclick="openFindModal()">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          Post a Find
+        </button>
+      </div>
+      <div class="finds-grid" id="findsGrid">
+        <div class="loader"><div class="loader-dots"><span></span><span></span><span></span></div>Loading finds...</div>
+      </div>
+    </section>
+
   </main>
+
+  <!-- Post find modal -->
+  <div class="modal-overlay" id="findModal" style="display:none" onclick="if(event.target===this)closeFindModal()">
+    <div class="modal-card">
+      <h3 class="modal-title">Post a Find</h3>
+      <label>Title <span style="color:#f87171;font-size:11px">*</span></label>
+      <input type="text" id="findTitle" placeholder="e.g. Putian Jordan 4 NFC factory"/>
+      <label>Product / category</label>
+      <input type="text" id="findProduct" placeholder="e.g. Sneakers, Bags, Electronics"/>
+      <label>WeChat ID (if you have it)</label>
+      <input type="text" id="findWechat" placeholder="supplier WeChat"/>
+      <label>Price range</label>
+      <input type="text" id="findPrice" placeholder="e.g. ¥120-180, MOQ 10"/>
+      <label>Description</label>
+      <textarea id="findDesc" placeholder="What did you find? Quality, communication, turnaround..."></textarea>
+      <div class="modal-btns">
+        <button class="btn-search" onclick="submitFind()">Post Find</button>
+        <button class="tool-btn" onclick="closeFindModal()">Cancel</button>
+      </div>
+      <p class="msg" id="findMsg"></p>
+    </div>
+  </div>
+
+  <!-- History modal -->
+  <div class="modal-overlay" id="historyModal" style="display:none" onclick="if(event.target===this)closeHistory()">
+    <div class="modal-card">
+      <h3 class="modal-title">Search History</h3>
+      <div id="historyList"></div>
+      <button class="tool-btn" style="margin-top:12px;width:100%" onclick="closeHistory()">Close</button>
+    </div>
+  </div>
+
   <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>
