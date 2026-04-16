@@ -100,7 +100,7 @@ def create_app() -> Flask:
         if not result["valid"]:
             return jsonify({"error": result.get("error", "Invalid credentials.")}), 401
         resp = make_response(jsonify({"status": "ok", "name": result["name"]}))
-        resp.set_cookie("sf_token", result["token"], max_age=60*60*24*30, httponly=True, samesite="Lax")
+        resp.set_cookie("sf_token", result["token"], httponly=True, samesite="Lax")
         return resp
 
     @app.post("/logout")
