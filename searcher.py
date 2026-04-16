@@ -13,6 +13,7 @@ import re
 from pathlib import Path
 from urllib.parse import quote_plus, unquote, urlparse
 
+import requests
 from playwright.async_api import async_playwright
 
 logger = logging.getLogger(__name__)
@@ -221,13 +222,12 @@ async def _deep_scan_page(page, url, nav_timeout=22000):
                 logger.debug("Redirect resolve failed: %s", e)
                 actual_url = url
 
-        # Step 2: navigate to actual page via ScraperAPI
-        proxied = _scraper_url(actual_url) if "baidu.com" not in actual_url else actual_url
-        if proxied != page.url:
+        # Step 2: navigate to actual page directly
+        if actual_url != page.url:
             try:
-                await page.goto(proxied, wait_until="domcontentloaded", timeout=nav_timeout)
+                await page.goto(actual_url, wait_until="domcontentloaded", timeout=nav_timeout)
             except:
-                try: await page.goto(proxied, wait_until="commit", timeout=nav_timeout)
+                try: await page.goto(actual_url, wait_until="commit", timeout=nav_timeout)
                 except Exception as e:
                     logger.debug("Nav failed %s: %s", actual_url[:50], e)
                     return result
@@ -388,23 +388,91 @@ async def scan_single(url):
     return result
 
 
-def _scraper_url(url):
-    """Wrap a URL with ScraperAPI proxy if key is available."""
-    key = os.getenv("SCRAPER_API_KEY", "")
+def _scraper_api_key():
+    return os.getenv("SCRAPER_API_KEY", "")
+
+
+def _fetch_via_scraper(url, timeout=30):
+    """Fetch a URL via ScraperAPI REST endpoint. Returns HTML string or None."""
+    key = _scraper_api_key()
     if not key:
-        return url
-    return f"http://api.scraperapi.com?api_key={key}&url={quote_plus(url)}&render=true&country_code=cn"
+        return None
+    try:
+        resp = requests.get(
+            "http://api.scraperapi.com",
+            params={"api_key": key, "url": url, "country_code": "cn", "render": "true"},
+            timeout=timeout,
+        )
+        if resp.status_code == 200:
+            return resp.text
+        logger.warning("ScraperAPI returned %d for %s", resp.status_code, url[:60])
+        return None
+    except Exception as e:
+        logger.warning("ScraperAPI fetch error: %s", e)
+        return None
+
+
+def _parse_baidu_html(html, full_q, platform_label, mode, seen_links, max_r, page_num):
+    """Parse Baidu search result HTML and extract results."""
+    from html.parser import HTMLParser
+    import html as html_module
+    results = []
+
+    # Simple regex-based extraction from Baidu HTML
+    # Find result blocks
+    title_pattern = re.compile(r'<h3[^>]*class="[^"]*t[^"]*"[^>]*>.*?<a[^>]+href="([^"]+)"[^>]*>(.*?)</a>', re.S)
+    snippet_pattern = re.compile(r'class="[^"]*c-abstract[^"]*"[^>]*>(.*?)</(?:span|div|p)>', re.S)
+    tag_re = re.compile(r'<[^>]+>')
+
+    titles = title_pattern.findall(html)
+    snippets = [tag_re.sub('', s).strip() for s in snippet_pattern.findall(html)]
+
+    for i, (href, title_html) in enumerate(titles):
+        if len(results) >= max_r:
+            break
+        title = html_module.unescape(tag_re.sub('', title_html)).strip()
+        href  = html_module.unescape(href).strip()
+        if not title or not href or href in seen_links or _is_blocked(href):
+            continue
+        snippet = snippets[i] if i < len(snippets) else ""
+        snippet = html_module.unescape(snippet).strip()
+        c       = _contacts(title + "\n" + snippet + "\n" + href)
+        sc      = _score(title, snippet, href, mode)
+        best_wq = max((w["quality"] for w in c["wechat_ids"]), default=0)
+        results.append({
+            "title": title, "link": href, "snippet": snippet,
+            "wechat_ids": c["wechat_ids"], "emails": c["emails"], "phones": c["phones"],
+            "factory_score": sc, "wechat_quality": best_wq,
+            "has_contact": bool(c["wechat_ids"] or c["emails"] or c["phones"]),
+            "has_verified_wechat": best_wq >= 3, "is_factory_like": sc >= 3,
+            "platform": platform_label, "baidu_query": full_q, "mode": mode,
+            "deep_scanned": False, "page_num": page_num, "variation": 0,
+        })
+    return results
 
 
 async def _baidu_search(page, full_q, max_r, timeout, delay, seen_links, platform_label, mode, page_num=1):
-    """Run a single Baidu search and return results."""
-    results=[]
-    pn=(page_num-1)*10
-    raw_url=f"https://www.baidu.com/s?wd={quote_plus(full_q)}&pn={pn}"
-    url=_scraper_url(raw_url)
+    """Run a single Baidu search — uses ScraperAPI if key set, else direct Playwright."""
+    results = []
+    pn      = (page_num - 1) * 10
+    url     = f"https://www.baidu.com/s?wd={quote_plus(full_q)}&pn={pn}"
+
+    # Try ScraperAPI first (HTTP request, no browser needed)
+    key = _scraper_api_key()
+    if key:
+        logger.info("Using ScraperAPI for: %s", full_q[:60])
+        html = await asyncio.get_event_loop().run_in_executor(None, lambda: _fetch_via_scraper(url))
+        if html and "#content_left" in html or "result" in html:
+            results = _parse_baidu_html(html, full_q, platform_label, mode, set(seen_links), max_r, page_num)
+            logger.info("ScraperAPI got %d results", len(results))
+            if results:
+                return results
+        logger.warning("ScraperAPI returned no usable HTML, falling back to Playwright")
+
+    # Fallback: direct Playwright (works locally, may be blocked on server)
     try:
         await page.goto(url, wait_until="domcontentloaded", timeout=timeout)
-        try: await page.wait_for_selector("#content_left", timeout=min(timeout, 20000))
+        try: await page.wait_for_selector("#content_left", timeout=min(timeout, 15000))
         except: pass
         await asyncio.sleep(max(0.6, delay * 0.5))
 
