@@ -21,6 +21,7 @@ ENV HEADLESS=true
 ENV MAX_RESULTS=10
 ENV ACTION_DELAY_SECONDS=1.2
 ENV PLAYWRIGHT_TIMEOUT_MS=30000
+ENV DEEP_SCAN_TOTAL_TIMEOUT=240
 
 EXPOSE 8080
 CMD ["sh", "-c", "gunicorn app:app --bind 0.0.0.0:${PORT:-8080} --workers 1 --worker-class gthread --threads 4 --timeout 300 --keep-alive 5"]

@@ -31,20 +31,23 @@ except ImportError:
     OCR_AVAILABLE = False
 
 # ── Platform configs ──────────────────────────────────────────────
+# Rep keywords added to all platforms — factories that make "reps" often make authentic too
+REP_INJECT = "复刻 高仿 1:1 莆田 代工 原单 余单 工厂货 专柜 真标 rep replica fashionreps"
+
 PLATFORM_KEYWORDS = {
-    "baidu":         {"label":"Baidu",         "inject":"工厂 厂家 制造商 供应商 OEM ODM manufacturer factory 微信 联系方式"},
-    "1688":          {"label":"1688",           "inject":"1688 厂家直销 批发 一件代发 工厂 微信 联系方式"},
-    "xianyu":        {"label":"Xianyu",         "inject":"闲鱼 库存 尾货 工厂清货 批发 微信"},
-    "xiaohongshu":   {"label":"Xiaohongshu",    "inject":"小红书 厂家 供应商 源头厂家 微信 联系"},
-    "taobao":        {"label":"Taobao",         "inject":"淘宝 厂家店 工厂直营 批发 微信"},
-    "weidian":       {"label":"Weidian",        "inject":"微店 weidian 店铺 厂家 微信 联系"},
-    "pinduoduo":     {"label":"Pinduoduo",      "inject":"拼多多 工厂店 厂家直营 源头工厂 微信"},
-    "bilibili":      {"label":"Bilibili",       "inject":"bilibili B站 工厂 厂家 开箱 微信 联系方式"},
-    "yupoo":         {"label":"Yupoo",          "inject":"yupoo 相册 工厂 厂家 微信 联系"},
+    "baidu":         {"label":"Baidu",         "inject":f"工厂 厂家 制造商 供应商 OEM ODM manufacturer factory 微信 联系方式 {REP_INJECT}"},
+    "1688":          {"label":"1688",           "inject":f"1688 厂家直销 批发 一件代发 工厂 微信 联系方式 {REP_INJECT}"},
+    "xianyu":        {"label":"Xianyu",         "inject":f"闲鱼 库存 尾货 工厂清货 批发 微信 {REP_INJECT}"},
+    "xiaohongshu":   {"label":"Xiaohongshu",    "inject":f"小红书 厂家 供应商 源头厂家 微信 联系 {REP_INJECT}"},
+    "taobao":        {"label":"Taobao",         "inject":f"淘宝 厂家店 工厂直营 批发 微信 {REP_INJECT}"},
+    "weidian":       {"label":"Weidian",        "inject":f"微店 weidian 店铺 厂家 微信 联系 {REP_INJECT}"},
+    "pinduoduo":     {"label":"Pinduoduo",      "inject":f"拼多多 工厂店 厂家直营 源头工厂 微信 {REP_INJECT}"},
+    "bilibili":      {"label":"Bilibili",       "inject":f"bilibili B站 工厂 厂家 开箱 微信 联系方式 {REP_INJECT}"},
+    "yupoo":         {"label":"Yupoo",          "inject":f"yupoo 相册 工厂 厂家 微信 联系 {REP_INJECT}"},
     "made-in-china": {"label":"Made-in-China",  "inject":"made-in-china.com manufacturer supplier OEM"},
     "globalsources": {"label":"Global Sources", "inject":"globalsources.com supplier manufacturer verified"},
-    "wechat":        {"label":"WeChat",         "inject":"微信号 加微信 联系方式 供应商 厂家直销"},
-    "reddit":        {"label":"Reddit",         "inject":"reddit fashionreps designerreps supplier wechat factory"},
+    "wechat":        {"label":"WeChat",         "inject":f"微信号 加微信 联系方式 供应商 厂家直销 {REP_INJECT}"},
+    "reddit":        {"label":"Reddit",         "inject":"reddit fashionreps designerreps supplier wechat factory rep replica"},
     "importyeti":    {"label":"ImportYeti",     "inject":"importyeti.com factory supplier manufacturer china"},
 }
 
@@ -58,18 +61,12 @@ PASSING_KEYWORDS = {
     "baidu": {"label":"Baidu", "inject":"莆田 passing NFC芯片 防伪芯片 过货 验货 高仿 1:1 复刻 微信"},
 }
 
-# All-in-one uses multiple queries across platforms
-ALL_IN_ONE_PLATFORMS = [
-    ("baidu",       "工厂 厂家 OEM 微信 联系方式"),
-    ("yupoo",       "yupoo 相册 微信"),
-    ("1688",        "1688 厂家直销 微信"),
-    ("xiaohongshu", "小红书 源头厂家 微信"),
-    ("weidian",     "微店 厂家 微信"),
-    ("bilibili",    "B站 工厂 微信"),
-    ("reddit",      "reddit fashionreps wechat supplier"),
-]
+# All-in-one: single smart Baidu query that hits all platforms at once
+# Baidu indexes all these platforms so one query surfaces results from all of them
+ALL_IN_ONE_INJECT = "工厂 厂家 微信 联系方式 yupoo 1688 小红书 微店 weidian 源头 ODM OEM 供应商 复刻 高仿 1:1 莆田 余单 原单"
+ALL_IN_ONE_INJECT_2 = "passing NFC 莆田 代工厂 一手货源 微信号 加v 联系 fashionreps replica rep 复刻 工厂货"
 
-SUPPLIER_TERMS = ["factory","manufacturer","oem","odm","supplier","wholesale","工厂","厂家","制造商","供应商","批发","定制","一件代发","源头","直销","货源"]
+SUPPLIER_TERMS = ["factory","manufacturer","oem","odm","supplier","wholesale","工厂","厂家","制造商","供应商","批发","定制","一件代发","源头","直销","货源","复刻","高仿","1:1","余单","原单","rep","replica","fashionreps","莆田","代工"]
 FF_TERMS       = ["freight","forwarder","logistics","shipping","customs","货代","物流","运输","清关","报关","fob","cif","dhl","fedex"]
 PASSING_TERMS  = ["passing","nfc","芯片","过货","验货","防伪","莆田","1:1","高仿","复刻"]
 CONTACT_TERMS  = ["wechat","weixin","vx","微信","whatsapp","phone","tel","email","邮箱","加v","加微","联系方式"]
@@ -159,8 +156,23 @@ def _score(title,snippet,link,mode):
     return s
 
 def _href(raw):
-    try: return unquote(raw) if raw else ""
+    """Keep Baidu redirect URLs as-is — Playwright will follow them."""
+    try: return raw.strip() if raw else ""
     except: return raw or ""
+
+async def _resolve_baidu_redirect(page, url, timeout=10000):
+    """Follow a Baidu redirect link to get the actual destination URL."""
+    if not url or "baidu.com/link" not in url:
+        return url
+    try:
+        resp = await page.goto(url, wait_until="commit", timeout=timeout)
+        # After redirect, get the actual URL we landed on
+        final_url = page.url
+        if final_url and "baidu.com" not in final_url:
+            return final_url
+        return url
+    except:
+        return url
 
 def _build_query(query, brand, platform, mode, variation=0, inject_override=None):
     if inject_override:
@@ -194,15 +206,30 @@ async def _launch(pw, headless):
 async def _deep_scan_page(page, url, nav_timeout=22000):
     result={"wechat_ids":[],"emails":[],"phones":[]}
     try:
-        try:
-            await page.goto(url, wait_until="domcontentloaded", timeout=nav_timeout)
-        except:
-            try: await page.goto(url, wait_until="commit", timeout=nav_timeout)
+        # Step 1: resolve Baidu redirect to get actual URL
+        actual_url = url
+        if "baidu.com/link" in url:
+            try:
+                await page.goto(url, wait_until="commit", timeout=10000)
+                await asyncio.sleep(0.5)
+                actual_url = page.url
+                logger.info("Resolved redirect: %s -> %s", url[:40], actual_url[:60])
             except Exception as e:
-                logger.debug("Nav failed %s: %s", url[:50], e)
-                return result
+                logger.debug("Redirect resolve failed: %s", e)
+                actual_url = url
 
-        await asyncio.sleep(0.8)
+        # Step 2: if we're not on the actual page yet, navigate to it
+        if actual_url != page.url or "baidu.com" in page.url:
+            try:
+                await page.goto(actual_url, wait_until="domcontentloaded", timeout=nav_timeout)
+            except:
+                try: await page.goto(actual_url, wait_until="commit", timeout=nav_timeout)
+                except Exception as e:
+                    logger.debug("Nav failed %s: %s", actual_url[:50], e)
+                    return result
+
+        await asyncio.sleep(1.0)
+        logger.info("Deep scanning actual page: %s", page.url[:80])
 
         # Full text
         try:
@@ -382,6 +409,7 @@ async def _baidu_search(page, full_q, max_r, timeout, delay, seen_links, platfor
             if not title or href in seen_links or _is_blocked(href): continue
             sn=block.locator(".c-abstract,.content-right_8Zs40,.c-span-last").first
             snippet=(await sn.inner_text()).strip() if await sn.count()>0 else ""
+            # Also scrape any contact info visible in the Baidu snippet
             c=_contacts(f"{title}\n{snippet}\n{href}")
             sc=_score(title,snippet,href,mode)
             best_wq=max((w["quality"] for w in c["wechat_ids"]),default=0)
@@ -423,21 +451,24 @@ async def search_platform(
             await asyncio.sleep(delay)
 
             # ── All-in-one mode ──────────────────────────────────
+            # Single browser session, two smart queries that cover all platforms
             if platform == "all":
                 seen_all = set(seen_links)
-                per_platform = max(4, max_r // len(ALL_IN_ONE_PLATFORMS))
+                base = f"{brand.strip()} {query.strip()}".strip() if brand.strip() else query.strip()
 
-                for plat_key, inject in ALL_IN_ONE_PLATFORMS:
-                    try:
-                        full_q = _build_query(query, brand, plat_key, mode, inject_override=inject)
-                        plat_label = PLATFORM_KEYWORDS.get(plat_key, {}).get("label", plat_key)
-                        new_r = await _baidu_search(page, full_q, per_platform, timeout, delay, seen_all, plat_label, mode)
-                        for r in new_r: seen_all.add(r["link"])
-                        results.extend(new_r)
-                        logger.info("All-in-one %s: %d results", plat_key, len(new_r))
-                    except Exception as e:
-                        logger.warning("All-in-one %s failed: %s", plat_key, e)
-                        continue
+                # Query 1: factory/supplier focused across all platforms
+                q1 = f"{base} {ALL_IN_ONE_INJECT}"
+                r1 = await _baidu_search(page, q1, max_r, timeout, delay, seen_all, "All-in-One", mode)
+                for r in r1: seen_all.add(r["link"])
+                results.extend(r1)
+
+                # Query 2: contact/WeChat focused — surfaces pages that explicitly post WeChats
+                q2 = f"{base} {ALL_IN_ONE_INJECT_2}"
+                r2 = await _baidu_search(page, q2, max_r // 2, timeout, delay, seen_all, "All-in-One", mode)
+                for r in r2: seen_all.add(r["link"])
+                results.extend(r2)
+
+                logger.info("All-in-one: %d total results", len(results))
 
                 # Also try Yupoo directly
                 try:
