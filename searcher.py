@@ -1,17 +1,18 @@
 """
-SourceFinder searcher — multi-platform, all-in-one mode.
-Platforms: Baidu, Yupoo, 1688 (via Baidu), RedNote (via Baidu), Weidian,
-           Bilibili, Pinduoduo, KakoBuy spreadsheets, ImportYeti, All-in-one.
+SourceFinder — Baidu via ScraperAPI with proper HTML parsing.
+ScraperAPI fetches Baidu with Chinese residential IPs.
+We save raw HTML to debug and parse properly.
 """
 
 import asyncio
 import io
+import json
 import logging
 import os
-import random
 import re
+import time
 from pathlib import Path
-from urllib.parse import quote_plus, unquote, urlparse
+from urllib.parse import quote_plus, unquote
 
 import requests
 from playwright.async_api import async_playwright
@@ -31,47 +32,7 @@ try:
 except ImportError:
     OCR_AVAILABLE = False
 
-# ── Platform configs ──────────────────────────────────────────────
-# Rep keywords added to all platforms — factories that make "reps" often make authentic too
-REP_INJECT = "复刻 高仿 1:1 莆田 代工 原单 余单 工厂货 专柜 真标 rep replica fashionreps"
-
-PLATFORM_KEYWORDS = {
-    "baidu":         {"label":"Baidu",         "inject":f"工厂 厂家 制造商 供应商 OEM ODM manufacturer factory 微信 联系方式 {REP_INJECT}"},
-    "1688":          {"label":"1688",           "inject":f"1688 厂家直销 批发 一件代发 工厂 微信 联系方式 {REP_INJECT}"},
-    "xianyu":        {"label":"Xianyu",         "inject":f"闲鱼 库存 尾货 工厂清货 批发 微信 {REP_INJECT}"},
-    "xiaohongshu":   {"label":"Xiaohongshu",    "inject":f"小红书 厂家 供应商 源头厂家 微信 联系 {REP_INJECT}"},
-    "taobao":        {"label":"Taobao",         "inject":f"淘宝 厂家店 工厂直营 批发 微信 {REP_INJECT}"},
-    "weidian":       {"label":"Weidian",        "inject":f"微店 weidian 店铺 厂家 微信 联系 {REP_INJECT}"},
-    "pinduoduo":     {"label":"Pinduoduo",      "inject":f"拼多多 工厂店 厂家直营 源头工厂 微信 {REP_INJECT}"},
-    "bilibili":      {"label":"Bilibili",       "inject":f"bilibili B站 工厂 厂家 开箱 微信 联系方式 {REP_INJECT}"},
-    "yupoo":         {"label":"Yupoo",          "inject":f"yupoo 相册 工厂 厂家 微信 联系 {REP_INJECT}"},
-    "made-in-china": {"label":"Made-in-China",  "inject":"made-in-china.com manufacturer supplier OEM"},
-    "globalsources": {"label":"Global Sources", "inject":"globalsources.com supplier manufacturer verified"},
-    "wechat":        {"label":"WeChat",         "inject":f"微信号 加微信 联系方式 供应商 厂家直销 {REP_INJECT}"},
-    "reddit":        {"label":"Reddit",         "inject":"reddit fashionreps designerreps supplier wechat factory rep replica"},
-    "importyeti":    {"label":"ImportYeti",     "inject":"importyeti.com factory supplier manufacturer china"},
-}
-
-FF_KEYWORDS = {
-    "baidu":         {"label":"Baidu",         "inject":"货代公司 freight forwarder 国际运输 清关 FOB CIF 微信"},
-    "1688":          {"label":"1688",           "inject":"1688 货代 freight agent 国际物流 报关"},
-    "globalsources": {"label":"Global Sources", "inject":"globalsources freight forwarder logistics china"},
-}
-
-PASSING_KEYWORDS = {
-    "baidu": {"label":"Baidu", "inject":"莆田 passing NFC芯片 防伪芯片 过货 验货 高仿 1:1 复刻 微信"},
-}
-
-# All-in-one: single smart Baidu query that hits all platforms at once
-# Baidu indexes all these platforms so one query surfaces results from all of them
-ALL_IN_ONE_INJECT = "工厂 厂家 微信 联系方式 yupoo 1688 小红书 微店 weidian 源头 ODM OEM 供应商 复刻 高仿 1:1 莆田 余单 原单"
-ALL_IN_ONE_INJECT_2 = "passing NFC 莆田 代工厂 一手货源 微信号 加v 联系 fashionreps replica rep 复刻 工厂货"
-
-SUPPLIER_TERMS = ["factory","manufacturer","oem","odm","supplier","wholesale","工厂","厂家","制造商","供应商","批发","定制","一件代发","源头","直销","货源","复刻","高仿","1:1","余单","原单","rep","replica","fashionreps","莆田","代工"]
-FF_TERMS       = ["freight","forwarder","logistics","shipping","customs","货代","物流","运输","清关","报关","fob","cif","dhl","fedex"]
-PASSING_TERMS  = ["passing","nfc","芯片","过货","验货","防伪","莆田","1:1","高仿","复刻"]
-CONTACT_TERMS  = ["wechat","weixin","vx","微信","whatsapp","phone","tel","email","邮箱","加v","加微","联系方式"]
-
+# ── WeChat patterns ───────────────────────────────────────────────
 WECHAT_VALID   = re.compile(r"^[a-zA-Z][a-zA-Z0-9_-]{5,19}$")
 WECHAT_GARBAGE = re.compile(r"(1234|aaaa|test|demo|fake|xxxx|0000|abcd)", re.I)
 WECHAT_PATTERNS = [
@@ -84,16 +45,20 @@ WECHAT_PATTERNS = [
 EMAIL_RE = re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b")
 PHONE_RE = re.compile(r"(?:\+?86[-\s]?)?(1[3-9]\d{9}|\d{3,4}[-\s]?\d{7,8})")
 
-SUPPLIER_POOLS=[["工厂","厂家","制造商"],["OEM","ODM","定制"],["批发","直销","货源"],["manufacturer","factory","supplier"],["微信","联系","报价"]]
-FF_POOLS=[["货代","货运代理"],["freight forwarder","shipping agent"],["FOB","CIF","EXW"],["清关","报关"],["DHL","sea freight"]]
+SUPPLIER_TERMS = ["factory","manufacturer","oem","odm","supplier","wholesale","工厂","厂家","制造商","供应商","批发","定制","一件代发","源头","直销","货源","复刻","高仿","1:1","余单","原单","rep","replica","莆田","代工"]
+CONTACT_TERMS  = ["wechat","weixin","vx","微信","whatsapp","phone","tel","email","邮箱","加v","加微","联系方式","微信号"]
+FF_TERMS       = ["freight","forwarder","logistics","shipping","customs","货代","物流","运输","清关","报关","fob","cif","dhl","fedex"]
+PASSING_TERMS  = ["passing","nfc","芯片","过货","验货","防伪","莆田","1:1","高仿","复刻"]
 
-# Blocked domains
+REP_INJECT   = "复刻 高仿 1:1 莆田 代工 原单 余单 工厂货 rep replica fashionreps"
+ALL_Q1_INJECT = f"工厂 厂家 微信 联系方式 yupoo 1688 小红书 微店 weidian 源头 ODM OEM 供应商 {REP_INJECT}"
+ALL_Q2_INJECT = f"passing NFC 莆田 代工厂 一手货源 微信号 加v 联系 {REP_INJECT}"
+
 BLOCKED_DOMAINS = {
     "nike.com","jordan.com","adidas.com","yeezy.com","newbalance.com",
-    "puma.com","reebok.com","underarmour.com","vans.com","converse.com",
-    "gucci.com","louisvuitton.com","lv.com","chanel.com","prada.com",
-    "balenciaga.com","supreme.com","off-white.com","bape.com",
-    "amazon.com","amazon.cn","ebay.com","tmall.com","jd.com",
+    "puma.com","reebok.com","vans.com","converse.com","gucci.com",
+    "louisvuitton.com","lv.com","chanel.com","prada.com","balenciaga.com",
+    "supreme.com","amazon.com","amazon.cn","ebay.com","tmall.com","jd.com",
     "stockx.com","goat.com","kickscrew.com","flightclub.com",
     "wikipedia.org","baidu.com","google.com","youtube.com",
     "instagram.com","facebook.com","twitter.com","x.com","tiktok.com",
@@ -103,6 +68,7 @@ BLOCKED_DOMAINS = {
 def _is_blocked(url):
     if not url: return False
     try:
+        from urllib.parse import urlparse
         host = urlparse(url).netloc.lower().lstrip("www.")
         return any(host == d or host.endswith("."+d) for d in BLOCKED_DOMAINS)
     except: return False
@@ -156,38 +122,6 @@ def _score(title,snippet,link,mode):
     s+=sum(1 for t in CONTACT_TERMS if t in text)
     return s
 
-def _href(raw):
-    """Keep Baidu redirect URLs as-is — Playwright will follow them."""
-    try: return raw.strip() if raw else ""
-    except: return raw or ""
-
-async def _resolve_baidu_redirect(page, url, timeout=10000):
-    """Follow a Baidu redirect link to get the actual destination URL."""
-    if not url or "baidu.com/link" not in url:
-        return url
-    try:
-        resp = await page.goto(url, wait_until="commit", timeout=timeout)
-        # After redirect, get the actual URL we landed on
-        final_url = page.url
-        if final_url and "baidu.com" not in final_url:
-            return final_url
-        return url
-    except:
-        return url
-
-def _build_query(query, brand, platform, mode, variation=0, inject_override=None):
-    if inject_override:
-        base = f"{brand.strip()} {query.strip()}".strip() if brand.strip() else query.strip()
-        return f"{base} {inject_override}".strip()
-    lookup = FF_KEYWORDS if mode=="ff" else (PASSING_KEYWORDS if mode=="passing" else PLATFORM_KEYWORDS)
-    cfg    = lookup.get(platform, list(lookup.values())[0])
-    base   = f"{brand.strip()} {query.strip()}".strip() if brand.strip() else query.strip()
-    if variation==0: return f"{base} {cfg['inject']}".strip()
-    pools  = FF_POOLS if mode=="ff" else SUPPLIER_POOLS
-    rng    = random.Random(variation)
-    picks  = [rng.choice(pool) for pool in pools][:3+(variation%2)]
-    return f"{base} {' '.join(picks)}".strip()
-
 def _find_chromium():
     cache=Path.home()/"Library"/"Caches"/"ms-playwright"
     for pat in ["chromium-*/chrome-mac-arm64/Chromium.app/Contents/MacOS/Chromium",
@@ -196,7 +130,7 @@ def _find_chromium():
             if p.exists(): return str(p)
     return None
 
-async def _launch(pw, headless):
+async def _launch(pw,headless):
     try: return await pw.chromium.launch(headless=headless)
     except Exception as exc:
         if "Executable doesn't exist" not in str(exc): raise
@@ -204,36 +138,201 @@ async def _launch(pw, headless):
         if path: return await pw.chromium.launch(headless=headless,executable_path=path)
         raise
 
+
+# ── ScraperAPI ────────────────────────────────────────────────────
+def _scraper_key():
+    return os.getenv("SCRAPER_API_KEY","")
+
+def _fetch_via_scraper(url, timeout=45):
+    key=_scraper_key()
+    if not key: return None
+    try:
+        resp=requests.get(
+            "http://api.scraperapi.com",
+            params={"api_key":key,"url":url,"country_code":"cn","render":"false"},
+            timeout=timeout,
+        )
+        if resp.status_code==200:
+            return resp.text
+        logger.warning("ScraperAPI status %d", resp.status_code)
+        return None
+    except Exception as e:
+        logger.warning("ScraperAPI error: %s", e)
+        return None
+
+
+def _parse_baidu_html(html, full_q, platform_label, mode, seen_links, max_r, page_num):
+    """
+    Parse Baidu search result HTML.
+    Tries multiple selector strategies since Baidu changes their HTML structure.
+    """
+    import html as html_module
+    results = []
+    tag_re  = re.compile(r"<[^>]+>")
+
+    # Log a sample so we can debug
+    logger.info("Parsing Baidu HTML len=%d sample=%s", len(html), html[1000:1300].replace("\n"," ")[:200])
+
+    # Strategy 1: find <h3> tags with links (standard Baidu result)
+    h3_pattern = re.compile(
+        r'<h3[^>]*>\s*<a[^>]+href="([^"]+)"[^>]*>(.*?)</a>',
+        re.S|re.I
+    )
+    # Strategy 2: data-log or mu attributes on divs
+    mu_pattern = re.compile(r'mu="([^"]+)"', re.I)
+    # Strategy 3: tpl result divs
+    result_pattern = re.compile(
+        r'<div[^>]+class="[^"]*result[^"]*"[^>]*>.*?<a[^>]+href="([^"]+)"[^>]*>(.*?)</a>.*?'
+        r'(?:class="[^"]*c-abstract[^"]*"[^>]*>(.*?)</)',
+        re.S|re.I
+    )
+
+    found_titles = []
+
+    # Try h3 strategy first
+    for m in h3_pattern.finditer(html):
+        href  = html_module.unescape(m.group(1)).strip()
+        title = html_module.unescape(tag_re.sub("", m.group(2))).strip()
+        if title and href and "baidu.com/link" in href:
+            found_titles.append((href, title, ""))
+
+    # If that failed try result divs
+    if not found_titles:
+        for m in result_pattern.finditer(html):
+            href    = html_module.unescape(m.group(1)).strip()
+            title   = html_module.unescape(tag_re.sub("", m.group(2))).strip()
+            snippet = html_module.unescape(tag_re.sub("", m.group(3))).strip() if m.group(3) else ""
+            if title and href:
+                found_titles.append((href, title, snippet))
+
+    # Extract all abstracts/snippets separately
+    snippet_pattern = re.compile(
+        r'class="[^"]*(?:c-abstract|content-right)[^"]*"[^>]*>(.*?)</(?:span|div|p)>',
+        re.S|re.I
+    )
+    snippets = [html_module.unescape(tag_re.sub("",s)).strip() for s in snippet_pattern.findall(html)]
+
+    logger.info("Found %d titles from Baidu HTML", len(found_titles))
+
+    for i,(href,title,snippet) in enumerate(found_titles):
+        if len(results) >= max_r: break
+        if not title or not href: continue
+        if href in seen_links or _is_blocked(href): continue
+        if not snippet and i < len(snippets):
+            snippet = snippets[i]
+        c       = _contacts(title + "\n" + snippet + "\n" + href)
+        sc      = _score(title, snippet, href, mode)
+        best_wq = max((w["quality"] for w in c["wechat_ids"]),default=0)
+        results.append({
+            "title":title,"link":href,"snippet":snippet,
+            "wechat_ids":c["wechat_ids"],"emails":c["emails"],"phones":c["phones"],
+            "factory_score":sc,"wechat_quality":best_wq,
+            "has_contact":bool(c["wechat_ids"] or c["emails"] or c["phones"]),
+            "has_verified_wechat":best_wq>=3,"is_factory_like":sc>=3,
+            "platform":platform_label,"baidu_query":full_q,"mode":mode,
+            "deep_scanned":False,"page_num":page_num,"variation":0,
+        })
+
+    return results
+
+
+async def _baidu_search(page, full_q, max_r, timeout, delay, seen_links, platform_label, mode, page_num=1):
+    """Search Baidu via ScraperAPI (REST) with Playwright fallback."""
+    results = []
+    pn      = (page_num-1)*10
+    url     = f"https://www.baidu.com/s?wd={quote_plus(full_q)}&pn={pn}&rn=20"
+
+    key = _scraper_key()
+    if key:
+        logger.info("ScraperAPI fetching: %s", full_q[:60])
+        html = await asyncio.get_event_loop().run_in_executor(
+            None, lambda: _fetch_via_scraper(url)
+        )
+        if html and len(html) > 2000:
+            results = _parse_baidu_html(html, full_q, platform_label, mode, set(seen_links), max_r, page_num)
+            logger.info("ScraperAPI parsed %d results for: %s", len(results), full_q[:40])
+            if results:
+                return results
+            # Save HTML sample to data dir for debugging
+            try:
+                debug_path = Path("/app/data/debug_baidu.html")
+                debug_path.parent.mkdir(exist_ok=True)
+                debug_path.write_text(html[:50000])
+                logger.info("Saved debug HTML to %s", debug_path)
+            except: pass
+        else:
+            logger.warning("ScraperAPI returned short/empty HTML: %d chars", len(html) if html else 0)
+
+    # Playwright fallback
+    logger.info("Playwright fallback for: %s", full_q[:60])
+    try:
+        await page.goto(url, wait_until="domcontentloaded", timeout=timeout)
+        try: await page.wait_for_selector("#content_left", timeout=15000)
+        except: pass
+        await asyncio.sleep(1.0)
+
+        # Check if we're on an actual results page
+        content_left = await page.locator("#content_left").count()
+        logger.info("Playwright: content_left present=%s", content_left > 0)
+
+        blocks = page.locator("#content_left > div.result, #content_left > div.c-container")
+        total  = await blocks.count()
+        logger.info("Playwright: found %d result blocks", total)
+
+        for i in range(total):
+            if len(results) >= max_r: break
+            block = blocks.nth(i)
+            tn    = block.locator("h3 a").first
+            if await tn.count()==0: continue
+            title = (await tn.inner_text()).strip()
+            href  = (await tn.get_attribute("href") or "").strip()
+            if not title or href in seen_links or _is_blocked(href): continue
+            sn      = block.locator(".c-abstract,.content-right_8Zs40,.c-span-last").first
+            snippet = (await sn.inner_text()).strip() if await sn.count()>0 else ""
+            c       = _contacts(title + "\n" + snippet + "\n" + href)
+            sc      = _score(title, snippet, href, mode)
+            best_wq = max((w["quality"] for w in c["wechat_ids"]),default=0)
+            results.append({
+                "title":title,"link":href or url,"snippet":snippet,
+                "wechat_ids":c["wechat_ids"],"emails":c["emails"],"phones":c["phones"],
+                "factory_score":sc,"wechat_quality":best_wq,
+                "has_contact":bool(c["wechat_ids"] or c["emails"] or c["phones"]),
+                "has_verified_wechat":best_wq>=3,"is_factory_like":sc>=3,
+                "platform":platform_label,"baidu_query":full_q,"mode":mode,
+                "deep_scanned":False,"page_num":page_num,"variation":0,
+            })
+    except Exception as e:
+        logger.warning("Playwright search error: %s", e)
+
+    return results
+
+
 async def _deep_scan_page(page, url, nav_timeout=22000):
+    """Visit actual page and extract all contacts."""
     result={"wechat_ids":[],"emails":[],"phones":[]}
     try:
-        # Step 1: resolve Baidu redirect to get actual URL
+        # Resolve Baidu redirect
         actual_url = url
         if "baidu.com/link" in url:
             try:
-                await page.goto(url, wait_until="commit", timeout=10000)
+                await page.goto(url, wait_until="commit", timeout=12000)
                 await asyncio.sleep(0.5)
                 actual_url = page.url
-                # Strip scraperapi wrapper if present
-                if "scraperapi.com" in actual_url:
-                    actual_url = url
-                logger.info("Resolved redirect: %s -> %s", url[:40], actual_url[:60])
-            except Exception as e:
-                logger.debug("Redirect resolve failed: %s", e)
-                actual_url = url
+                if "baidu.com" in actual_url: actual_url = url
+                logger.info("Redirect: %s", actual_url[:70])
+            except: pass
 
-        # Step 2: navigate to actual page directly
+        # Navigate to actual page
         if actual_url != page.url:
             try:
                 await page.goto(actual_url, wait_until="domcontentloaded", timeout=nav_timeout)
             except:
                 try: await page.goto(actual_url, wait_until="commit", timeout=nav_timeout)
                 except Exception as e:
-                    logger.debug("Nav failed %s: %s", actual_url[:50], e)
+                    logger.debug("Nav failed: %s", e)
                     return result
 
         await asyncio.sleep(1.0)
-        logger.info("Deep scanning actual page: %s", page.url[:80])
 
         # Full text
         try:
@@ -241,60 +340,52 @@ async def _deep_scan_page(page, url, nav_timeout=22000):
             result = _merge(result, _contacts(body))
         except: pass
 
-        # Full HTML (catches hidden elements, JS vars, data attrs)
+        # Full HTML
         try:
             html = await page.content()
             result = _merge(result, _contacts(html))
         except: pass
 
-        # Image alt/title text
+        # Images
         try:
             img_data = await page.evaluate("""() => [...document.querySelectorAll('img')].map(i=>({
                 alt:i.alt||'',title:i.title||'',src:i.src||'',
                 cls:i.className||'',w:i.naturalWidth||i.width||0,h:i.naturalHeight||i.height||0
             }))""")
             for img in img_data:
-                combined = f"{img['alt']} {img['title']} {img['src']}"
-                result = _merge(result, _contacts(combined))
+                result = _merge(result, _contacts(img['alt']+" "+img['title']+" "+img['src']))
         except: img_data=[]
 
-        # QR decode on square images
+        # QR decode
         if QR_AVAILABLE and img_data:
-            qr_candidates = [i for i in img_data if
-                i['w']>60 and i['h']>60 and i['w']<800 and i['src']
-                and not i['src'].endswith('.gif')
-                and (
-                    any(k in i['src'].lower() for k in ['qr','weixin','wechat','wx'])
-                    or any(k in (i['alt']+i['cls']).lower() for k in ['二维码','扫码','qr'])
-                    or (i['w']>0 and i['h']>0 and 0.7<i['w']/i['h']<1.3 and i['w']>80)
-                )
-            ][:12]
-
-            for img in qr_candidates:
+            for img in [i for i in img_data if i['w']>60 and i['h']>60 and i['w']<800
+                        and i['src'] and not i['src'].endswith('.gif')
+                        and (any(k in i['src'].lower() for k in ['qr','weixin','wechat','wx'])
+                            or any(k in (i['alt']+i.get('cls','')).lower() for k in ['二维码','扫码'])
+                            or (0.7<i['w']/max(i['h'],1)<1.3 and i['w']>80))][:10]:
                 try:
                     el=page.locator(f"img[src='{img['src']}']").first
                     if await el.count()==0: continue
-                    img_bytes=await asyncio.wait_for(el.screenshot(),timeout=5)
-                    if len(img_bytes)<500: continue
-                    pil=Image.open(io.BytesIO(img_bytes))
+                    ib=await asyncio.wait_for(el.screenshot(),timeout=5)
+                    if len(ib)<500: continue
+                    pil=Image.open(io.BytesIO(ib))
                     for qr in qr_decode(pil):
                         qt=qr.data.decode("utf-8",errors="ignore")
-                        qr_c=_contacts(qt)
-                        for w in qr_c["wechat_ids"]:
-                            w["source"]="qr"; w["quality"]=max(w["quality"],3); w["confidence"]=1.0
-                        result=_merge(result,qr_c)
+                        qc=_contacts(qt)
+                        for w in qc["wechat_ids"]:
+                            w["source"]="qr";w["quality"]=max(w["quality"],3);w["confidence"]=1.0
+                        result=_merge(result,qc)
                 except: continue
 
-        # OCR on images
+        # OCR
         if OCR_AVAILABLE and img_data:
-            ocr_cands=[i for i in img_data if i['w']>100 and i['h']>80 and i['src'] and not i['src'].endswith('.gif')][:6]
-            for img in ocr_cands:
+            for img in [i for i in img_data if i['w']>100 and i['h']>80 and i['src'] and not i['src'].endswith('.gif')][:6]:
                 try:
                     el=page.locator(f"img[src='{img['src']}']").first
                     if await el.count()==0: continue
-                    img_bytes=await asyncio.wait_for(el.screenshot(),timeout=5)
-                    if len(img_bytes)<500: continue
-                    pil=Image.open(io.BytesIO(img_bytes))
+                    ib=await asyncio.wait_for(el.screenshot(),timeout=5)
+                    if len(ib)<500: continue
+                    pil=Image.open(io.BytesIO(ib))
                     w,h=pil.size
                     if w<200: pil=pil.resize((w*2,h*2),Image.LANCZOS)
                     txt=pytesseract.image_to_string(pil,lang="chi_sim+eng",config="--psm 6 --oem 3")
@@ -311,208 +402,23 @@ async def _deep_scan_page(page, url, nav_timeout=22000):
     return result
 
 
-async def _scrape_yupoo(page, query, brand, timeout=25000):
-    """Scrape Yupoo directly — albums almost always have WeChat in description."""
-    results=[]
-    search_q = f"{brand} {query}".strip() if brand else query
-    url = f"https://www.yupoo.com/search/?q={quote_plus(search_q)}&tab=album"
-    try:
-        await page.goto(url, wait_until="domcontentloaded", timeout=timeout)
-        await asyncio.sleep(1.5)
-
-        # Get album links
-        links = await page.evaluate("""() => {
-            return [...document.querySelectorAll('a[href*="/photos/"]')]
-                .map(a=>a.href).filter(h=>h.includes('yupoo.com')).slice(0,8);
-        }""")
-
-        for link in links:
-            try:
-                await page.goto(link, wait_until="domcontentloaded", timeout=timeout)
-                await asyncio.sleep(0.8)
-                # Get page text + album description
-                text = await page.inner_text("body")
-                html = await page.content()
-                combined = text + html
-                c = _contacts(combined)
-                if not c["wechat_ids"] and not c["emails"] and not c["phones"]:
-                    continue
-                title_el = page.locator("h1, .album-title, .username").first
-                title = (await title_el.inner_text()).strip() if await title_el.count()>0 else link
-                results.append({
-                    "title": title, "link": link, "snippet": text[:200],
-                    "wechat_ids": c["wechat_ids"], "emails": c["emails"], "phones": c["phones"],
-                    "factory_score": _score(title, text[:200], link, "supplier"),
-                    "wechat_quality": max((w["quality"] for w in c["wechat_ids"]),default=0),
-                    "has_contact": bool(c["wechat_ids"] or c["emails"] or c["phones"]),
-                    "has_verified_wechat": any(w["quality"]>=3 for w in c["wechat_ids"]),
-                    "is_factory_like": True,
-                    "platform": "Yupoo", "baidu_query": url, "mode": "supplier",
-                    "deep_scanned": True, "page_num": 1, "variation": 0,
-                })
-            except: continue
-    except Exception as e:
-        logger.warning("Yupoo scrape error: %s", e)
-    return results
-
-
-async def _scrape_importyeti(page, brand, timeout=25000):
-    """Scrape ImportYeti for verified factory names, then search them on Baidu."""
-    factories=[]
-    url = f"https://www.importyeti.com/company/{quote_plus(brand.lower().replace(' ','-'))}"
-    try:
-        await page.goto(url, wait_until="domcontentloaded", timeout=timeout)
-        await asyncio.sleep(2.0)
-        text = await page.inner_text("body")
-        # Extract Chinese company names
-        cn_pattern = re.compile(r'[\u4e00-\u9fff]{2,}(?:有限公司|工厂|制造|鞋业|服装|科技|实业|贸易)', re.U)
-        en_pattern = re.compile(r'[A-Z][A-Z\s]{5,50}(?:CO\.|LTD|LIMITED|FACTORY|MFG|MANUFACTURING)', re.I)
-        factories = list(set(cn_pattern.findall(text) + en_pattern.findall(text)))[:10]
-        logger.info("ImportYeti found %d factories for %s", len(factories), brand)
-    except Exception as e:
-        logger.warning("ImportYeti error: %s", e)
-    return factories
-
-
 async def scan_single(url):
-    """Scan a single URL — per-card scan button."""
     headless=os.getenv("HEADLESS","true").lower()!="false"
-    timeout=int(os.getenv("PLAYWRIGHT_TIMEOUT_MS","25000"))
     ua="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
     async with async_playwright() as p:
         browser=await _launch(p,headless)
         ctx=await browser.new_context(user_agent=ua)
         page=await ctx.new_page()
-        try: result=await _deep_scan_page(page,url,nav_timeout=timeout)
+        try: result=await _deep_scan_page(page,url)
         finally: await ctx.close(); await browser.close()
     return result
 
 
-def _scraper_api_key():
-    return os.getenv("SCRAPER_API_KEY", "")
-
-
-def _fetch_via_scraper(url, timeout=30):
-    """Fetch a URL via ScraperAPI REST endpoint. Returns HTML string or None."""
-    key = _scraper_api_key()
-    if not key:
-        return None
-    try:
-        resp = requests.get(
-            "http://api.scraperapi.com",
-            params={"api_key": key, "url": url, "country_code": "cn", "render": "true"},
-            timeout=timeout,
-        )
-        if resp.status_code == 200:
-            return resp.text
-        logger.warning("ScraperAPI returned %d for %s", resp.status_code, url[:60])
-        return None
-    except Exception as e:
-        logger.warning("ScraperAPI fetch error: %s", e)
-        return None
-
-
-def _parse_baidu_html(html, full_q, platform_label, mode, seen_links, max_r, page_num):
-    """Parse Baidu search result HTML and extract results."""
-    from html.parser import HTMLParser
-    import html as html_module
-    results = []
-
-    # Simple regex-based extraction from Baidu HTML
-    # Find result blocks
-    title_pattern = re.compile(r'<h3[^>]*class="[^"]*t[^"]*"[^>]*>.*?<a[^>]+href="([^"]+)"[^>]*>(.*?)</a>', re.S)
-    snippet_pattern = re.compile(r'class="[^"]*c-abstract[^"]*"[^>]*>(.*?)</(?:span|div|p)>', re.S)
-    tag_re = re.compile(r'<[^>]+>')
-
-    titles = title_pattern.findall(html)
-    snippets = [tag_re.sub('', s).strip() for s in snippet_pattern.findall(html)]
-
-    for i, (href, title_html) in enumerate(titles):
-        if len(results) >= max_r:
-            break
-        title = html_module.unescape(tag_re.sub('', title_html)).strip()
-        href  = html_module.unescape(href).strip()
-        if not title or not href or href in seen_links or _is_blocked(href):
-            continue
-        snippet = snippets[i] if i < len(snippets) else ""
-        snippet = html_module.unescape(snippet).strip()
-        c       = _contacts(title + "\n" + snippet + "\n" + href)
-        sc      = _score(title, snippet, href, mode)
-        best_wq = max((w["quality"] for w in c["wechat_ids"]), default=0)
-        results.append({
-            "title": title, "link": href, "snippet": snippet,
-            "wechat_ids": c["wechat_ids"], "emails": c["emails"], "phones": c["phones"],
-            "factory_score": sc, "wechat_quality": best_wq,
-            "has_contact": bool(c["wechat_ids"] or c["emails"] or c["phones"]),
-            "has_verified_wechat": best_wq >= 3, "is_factory_like": sc >= 3,
-            "platform": platform_label, "baidu_query": full_q, "mode": mode,
-            "deep_scanned": False, "page_num": page_num, "variation": 0,
-        })
-    return results
-
-
-async def _baidu_search(page, full_q, max_r, timeout, delay, seen_links, platform_label, mode, page_num=1):
-    """Run a single Baidu search — uses ScraperAPI if key set, else direct Playwright."""
-    results = []
-    pn      = (page_num - 1) * 10
-    url     = f"https://www.baidu.com/s?wd={quote_plus(full_q)}&pn={pn}"
-
-    # Try ScraperAPI first (HTTP request, no browser needed)
-    key = _scraper_api_key()
-    if key:
-        logger.info("Using ScraperAPI for: %s", full_q[:60])
-        html = await asyncio.get_event_loop().run_in_executor(None, lambda: _fetch_via_scraper(url))
-        if html and "#content_left" in html or "result" in html:
-            results = _parse_baidu_html(html, full_q, platform_label, mode, set(seen_links), max_r, page_num)
-            logger.info("ScraperAPI got %d results", len(results))
-            if results:
-                return results
-        logger.warning("ScraperAPI returned no usable HTML, falling back to Playwright")
-
-    # Fallback: direct Playwright (works locally, may be blocked on server)
-    try:
-        await page.goto(url, wait_until="domcontentloaded", timeout=timeout)
-        try: await page.wait_for_selector("#content_left", timeout=min(timeout, 15000))
-        except: pass
-        await asyncio.sleep(max(0.6, delay * 0.5))
-
-        blocks=page.locator("#content_left > div.result, #content_left > div.c-container")
-        total=await blocks.count()
-
-        for i in range(total):
-            if len(results)>=max_r: break
-            block=blocks.nth(i)
-            tn=block.locator("h3 a").first
-            if await tn.count()==0: continue
-            title=(await tn.inner_text()).strip()
-            href=_href((await tn.get_attribute("href") or "").strip())
-            if not title or href in seen_links or _is_blocked(href): continue
-            sn=block.locator(".c-abstract,.content-right_8Zs40,.c-span-last").first
-            snippet=(await sn.inner_text()).strip() if await sn.count()>0 else ""
-            # Also scrape any contact info visible in the Baidu snippet
-            c=_contacts(f"{title}\n{snippet}\n{href}")
-            sc=_score(title,snippet,href,mode)
-            best_wq=max((w["quality"] for w in c["wechat_ids"]),default=0)
-            results.append({
-                "title":title,"link":href or url,"snippet":snippet,
-                "wechat_ids":c["wechat_ids"],"emails":c["emails"],"phones":c["phones"],
-                "factory_score":sc,"wechat_quality":best_wq,
-                "has_contact":bool(c["wechat_ids"] or c["emails"] or c["phones"]),
-                "has_verified_wechat":best_wq>=3,"is_factory_like":sc>=3,
-                "platform":platform_label,"baidu_query":full_q,"mode":mode,
-                "deep_scanned":False,"page_num":page_num,"variation":0,
-            })
-    except Exception as e:
-        logger.warning("Baidu search error: %s", e)
-    return results
-
-
 async def search_platform(
-    query, brand="", platform="baidu", mode="supplier",
+    query, brand="", platform="all", mode="supplier",
     deep_scan=False, wechat_only=False,
     page_num=1, variation=0, seen_links=None,
 ):
-    lookup    = FF_KEYWORDS if mode=="ff" else (PASSING_KEYWORDS if mode=="passing" else PLATFORM_KEYWORDS)
     seen_links= set(seen_links or [])
     max_r     = int(os.getenv("MAX_RESULTS","10"))
     headless  = os.getenv("HEADLESS","true").lower()!="false"
@@ -521,85 +427,61 @@ async def search_platform(
     ua        = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
     results   = []
 
+    base = f"{brand.strip()} {query.strip()}".strip() if brand.strip() else query.strip()
+
     async with async_playwright() as p:
         browser=await _launch(p,headless)
         ctx=await browser.new_context(user_agent=ua)
         page=await ctx.new_page()
 
         try:
-            # ── All-in-one mode ──────────────────────────────────
-            if platform == "all":
-                seen_all = set(seen_links)
-                base = f"{brand.strip()} {query.strip()}".strip() if brand.strip() else query.strip()
-
-                # Two focused Baidu queries covering all platforms + rep terms
-                q1 = f"{base} {ALL_IN_ONE_INJECT}"
-                q2 = f"{base} {ALL_IN_ONE_INJECT_2}"
-
-                r1 = await _baidu_search(page, q1, max_r, timeout, delay, seen_all, "All-in-One", mode)
+            if platform=="all":
+                seen_all=set(seen_links)
+                q1=f"{base} {ALL_Q1_INJECT}"
+                q2=f"{base} {ALL_Q2_INJECT}"
+                r1=await _baidu_search(page,q1,max_r,timeout,delay,seen_all,"All-in-One",mode)
                 for r in r1: seen_all.add(r["link"])
                 results.extend(r1)
-                logger.info("All-in-one q1: %d results", len(r1))
-
-                r2 = await _baidu_search(page, q2, max_r, timeout, delay, seen_all, "All-in-One", mode)
+                r2=await _baidu_search(page,q2,max_r,timeout,delay,seen_all,"All-in-One",mode)
                 for r in r2: seen_all.add(r["link"])
                 results.extend(r2)
-                logger.info("All-in-one q2: %d results", len(r2))
-
-            # ── Yupoo direct mode ────────────────────────────────
-            elif platform == "yupoo":
-                results = await _scrape_yupoo(page, query, brand, timeout)
-
-            # ── ImportYeti mode ──────────────────────────────────
-            elif platform == "importyeti":
-                if brand:
-                    factories = await _scrape_importyeti(page, brand, timeout)
-                    for factory_name in factories[:5]:
-                        fq = f"{factory_name} 微信 联系方式 工厂"
-                        fr = await _baidu_search(page, fq, 3, timeout, delay, seen_links, "ImportYeti", mode)
-                        for r in fr:
-                            r["snippet"] = f"[Factory: {factory_name}] " + r["snippet"]
-                        results.extend(fr)
-                else:
-                    # Fall back to Baidu with importyeti inject
-                    full_q = _build_query(query, brand, "importyeti", mode, variation)
-                    results = await _baidu_search(page, full_q, max_r, timeout, delay, seen_links, "ImportYeti", mode, page_num)
-
-            # ── Standard Baidu-powered modes ─────────────────────
             else:
-                cfg    = lookup.get(platform, list(lookup.values())[0])
-                full_q = _build_query(query, brand, platform, mode, variation)
-                results= await _baidu_search(page, full_q, max_r, timeout, delay, seen_links, cfg["label"], mode, page_num)
+                from searcher import PLATFORMS as PLAT
+                if platform in PLAT:
+                    # For direct platform chips, still search via Baidu with platform keyword
+                    injects = {
+                        "1688": f"1688 厂家直销 批发 微信 联系方式 {REP_INJECT}",
+                        "taobao": f"淘宝 厂家店 工厂 微信 {REP_INJECT}",
+                        "xianyu": f"闲鱼 库存 尾货 微信 {REP_INJECT}",
+                        "weidian": f"微店 weidian 厂家 微信 {REP_INJECT}",
+                    }
+                    inject = injects.get(platform, ALL_Q1_INJECT)
+                    full_q = f"{base} {inject}"
+                    results = await _baidu_search(page,full_q,max_r,timeout,delay,seen_links,platform.title(),mode,page_num)
+                else:
+                    full_q=f"{base} {ALL_Q1_INJECT}"
+                    results=await _baidu_search(page,full_q,max_r,timeout,delay,seen_links,"Baidu",mode,page_num)
 
-            # ── Sort ─────────────────────────────────────────────
-            results.sort(key=lambda r: r["factory_score"]*2+r["wechat_quality"], reverse=True)
-            if platform != "all":
-                results = results[:max_r]
+            results.sort(key=lambda r:r["factory_score"]*2+r["wechat_quality"],reverse=True)
 
-            # ── Deep scan ────────────────────────────────────────
+            # Deep scan — follow every link and scrape the actual page
             if deep_scan:
-                TOTAL_TO  = int(os.getenv("DEEP_SCAN_TOTAL_TIMEOUT","120"))
-                PER_PAGE  = 22000
-                start     = asyncio.get_event_loop().time()
+                TOTAL_TO=int(os.getenv("DEEP_SCAN_TOTAL_TIMEOUT","120"))
+                start=asyncio.get_event_loop().time()
                 for item in results:
-                    if asyncio.get_event_loop().time()-start > TOTAL_TO:
-                        logger.info("Deep scan total timeout reached")
-                        break
+                    if asyncio.get_event_loop().time()-start>TOTAL_TO: break
                     try:
-                        extra  = await _deep_scan_page(page, item["link"], nav_timeout=PER_PAGE)
-                        merged = _merge({"wechat_ids":item["wechat_ids"],"emails":item["emails"],"phones":item["phones"]}, extra)
-                        best_wq= max((w["quality"] for w in merged["wechat_ids"]),default=0)
-                        item.update({
-                            "wechat_ids":merged["wechat_ids"],"emails":merged["emails"],"phones":merged["phones"],
-                            "deep_scanned":True,"wechat_quality":best_wq,
-                            "has_verified_wechat":best_wq>=3,
-                            "has_contact":bool(merged["wechat_ids"] or merged["emails"] or merged["phones"]),
-                        })
+                        extra=await _deep_scan_page(page,item["link"],nav_timeout=22000)
+                        merged=_merge({"wechat_ids":item["wechat_ids"],"emails":item["emails"],"phones":item["phones"]},extra)
+                        best_wq=max((w["quality"] for w in merged["wechat_ids"]),default=0)
+                        item.update({"wechat_ids":merged["wechat_ids"],"emails":merged["emails"],"phones":merged["phones"],
+                            "deep_scanned":True,"wechat_quality":best_wq,"has_verified_wechat":best_wq>=3,
+                            "has_contact":bool(merged["wechat_ids"] or merged["emails"] or merged["phones"])})
                         logger.info("Deep scanned %s — %d WeChats", item["link"][:50], len(merged["wechat_ids"]))
                     except Exception as e:
                         logger.warning("Deep scan error: %s", e)
 
-                results.sort(key=lambda r: r["factory_score"]*2+r["wechat_quality"], reverse=True)
+                results.sort(key=lambda r:r["factory_score"]*2+r["wechat_quality"],reverse=True)
 
             if wechat_only:
                 results=[r for r in results if r["wechat_ids"]]
@@ -609,3 +491,12 @@ async def search_platform(
             await browser.close()
 
     return results
+
+
+# Keep PLATFORMS dict for chip reference
+PLATFORMS = {
+    "1688": {"label":"1688"},
+    "taobao": {"label":"Taobao"},
+    "xianyu": {"label":"Xianyu"},
+    "weidian": {"label":"Weidian"},
+}
