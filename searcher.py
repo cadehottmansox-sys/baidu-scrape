@@ -213,17 +213,21 @@ async def _deep_scan_page(page, url, nav_timeout=22000):
                 await page.goto(url, wait_until="commit", timeout=10000)
                 await asyncio.sleep(0.5)
                 actual_url = page.url
+                # Strip scraperapi wrapper if present
+                if "scraperapi.com" in actual_url:
+                    actual_url = url
                 logger.info("Resolved redirect: %s -> %s", url[:40], actual_url[:60])
             except Exception as e:
                 logger.debug("Redirect resolve failed: %s", e)
                 actual_url = url
 
-        # Step 2: if we're not on the actual page yet, navigate to it
-        if actual_url != page.url or "baidu.com" in page.url:
+        # Step 2: navigate to actual page via ScraperAPI
+        proxied = _scraper_url(actual_url) if "baidu.com" not in actual_url else actual_url
+        if proxied != page.url:
             try:
-                await page.goto(actual_url, wait_until="domcontentloaded", timeout=nav_timeout)
+                await page.goto(proxied, wait_until="domcontentloaded", timeout=nav_timeout)
             except:
-                try: await page.goto(actual_url, wait_until="commit", timeout=nav_timeout)
+                try: await page.goto(proxied, wait_until="commit", timeout=nav_timeout)
                 except Exception as e:
                     logger.debug("Nav failed %s: %s", actual_url[:50], e)
                     return result
@@ -384,17 +388,25 @@ async def scan_single(url):
     return result
 
 
+def _scraper_url(url):
+    """Wrap a URL with ScraperAPI proxy if key is available."""
+    key = os.getenv("SCRAPER_API_KEY", "")
+    if not key:
+        return url
+    return f"http://api.scraperapi.com?api_key={key}&url={quote_plus(url)}&render=true&country_code=cn"
+
+
 async def _baidu_search(page, full_q, max_r, timeout, delay, seen_links, platform_label, mode, page_num=1):
     """Run a single Baidu search and return results."""
     results=[]
     pn=(page_num-1)*10
-    url=f"https://www.baidu.com/s?wd={quote_plus(full_q)}&pn={pn}"
+    raw_url=f"https://www.baidu.com/s?wd={quote_plus(full_q)}&pn={pn}"
+    url=_scraper_url(raw_url)
     try:
-        # Go directly to search URL — more reliable than going home first each time
         await page.goto(url, wait_until="domcontentloaded", timeout=timeout)
-        try: await page.wait_for_selector("#content_left", timeout=min(timeout, 15000))
+        try: await page.wait_for_selector("#content_left", timeout=min(timeout, 20000))
         except: pass
-        await asyncio.sleep(max(0.6, delay * 0.5))  # shorter delay in all-in-one
+        await asyncio.sleep(max(0.6, delay * 0.5))
 
         blocks=page.locator("#content_left > div.result, #content_left > div.c-container")
         total=await blocks.count()
