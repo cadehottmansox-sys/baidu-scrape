@@ -266,34 +266,71 @@ async def _baidu_search(page, full_q, max_r, timeout, delay, seen_links, platfor
 
     # Playwright fallback
     logger.info("Playwright fallback for: %s", full_q[:60])
+    pw_results = []
     try:
         await page.goto(url, wait_until="domcontentloaded", timeout=timeout)
         try: await page.wait_for_selector("#content_left", timeout=15000)
         except: pass
         await asyncio.sleep(1.0)
 
-        # Check if we're on an actual results page
         content_left = await page.locator("#content_left").count()
         logger.info("Playwright: content_left present=%s", content_left > 0)
 
-        blocks = page.locator("#content_left > div.result, #content_left > div.c-container")
-        total  = await blocks.count()
+        # Try multiple selectors
+        for selector in [
+            "#content_left > div.result",
+            "#content_left > div.c-container",
+            "#content_left > div",
+            ".result",
+            "[class*='result']",
+        ]:
+            blocks = page.locator(selector)
+            total  = await blocks.count()
+            if total > 0:
+                logger.info("Playwright: found %d blocks with selector: %s", total, selector)
+                break
+
         logger.info("Playwright: found %d result blocks", total)
 
         for i in range(total):
-            if len(results) >= max_r: break
+            if len(pw_results) >= max_r: break
             block = blocks.nth(i)
-            tn    = block.locator("h3 a").first
-            if await tn.count()==0: continue
-            title = (await tn.inner_text()).strip()
-            href  = (await tn.get_attribute("href") or "").strip()
-            if not title or href in seen_links or _is_blocked(href): continue
-            sn      = block.locator(".c-abstract,.content-right_8Zs40,.c-span-last").first
-            snippet = (await sn.inner_text()).strip() if await sn.count()>0 else ""
-            c       = _contacts(title + "\n" + snippet + "\n" + href)
-            sc      = _score(title, snippet, href, mode)
+
+            # Try multiple title selectors
+            title = ""
+            href  = ""
+            for title_sel in ["h3 a", "h3.t a", ".c-title a", "a.c-title", "a"]:
+                tn = block.locator(title_sel).first
+                if await tn.count() > 0:
+                    t = (await tn.inner_text()).strip()
+                    h = (await tn.get_attribute("href") or "").strip()
+                    if t and len(t) > 3:
+                        title = t
+                        href  = h
+                        break
+
+            if not title: continue
+            if href in seen_links or _is_blocked(href): continue
+
+            # Snippet
+            snippet = ""
+            for snip_sel in [".c-abstract", ".content-right_8Zs40", ".c-span-last", "p", ".c-color-text"]:
+                sn = block.locator(snip_sel).first
+                if await sn.count() > 0:
+                    snippet = (await sn.inner_text()).strip()
+                    if snippet: break
+
+            # Also get all text from the block
+            try:
+                block_text = await block.inner_text()
+            except:
+                block_text = ""
+
+            combined = " ".join(filter(None, [title, snippet, block_text, href]))
+            c       = _contacts(combined)
+            sc      = _score(title, snippet + block_text, href, mode)
             best_wq = max((w["quality"] for w in c["wechat_ids"]),default=0)
-            results.append({
+            pw_results.append({
                 "title":title,"link":href or url,"snippet":snippet,
                 "wechat_ids":c["wechat_ids"],"emails":c["emails"],"phones":c["phones"],
                 "factory_score":sc,"wechat_quality":best_wq,
@@ -302,6 +339,10 @@ async def _baidu_search(page, full_q, max_r, timeout, delay, seen_links, platfor
                 "platform":platform_label,"baidu_query":full_q,"mode":mode,
                 "deep_scanned":False,"page_num":page_num,"variation":0,
             })
+
+        logger.info("Playwright: parsed %d results", len(pw_results))
+        results.extend(pw_results)
+
     except Exception as e:
         logger.warning("Playwright search error: %s", e)
 
