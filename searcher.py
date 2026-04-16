@@ -193,7 +193,8 @@ def _parse_baidu_html(html, full_q, platform_label, mode, seen_links, max_r, pag
     for m in h3_pattern.finditer(html):
         href  = html_module.unescape(m.group(1)).strip()
         title = html_module.unescape(tag_re.sub("", m.group(2))).strip()
-        if title and href and "baidu.com/link" in href:
+        # Accept any link — not just baidu.com/link redirects
+        if title and href and len(title) > 3 and not _is_blocked(href):
             found_titles.append((href, title, ""))
 
     # If that failed try result divs
