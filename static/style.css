@@ -221,3 +221,6 @@ input::placeholder{color:var(--text3)}
   .toolbar{flex-direction:column;align-items:flex-start}
   .finds-grid{grid-template-columns:1fr}
 }
+
+.chip-all{background:linear-gradient(135deg,rgba(125,211,252,.15),rgba(167,139,250,.15))!important;border-color:rgba(125,211,252,.3)!important;color:var(--blue)!important;font-weight:700!important}
+.chip-all.active{background:linear-gradient(135deg,rgba(125,211,252,.25),rgba(167,139,250,.25))!important;border-color:rgba(167,139,250,.4)!important}
