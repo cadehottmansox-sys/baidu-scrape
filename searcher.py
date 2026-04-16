@@ -14,7 +14,6 @@ import time
 from pathlib import Path
 from urllib.parse import quote_plus, unquote
 
-import requests
 from playwright.async_api import async_playwright
 
 logger = logging.getLogger(__name__)
@@ -139,26 +138,7 @@ async def _launch(pw,headless):
         raise
 
 
-# ── ScraperAPI ────────────────────────────────────────────────────
-def _scraper_key():
-    return os.getenv("SCRAPER_API_KEY","")
-
-def _fetch_via_scraper(url, timeout=45):
-    key=_scraper_key()
-    if not key: return None
-    try:
-        resp=requests.get(
-            "http://api.scraperapi.com",
-            params={"api_key":key,"url":url,"country_code":"cn","render":"false"},
-            timeout=timeout,
-        )
-        if resp.status_code==200:
-            return resp.text
-        logger.warning("ScraperAPI status %d", resp.status_code)
-        return None
-    except Exception as e:
-        logger.warning("ScraperAPI error: %s", e)
-        return None
+# ScraperAPI removed — using Playwright directly
 
 
 def _parse_baidu_html(html, full_q, platform_label, mode, seen_links, max_r, page_num):
@@ -238,113 +218,106 @@ def _parse_baidu_html(html, full_q, platform_label, mode, seen_links, max_r, pag
 
 
 async def _baidu_search(page, full_q, max_r, timeout, delay, seen_links, platform_label, mode, page_num=1):
-    """Search Baidu via ScraperAPI (REST) with Playwright fallback."""
+    """Search Baidu directly via Playwright with anti-detection."""
     results = []
-    pn      = (page_num-1)*10
-    url     = f"https://www.baidu.com/s?wd={quote_plus(full_q)}&pn={pn}&rn=20"
+    pn  = (page_num - 1) * 10
+    url = f"https://www.baidu.com/s?wd={quote_plus(full_q)}&pn={pn}&rn=20"
 
-    key = _scraper_key()
-    if key:
-        logger.info("ScraperAPI fetching: %s", full_q[:60])
-        html = await asyncio.get_event_loop().run_in_executor(
-            None, lambda: _fetch_via_scraper(url)
-        )
-        if html and len(html) > 2000:
-            results = _parse_baidu_html(html, full_q, platform_label, mode, set(seen_links), max_r, page_num)
-            logger.info("ScraperAPI parsed %d results for: %s", len(results), full_q[:40])
-            if results:
-                return results
-            # Save HTML sample to data dir for debugging
-            try:
-                debug_path = Path("/app/data/debug_baidu.html")
-                debug_path.parent.mkdir(exist_ok=True)
-                debug_path.write_text(html[:50000])
-                logger.info("Saved debug HTML to %s", debug_path)
-            except: pass
-        else:
-            logger.warning("ScraperAPI returned short/empty HTML: %d chars", len(html) if html else 0)
-
-    # Playwright fallback
-    logger.info("Playwright fallback for: %s", full_q[:60])
-    pw_results = []
     try:
         await page.goto(url, wait_until="domcontentloaded", timeout=timeout)
-        try: await page.wait_for_selector("#content_left", timeout=15000)
-        except: pass
-        await asyncio.sleep(1.0)
+        # Wait for results or timeout
+        try:
+            await page.wait_for_selector(
+                "#content_left, .result, [class*='result']",
+                timeout=15000
+            )
+        except:
+            pass
+        await asyncio.sleep(1.5)
 
+        # Check what we got
         content_left = await page.locator("#content_left").count()
-        logger.info("Playwright: content_left present=%s", content_left > 0)
+        logger.info("Baidu: content_left=%s url=%s", content_left > 0, page.url[:60])
 
-        # Try multiple selectors
+        # Try multiple block selectors
+        blocks = None
+        total  = 0
         for selector in [
             "#content_left > div.result",
             "#content_left > div.c-container",
             "#content_left > div",
-            ".result",
-            "[class*='result']",
+            ".result[class*='c-container']",
+            "[tpl]",
         ]:
-            blocks = page.locator(selector)
-            total  = await blocks.count()
-            if total > 0:
-                logger.info("Playwright: found %d blocks with selector: %s", total, selector)
+            b = page.locator(selector)
+            t = await b.count()
+            if t > 0:
+                blocks = b
+                total  = t
+                logger.info("Baidu: %d blocks with '%s'", t, selector)
                 break
 
-        logger.info("Playwright: found %d result blocks", total)
+        if not blocks or total == 0:
+            logger.warning("Baidu: no result blocks found")
+            return results
 
         for i in range(total):
-            if len(pw_results) >= max_r: break
+            if len(results) >= max_r: break
             block = blocks.nth(i)
 
             # Try multiple title selectors
             title = ""
             href  = ""
-            for title_sel in ["h3 a", "h3.t a", ".c-title a", "a.c-title", "a"]:
+            for title_sel in ["h3 a", ".c-title a", "h3", "a.c-title"]:
                 tn = block.locator(title_sel).first
                 if await tn.count() > 0:
-                    t = (await tn.inner_text()).strip()
-                    h = (await tn.get_attribute("href") or "").strip()
-                    if t and len(t) > 3:
-                        title = t
-                        href  = h
-                        break
+                    try:
+                        t = (await tn.inner_text()).strip()
+                        h = (await tn.get_attribute("href") or "").strip()
+                        if t and len(t) > 3:
+                            title = t
+                            href  = h
+                            break
+                    except: continue
 
             if not title: continue
             if href in seen_links or _is_blocked(href): continue
 
             # Snippet
             snippet = ""
-            for snip_sel in [".c-abstract", ".content-right_8Zs40", ".c-span-last", "p", ".c-color-text"]:
+            for snip_sel in [".c-abstract", ".c-color-text", "p", ".content-right_8Zs40"]:
                 sn = block.locator(snip_sel).first
                 if await sn.count() > 0:
-                    snippet = (await sn.inner_text()).strip()
-                    if snippet: break
+                    try:
+                        snippet = (await sn.inner_text()).strip()
+                        if snippet: break
+                    except: continue
 
-            # Also get all text from the block
+            # Full block text for WeChat scanning
             try:
                 block_text = await block.inner_text()
             except:
                 block_text = ""
 
             combined = " ".join(filter(None, [title, snippet, block_text, href]))
-            c       = _contacts(combined)
-            sc      = _score(title, snippet + block_text, href, mode)
-            best_wq = max((w["quality"] for w in c["wechat_ids"]),default=0)
-            pw_results.append({
-                "title":title,"link":href or url,"snippet":snippet,
-                "wechat_ids":c["wechat_ids"],"emails":c["emails"],"phones":c["phones"],
-                "factory_score":sc,"wechat_quality":best_wq,
-                "has_contact":bool(c["wechat_ids"] or c["emails"] or c["phones"]),
-                "has_verified_wechat":best_wq>=3,"is_factory_like":sc>=3,
-                "platform":platform_label,"baidu_query":full_q,"mode":mode,
-                "deep_scanned":False,"page_num":page_num,"variation":0,
+            c        = _contacts(combined)
+            sc       = _score(title, snippet + block_text, href, mode)
+            best_wq  = max((w["quality"] for w in c["wechat_ids"]), default=0)
+
+            results.append({
+                "title": title, "link": href or url, "snippet": snippet,
+                "wechat_ids": c["wechat_ids"], "emails": c["emails"], "phones": c["phones"],
+                "factory_score": sc, "wechat_quality": best_wq,
+                "has_contact": bool(c["wechat_ids"] or c["emails"] or c["phones"]),
+                "has_verified_wechat": best_wq >= 3, "is_factory_like": sc >= 3,
+                "platform": platform_label, "baidu_query": full_q, "mode": mode,
+                "deep_scanned": False, "page_num": page_num, "variation": 0,
             })
 
-        logger.info("Playwright: parsed %d results", len(pw_results))
-        results.extend(pw_results)
+        logger.info("Baidu: parsed %d results", len(results))
 
     except Exception as e:
-        logger.warning("Playwright search error: %s", e)
+        logger.warning("Baidu search error: %s", e)
 
     return results
 
@@ -449,8 +422,22 @@ async def scan_single(url):
     ua="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
     async with async_playwright() as p:
         browser=await _launch(p,headless)
-        ctx=await browser.new_context(user_agent=ua)
+        ctx=await browser.new_context(
+            user_agent=ua,
+            locale="zh-CN",
+            timezone_id="Asia/Shanghai",
+            viewport={"width":1366,"height":768},
+            extra_http_headers={
+                "Accept-Language":"zh-CN,zh;q=0.9,en;q=0.8",
+                "Accept":"text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+            }
+        )
         page=await ctx.new_page()
+        # Set cookies to look like returning user
+        await ctx.add_cookies([{
+            "name":"BAIDUID","value":"ABCDEF1234567890ABCDEF1234567890:FG=1",
+            "domain":".baidu.com","path":"/"
+        }])
         try: result=await _deep_scan_page(page,url)
         finally: await ctx.close(); await browser.close()
     return result
@@ -473,8 +460,22 @@ async def search_platform(
 
     async with async_playwright() as p:
         browser=await _launch(p,headless)
-        ctx=await browser.new_context(user_agent=ua)
+        ctx=await browser.new_context(
+            user_agent=ua,
+            locale="zh-CN",
+            timezone_id="Asia/Shanghai",
+            viewport={"width":1366,"height":768},
+            extra_http_headers={
+                "Accept-Language":"zh-CN,zh;q=0.9,en;q=0.8",
+                "Accept":"text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+            }
+        )
         page=await ctx.new_page()
+        # Set cookies to look like returning user
+        await ctx.add_cookies([{
+            "name":"BAIDUID","value":"ABCDEF1234567890ABCDEF1234567890:FG=1",
+            "domain":".baidu.com","path":"/"
+        }])
 
         try:
             if platform=="all":
