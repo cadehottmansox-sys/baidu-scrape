@@ -447,49 +447,24 @@ async def search_platform(
         page=await ctx.new_page()
 
         try:
-            await page.goto("https://www.baidu.com", wait_until="domcontentloaded", timeout=timeout)
-            await asyncio.sleep(delay)
-
             # ── All-in-one mode ──────────────────────────────────
-            # Single browser session, two smart queries that cover all platforms
             if platform == "all":
                 seen_all = set(seen_links)
                 base = f"{brand.strip()} {query.strip()}".strip() if brand.strip() else query.strip()
 
-                # Query 1: factory/supplier focused across all platforms
+                # Two focused Baidu queries covering all platforms + rep terms
                 q1 = f"{base} {ALL_IN_ONE_INJECT}"
+                q2 = f"{base} {ALL_IN_ONE_INJECT_2}"
+
                 r1 = await _baidu_search(page, q1, max_r, timeout, delay, seen_all, "All-in-One", mode)
                 for r in r1: seen_all.add(r["link"])
                 results.extend(r1)
+                logger.info("All-in-one q1: %d results", len(r1))
 
-                # Query 2: contact/WeChat focused — surfaces pages that explicitly post WeChats
-                q2 = f"{base} {ALL_IN_ONE_INJECT_2}"
-                r2 = await _baidu_search(page, q2, max_r // 2, timeout, delay, seen_all, "All-in-One", mode)
+                r2 = await _baidu_search(page, q2, max_r, timeout, delay, seen_all, "All-in-One", mode)
                 for r in r2: seen_all.add(r["link"])
                 results.extend(r2)
-
-                logger.info("All-in-one: %d total results", len(results))
-
-                # Also try Yupoo directly
-                try:
-                    yupoo_r = await _scrape_yupoo(page, query, brand, timeout)
-                    results.extend(yupoo_r)
-                except Exception as e:
-                    logger.warning("Yupoo error: %s", e)
-
-                # ImportYeti → factory names → Baidu search
-                if brand:
-                    try:
-                        factories = await _scrape_importyeti(page, brand, timeout)
-                        for factory_name in factories[:3]:
-                            fq = f"{factory_name} 微信 联系方式 工厂"
-                            fr = await _baidu_search(page, fq, 3, timeout, delay, seen_all, "ImportYeti", mode)
-                            for r in fr:
-                                r["snippet"] = f"[ImportYeti factory: {factory_name}] " + r["snippet"]
-                                seen_all.add(r["link"])
-                            results.extend(fr)
-                    except Exception as e:
-                        logger.warning("ImportYeti pipeline error: %s", e)
+                logger.info("All-in-one q2: %d results", len(r2))
 
             # ── Yupoo direct mode ────────────────────────────────
             elif platform == "yupoo":
