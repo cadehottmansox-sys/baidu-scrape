@@ -105,8 +105,15 @@ initChips("passingChips","passingPlatform");
 // ── Query hints ───────────────────────────────────────────────────
 function updateHint(brand,query,platformEl,hintEl,injectMap){
   if(!hintEl) return;
-  const q=query?.value.trim(),b=brand?.value.trim()||"",inj=injectMap[platformEl?.value]||"";
-  hintEl.innerHTML=q?`<b>Baidu query:</b> ${[b,q,inj].filter(Boolean).join(" ")}`:"";
+  const q=query?.value.trim(),b=brand?.value.trim()||"";
+  const plat=platformEl?.value||"baidu";
+  const inj=injectMap[plat]||"";
+  if(!q){hintEl.innerHTML="";return}
+  if(plat==="all"){
+    hintEl.innerHTML=`<b>All-in-One:</b> Searching Yupoo, 1688, RedNote, Weidian, Bilibili + more for "${[b,q].filter(Boolean).join(" ")}"`;
+    return;
+  }
+  hintEl.innerHTML=`<b>Baidu query:</b> ${[b,q,inj].filter(Boolean).join(" ")}`;
 }
 const bI=document.getElementById("brandInput"),qI=document.getElementById("queryInput"),sP=document.getElementById("supplierPlatform"),sH=document.getElementById("supplierHint");
 const ffQ=document.getElementById("ffQuery"),ffO=document.getElementById("ffOrigin"),ffP=document.getElementById("ffPlatform"),ffH=document.getElementById("ffHint");

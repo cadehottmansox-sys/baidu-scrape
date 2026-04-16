@@ -363,10 +363,11 @@ async def _baidu_search(page, full_q, max_r, timeout, delay, seen_links, platfor
     pn=(page_num-1)*10
     url=f"https://www.baidu.com/s?wd={quote_plus(full_q)}&pn={pn}"
     try:
+        # Go directly to search URL — more reliable than going home first each time
         await page.goto(url, wait_until="domcontentloaded", timeout=timeout)
-        try: await page.wait_for_selector("#content_left", timeout=timeout)
+        try: await page.wait_for_selector("#content_left", timeout=min(timeout, 15000))
         except: pass
-        await asyncio.sleep(delay)
+        await asyncio.sleep(max(0.6, delay * 0.5))  # shorter delay in all-in-one
 
         blocks=page.locator("#content_left > div.result, #content_left > div.c-container")
         total=await blocks.count()
@@ -424,14 +425,19 @@ async def search_platform(
             # ── All-in-one mode ──────────────────────────────────
             if platform == "all":
                 seen_all = set(seen_links)
-                per_platform = max(3, max_r // len(ALL_IN_ONE_PLATFORMS))
+                per_platform = max(4, max_r // len(ALL_IN_ONE_PLATFORMS))
 
                 for plat_key, inject in ALL_IN_ONE_PLATFORMS:
-                    full_q = _build_query(query, brand, plat_key, mode, inject_override=f"{inject}")
-                    cfg    = (lookup if plat_key in lookup else PLATFORM_KEYWORDS).get(plat_key, {"label":plat_key})
-                    new_r  = await _baidu_search(page, full_q, per_platform, timeout, delay, seen_all, cfg.get("label",plat_key), mode)
-                    for r in new_r: seen_all.add(r["link"])
-                    results.extend(new_r)
+                    try:
+                        full_q = _build_query(query, brand, plat_key, mode, inject_override=inject)
+                        plat_label = PLATFORM_KEYWORDS.get(plat_key, {}).get("label", plat_key)
+                        new_r = await _baidu_search(page, full_q, per_platform, timeout, delay, seen_all, plat_label, mode)
+                        for r in new_r: seen_all.add(r["link"])
+                        results.extend(new_r)
+                        logger.info("All-in-one %s: %d results", plat_key, len(new_r))
+                    except Exception as e:
+                        logger.warning("All-in-one %s failed: %s", plat_key, e)
+                        continue
 
                 # Also try Yupoo directly
                 try:
