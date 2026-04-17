@@ -4,377 +4,287 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
   <title>SourceFinder — Access</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Space+Mono:wght@400;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-    :root{--bg:#030d1a;--blue:#7dd3fc;--blue-dim:#1a6fa4;--border:rgba(125,211,252,.14);--text:#e8f4ff;--text2:#7aa5be;--text3:#2e5870;--green:#4ade80;--amber:#fbbf24;--purple:#a78bfa}
-    html,body{min-height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);overflow:hidden;height:100vh}
+    :root{
+      --bg:#080b12;--card:rgba(12,17,28,.95);--b:rgba(255,255,255,.07);--b2:rgba(255,255,255,.12);
+      --c:#00f5ff;--c2:#7c3aed;--g:#00ff88;--r:#ff4466;--a:#ffaa00;
+      --text:#f1f5f9;--text2:#8892a4;--text3:#2d3748;
+      --font:'Inter',sans-serif;--display:'Rajdhani',sans-serif;--mono:'Space Mono',monospace;
+    }
+    html,body{min-height:100%;font-family:var(--font);background:var(--bg);color:var(--text);overflow:hidden;height:100vh}
     canvas{position:fixed;inset:0;z-index:0;pointer-events:none}
-    .aurora{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
-    .aurora::before,.aurora::after{content:"";position:absolute;border-radius:50%;filter:blur(90px);opacity:.08;animation:drift 20s ease-in-out infinite}
-    .aurora::before{width:700px;height:400px;background:radial-gradient(ellipse,#0ea5e9,#6366f1,transparent);top:-120px;left:-120px}
-    .aurora::after{width:600px;height:350px;background:radial-gradient(ellipse,#06b6d4,#8b5cf6,transparent);bottom:-100px;right:-100px;animation-delay:-10s}
-    @keyframes drift{0%,100%{transform:translate(0,0)}33%{transform:translate(60px,35px)}66%{transform:translate(-35px,18px)}}
 
-    .b{filter:blur(4px);user-select:none;display:inline-block}
+    body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+      background:radial-gradient(ellipse 60% 50% at 10% 0%,rgba(0,245,255,.06) 0%,transparent 55%),
+                 radial-gradient(ellipse 50% 40% at 90% 100%,rgba(124,58,237,.06) 0%,transparent 55%);
+    }
 
-    .page{position:fixed;inset:0;z-index:1;display:grid;grid-template-columns:1fr 380px 1fr;align-items:center;padding:24px;gap:24px}
+    .page{position:fixed;inset:0;z-index:1;display:grid;grid-template-columns:1fr 400px 1fr;align-items:center;padding:24px;gap:24px}
 
-    /* WHY PANEL */
-    .why-panel{display:flex;flex-direction:column;gap:14px}
-    .why-title{font-size:11px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--text3);margin-bottom:2px}
-    .why-headline{font-size:21px;font-weight:800;line-height:1.25;color:var(--text);margin-bottom:6px}
-    .why-headline span{background:linear-gradient(130deg,#7dd3fc,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
-    .why-sub{font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:4px}
-    .why-divider{height:1px;background:linear-gradient(to right,transparent,rgba(125,211,252,.15),transparent);margin:4px 0}
-    .why-point{display:flex;align-items:flex-start;gap:10px}
-    .why-icon{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:15px}
-    .why-point-title{font-size:13px;font-weight:700;color:var(--text);margin-bottom:2px}
-    .why-point-desc{font-size:12px;color:var(--text3);line-height:1.5}
-    .why-lock-row{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--text3);padding:10px 14px;background:rgba(125,211,252,.04);border:1px solid rgba(125,211,252,.1);border-radius:10px}
-    .lock-dot{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);flex-shrink:0}
+    /* ── LEFT PANEL ── */
+    .why{display:flex;flex-direction:column;gap:16px}
+    .why-badge{font-family:var(--mono);font-size:8px;letter-spacing:2px;color:var(--c);background:rgba(0,245,255,.06);border:1px solid rgba(0,245,255,.15);border-radius:4px;padding:4px 12px;display:inline-block;margin-bottom:4px;text-transform:uppercase}
+    .why-title{font-family:var(--display);font-size:32px;font-weight:700;line-height:1.1;letter-spacing:-.5px;color:var(--text)}
+    .why-title span{color:var(--c);text-shadow:0 0 30px rgba(0,245,255,.3)}
+    .why-sub{font-size:13px;color:var(--text2);line-height:1.7}
+    .why-divider{height:1px;background:linear-gradient(90deg,rgba(0,245,255,.15),transparent);margin:4px 0}
+    .why-point{display:flex;align-items:flex-start;gap:11px}
+    .why-icon{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;border:1px solid var(--b)}
+    .why-point-title{font-size:12px;font-weight:700;color:var(--text);margin-bottom:2px;letter-spacing:.2px}
+    .why-point-desc{font-size:11px;color:var(--text3);line-height:1.5}
+    .b{filter:blur(5px);user-select:none}
+    .why-status{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:9px;color:var(--g);letter-spacing:1px;padding:8px 12px;background:rgba(0,255,136,.04);border:1px solid rgba(0,255,136,.12);border-radius:6px}
+    .why-status-dot{width:6px;height:6px;border-radius:50%;background:var(--g);box-shadow:0 0 8px var(--g);animation:pulse 2s ease-in-out infinite;flex-shrink:0}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 
-    /* CENTER CARD */
-    .card{background:rgba(6,18,38,.97);border:1px solid var(--border);border-radius:20px;padding:30px;backdrop-filter:blur(20px)}
-    .logo-row{display:flex;align-items:center;gap:8px;margin-bottom:5px}
-    .logo{font-size:23px;font-weight:800;letter-spacing:-1px;background:linear-gradient(130deg,#e8f4ff,#7dd3fc,#38bdf8);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
-    .sub{font-size:12px;color:var(--text2);margin-bottom:14px;line-height:1.5}
-    .stats-row{display:flex;gap:7px;margin-bottom:14px}
-    .stat-pill{flex:1;text-align:center;background:rgba(125,211,252,.06);border:1px solid rgba(125,211,252,.1);border-radius:8px;padding:7px 4px}
-    .stat-num{font-size:14px;font-weight:800;color:var(--blue)}
-    .stat-lbl{font-size:9px;color:var(--text3);margin-top:1px}
-    .tabs{display:flex;gap:4px;margin-bottom:14px;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:10px;padding:4px}
-    .tab{flex:1;height:32px;border:none;border-radius:7px;background:transparent;color:var(--text3);font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;transition:all .18s}
-    .tab.active{background:var(--blue-dim);color:var(--text)}
+    /* ── CENTER CARD ── */
+    .card{background:var(--card);border:1px solid var(--b2);border-radius:16px;padding:28px;position:relative;overflow:hidden}
+    .card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--c),var(--c2))}
+
+    .logo{font-family:var(--display);font-size:28px;font-weight:700;letter-spacing:-.5px;margin-bottom:4px}
+    .logo-main{color:var(--text)}.logo-acc{color:var(--c);text-shadow:0 0 20px rgba(0,245,255,.3)}
+    .card-sub{font-size:12px;color:var(--text2);margin-bottom:16px;font-family:var(--mono);letter-spacing:.3px}
+
+    .stats-row{display:flex;gap:6px;margin-bottom:16px}
+    .stat{flex:1;text-align:center;background:rgba(0,0,0,.3);border:1px solid var(--b);border-radius:8px;padding:8px 4px;position:relative;overflow:hidden}
+    .stat::before{content:'';position:absolute;top:0;left:0;right:0;height:1px}
+    .stat:nth-child(1)::before{background:var(--c)}.stat:nth-child(2)::before{background:var(--g)}.stat:nth-child(3)::before{background:var(--a)}
+    .stat-n{font-family:var(--display);font-size:20px;font-weight:700;line-height:1}
+    .stat:nth-child(1) .stat-n{color:var(--c)}.stat:nth-child(2) .stat-n{color:var(--g)}.stat:nth-child(3) .stat-n{color:var(--a)}
+    .stat-l{font-family:var(--mono);font-size:7px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-top:2px}
+
+    .tabs{display:flex;gap:0;margin-bottom:16px;border:1px solid var(--b);border-radius:8px;overflow:hidden}
+    .tab{flex:1;height:34px;border:none;border-right:1px solid var(--b);background:transparent;color:var(--text3);font-size:11px;font-weight:700;font-family:var(--font);cursor:pointer;transition:all .15s;letter-spacing:.3px}
+    .tab:last-child{border-right:none}
+    .tab.active{background:rgba(0,245,255,.08);color:var(--c)}
     .panel{display:none}.panel.active{display:block}
-    label{display:block;font-size:10px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:var(--text3);margin-bottom:4px}
-    input{width:100%;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:9px;color:var(--text);font-size:13px;font-family:inherit;outline:none;padding:0 12px;height:40px;margin-bottom:10px;transition:border-color .2s}
-    textarea{width:100%;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:9px;color:var(--text);font-size:13px;font-family:inherit;outline:none;padding:8px 12px;height:58px;margin-bottom:10px;resize:none;transition:border-color .2s}
-    input:focus,textarea:focus{border-color:rgba(125,211,252,.45)}
+
+    label{display:block;font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--text3);margin-bottom:5px}
+    input,textarea,select{width:100%;height:40px;padding:0 12px;background:rgba(0,0,0,.4);border:1px solid var(--b);border-radius:8px;color:var(--text);font-size:13px;font-family:var(--font);outline:none;margin-bottom:10px;transition:border-color .15s}
+    input:focus,select:focus{border-color:rgba(0,245,255,.4)}
+    textarea{height:72px;padding:10px 12px;resize:none}
     input::placeholder,textarea::placeholder{color:var(--text3)}
-    input.err{border-color:rgba(248,113,113,.5)!important}
-    .contact-row{display:flex;gap:6px;margin-bottom:10px}
-    .contact-row input{margin-bottom:0;flex:1}
-    .contact-or{display:flex;align-items:center;color:var(--text3);font-size:10px;font-weight:600;flex-shrink:0;padding-top:11px}
-    .btn{width:100%;height:42px;background:var(--blue-dim);border:1px solid rgba(125,211,252,.22);border-radius:9px;color:var(--text);font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;transition:background .18s,transform .1s;margin-top:2px}
-    .btn:hover{background:#2596d4}.btn:active{transform:scale(.98)}
-    .btn:disabled{background:rgba(26,111,164,.22);color:var(--text3);cursor:not-allowed}
-    .msg{margin-top:10px;font-size:12px;text-align:center;min-height:16px}
-    .msg.success{color:var(--green)}.msg.error{color:#f87171}
+    input.err{border-color:rgba(255,68,102,.5)!important}
 
-    /* FEED */
-    .feed-panel{height:100%;max-height:580px;position:relative;overflow:hidden}
-    .feed-panel::before{content:"";position:absolute;top:0;left:0;right:0;height:90px;background:linear-gradient(to bottom,var(--bg) 20%,transparent);z-index:2;pointer-events:none}
-    .feed-panel::after{content:"";position:absolute;bottom:0;left:0;right:0;height:90px;background:linear-gradient(to top,var(--bg) 20%,transparent);z-index:2;pointer-events:none}
-    .feed-live{position:absolute;top:10px;left:0;right:0;z-index:3;display:flex;align-items:center;gap:6px;padding:0 4px}
-    .feed-dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);animation:pulse 2s ease-in-out infinite;flex-shrink:0}
-    @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.8)}}
-    .feed-live-label{font-size:10px;font-weight:700;color:var(--green);letter-spacing:.8px;text-transform:uppercase}
-    .feed-count{font-size:10px;color:var(--text3);margin-left:auto}
-    .feed-scroller{position:absolute;top:0;left:0;right:0;display:flex;flex-direction:column;gap:10px;padding:36px 4px 20px;will-change:transform}
+    .btn{width:100%;height:42px;border:none;border-radius:8px;background:var(--c);color:#000;font-size:13px;font-weight:800;font-family:var(--font);cursor:pointer;transition:all .18s;letter-spacing:.3px;margin-top:4px}
+    .btn:hover{box-shadow:0 0 20px rgba(0,245,255,.4);transform:translateY(-1px)}
+    .btn:disabled{opacity:.4;cursor:not-allowed;transform:none;box-shadow:none}
 
-    .fpost{background:rgba(7,20,40,.9);border:1px solid rgba(255,255,255,.07);border-radius:13px;padding:12px;flex-shrink:0}
-    .fp-header{display:flex;align-items:center;gap:8px;margin-bottom:8px}
-    .fp-avatar{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0}
-    .fp-name{font-size:12px;font-weight:700;color:#e7e9ea;line-height:1.2}
-    .fp-handle{font-size:10px;color:#536471}
-    .fp-verified{color:#1d9bf0;font-size:10px}
-    .fp-time{font-size:10px;color:#536471;margin-left:auto;white-space:nowrap}
-    .fp-text{font-size:12px;color:#c4cfd8;line-height:1.55;margin-bottom:7px}
-    .fp-tag{display:inline-block;font-size:9px;font-weight:700;border-radius:20px;padding:2px 9px;margin-bottom:7px;filter:blur(4px);user-select:none}
-    .fp-stats{display:flex;gap:14px;color:#536471;font-size:10px}
-    .fp-stat{display:flex;align-items:center;gap:3px}
+    .msg{font-size:11px;text-align:center;margin-top:8px;min-height:15px;font-family:var(--mono);letter-spacing:.3px}
+    .msg.err{color:var(--r)}.msg.ok{color:var(--g)}
+    .forgot{font-size:10px;color:var(--text3);text-align:center;margin-top:8px;font-family:var(--mono);cursor:pointer;transition:color .15s}
+    .forgot:hover{color:var(--c)}
+    .req-note{font-size:10px;color:var(--text3);font-family:var(--mono);line-height:1.5;margin-top:8px;padding:8px 10px;background:rgba(0,0,0,.2);border-radius:6px;border:1px solid var(--b)}
 
-    @media(max-width:1050px){.why-panel{display:none}}
-    @media(max-width:750px){.feed-panel{display:none}.page{grid-template-columns:1fr}}
-    @media(max-width:500px){.page{padding:14px}}
+    /* ── RIGHT FEED ── */
+    .feed{display:flex;flex-direction:column;gap:0;overflow:hidden;height:calc(100vh - 48px);mask-image:linear-gradient(to bottom,transparent 0%,black 8%,black 92%,transparent 100%)}
+    .feed-inner{display:flex;flex-direction:column;gap:8px;animation:scrollFeed 40s linear infinite}
+    @keyframes scrollFeed{0%{transform:translateY(0)}100%{transform:translateY(-50%)}}
+    .feed-item{background:rgba(12,17,28,.8);border:1px solid var(--b);border-radius:10px;padding:11px 13px;flex-shrink:0}
+    .feed-item-top{display:flex;align-items:center;gap:7px;margin-bottom:5px}
+    .feed-avatar{width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;font-family:var(--mono);flex-shrink:0}
+    .feed-name{font-size:11px;font-weight:700;color:var(--text)}
+    .feed-time{font-size:9px;color:var(--text3);font-family:var(--mono);margin-left:auto;letter-spacing:.3px}
+    .feed-text{font-size:11px;color:var(--text2);line-height:1.5;margin-bottom:5px}
+    .feed-tags{display:flex;gap:4px;flex-wrap:wrap}
+    .feed-tag{font-size:8px;font-weight:700;font-family:var(--mono);letter-spacing:.8px;border-radius:4px;padding:2px 6px;text-transform:uppercase}
+    .ft-c{color:var(--c);background:rgba(0,245,255,.07);border:1px solid rgba(0,245,255,.15)}
+    .ft-g{color:var(--g);background:rgba(0,255,136,.07);border:1px solid rgba(0,255,136,.15)}
+    .ft-a{color:var(--a);background:rgba(255,170,0,.07);border:1px solid rgba(255,170,0,.15)}
+    .ft-p{color:#f0abfc;background:rgba(240,171,252,.07);border:1px solid rgba(240,171,252,.15)}
+    .feed-wc{font-family:var(--mono);font-size:10px;color:var(--g);background:rgba(0,255,136,.06);border:1px solid rgba(0,255,136,.12);border-radius:5px;padding:3px 8px;display:inline-block;margin-top:4px}
+
+    @media(max-width:900px){
+      .page{grid-template-columns:1fr;grid-template-rows:auto;overflow-y:auto;overflow-x:hidden;position:relative;padding:20px}
+      .why,.feed{display:none}
+      html,body{overflow:auto;height:auto}
+    }
   </style>
 </head>
 <body>
-  <canvas id="bg-canvas"></canvas>
-  <div class="aurora"></div>
+<canvas id="c"></canvas>
 
-  <div class="page">
-
-    <!-- LEFT -->
-    <div class="why-panel">
-      <div>
-        <div class="why-title">Why SourceFinder</div>
-        <div class="why-headline">The sourcing tool <span>serious buyers</span> actually use</div>
-        <div class="why-sub">Most sourcing happens in private groups and closed forums. SourceFinder surfaces those contacts automatically — things that used to take days of digging now take minutes.</div>
-      </div>
-      <div class="why-divider"></div>
-      <div class="why-point">
-        <div class="why-icon" style="background:rgba(125,211,252,.1);border:1px solid rgba(125,211,252,.18)">🔍</div>
-        <div>
-          <div class="why-point-title">Finds what others can't</div>
-          <div class="why-point-desc"><span class="b">Proprietary scanning tech</span> extracts supplier contacts hidden inside product images — the ones factories don't want indexed publicly</div>
-        </div>
-      </div>
-      <div class="why-point">
-        <div class="why-icon" style="background:rgba(167,139,250,.1);border:1px solid rgba(167,139,250,.18)">🛡️</div>
-        <div>
-          <div class="why-point-title">Access is restricted for a reason</div>
-          <div class="why-point-desc">Supplier contacts are finite. Letting this go public would flood factories and burn every lead. Only verified buyers get in — no exceptions.</div>
-        </div>
-      </div>
-      <div class="why-point">
-        <div class="why-icon" style="background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.18)">⚡</div>
-        <div>
-          <div class="why-point-title">Hours of work in seconds</div>
-          <div class="why-point-desc">What used to take days of searching <span class="b">private Chinese platforms</span> is now a single search. Every page and image scanned automatically.</div>
-        </div>
-      </div>
-      <div class="why-point">
-        <div class="why-icon" style="background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.18)">🎯</div>
-        <div>
-          <div class="why-point-title">Built for real sourcing</div>
-          <div class="why-point-desc"><span class="b">Every search mode</span> is designed around actual use cases — not generic scraping. Members know what these modes are. You will too, once approved.</div>
-        </div>
-      </div>
-      <div class="why-divider"></div>
-      <div class="why-lock-row">
-        <div class="lock-dot"></div>
-        Access requires approval. Share your Discord or WeChat — we verify you're a real buyer before letting you in.
-      </div>
-    </div>
-
-    <!-- CENTER -->
+<div class="page">
+  <!-- LEFT: WHY -->
+  <div class="why">
     <div>
-      <div class="card">
-        <div class="logo-row"><span style="font-size:18px">🔒</span><div class="logo">SourceFinder</div></div>
-        <p class="sub">Private Chinese supplier sourcing tool. Request access or login below.</p>
-        <div class="stats-row">
-          <div class="stat-pill"><div class="stat-num">2.4k+</div><div class="stat-lbl">Suppliers found</div></div>
-          <div class="stat-pill"><div class="stat-num">840+</div><div class="stat-lbl">Contacts pulled</div></div>
-          <div class="stat-pill"><div class="stat-num">98%</div><div class="stat-lbl">Success rate</div></div>
-        </div>
-        <div class="tabs">
-          <button class="tab active" onclick="switchTab('login')">Login</button>
-          <button class="tab" onclick="switchTab('request')">Request Access</button>
-        </div>
-        <div class="panel active" id="panel-login">
-          <label>Email</label>
-          <input type="email" id="loginEmail" placeholder="you@example.com"/>
-          <label>Password</label>
-          <input type="password" id="loginPass" placeholder="Your password"/>
-          <button class="btn" id="loginBtn" onclick="doLogin()">Login</button>
-          <p class="msg" id="loginMsg"></p>
-        </div>
-        <div class="panel" id="panel-request">
-          <label>Full name</label>
-          <input type="text" id="reqName" placeholder="John Smith"/>
-          <label>Email</label>
-          <input type="email" id="reqEmail" placeholder="you@example.com"/>
-          <label>Discord or WeChat <span style="color:#f87171;font-size:10px;font-weight:400;text-transform:none;letter-spacing:0">(required — how we reach you)</span></label>
-          <div class="contact-row">
-            <input type="text" id="reqDiscord" placeholder="Discord username"/>
-            <span class="contact-or">or</span>
-            <input type="text" id="reqWechat" placeholder="WeChat ID"/>
-          </div>
-          <label>What are you sourcing? <span style="color:var(--text3);font-weight:400;text-transform:none;letter-spacing:0;font-size:10px">(optional)</span></label>
-          <textarea id="reqUseCase" placeholder="Sneakers, clothing, electronics, bags..."></textarea>
-          <button class="btn" id="reqBtn" onclick="doRequest()">Request Access</button>
-          <p class="msg" id="reqMsg"></p>
-        </div>
+      <div class="why-badge">🔒 Members Only</div>
+      <h2 class="why-title">Find real<br><span>factory WeChats</span><br>in seconds</h2>
+    </div>
+    <p class="why-sub">Stop spending hours messaging middlemen on <span class="b">1688 and Taobao</span>. SourceFinder uses <span class="b">Baidu AI Search</span> to surface direct factory contacts with verified WeChat IDs — the same suppliers <span class="b">top reps</span> use.</p>
+    <div class="why-divider"></div>
+    <div class="why-point">
+      <div class="why-icon" style="background:rgba(0,245,255,.06);border-color:rgba(0,245,255,.15)">⚡</div>
+      <div>
+        <div class="why-point-title">Baidu AI Search API</div>
+        <div class="why-point-desc">Direct access to <span class="b">Baidu's index of Chinese platforms</span> — 1688, Yupoo, Weidian, Xiaohongshu, all at once</div>
       </div>
     </div>
-
-    <!-- RIGHT: Feed -->
-    <div class="feed-panel" id="feedPanel">
-      <div class="feed-live">
-        <div class="feed-dot"></div>
-        <span class="feed-live-label">Live activity</span>
-        <span class="feed-count" id="feedCount">247 searches today</span>
+    <div class="why-point">
+      <div class="why-icon" style="background:rgba(0,255,136,.06);border-color:rgba(0,255,136,.15)">🔎</div>
+      <div>
+        <div class="why-point-title">Deep Scan + OCR + QR</div>
+        <div class="why-point-desc">Visits every page, reads images, decodes QR codes — extracts WeChats that <span class="b">manual search would miss</span></div>
       </div>
-      <div class="feed-scroller" id="feedScroller"></div>
     </div>
-
+    <div class="why-point">
+      <div class="why-icon" style="background:rgba(255,170,0,.06);border-color:rgba(255,170,0,.15)">✓</div>
+      <div>
+        <div class="why-point-title">WeChat Verification</div>
+        <div class="why-point-desc">Cross-references each WeChat ID against <span class="b">multiple sources</span> to score confidence — no more dead contacts</div>
+      </div>
+    </div>
+    <div class="why-status">
+      <span class="why-status-dot"></span>
+      SYSTEM ONLINE · ALL SERVICES OPERATIONAL
+    </div>
   </div>
 
-  <script>
-  // Particles
-  (function(){
-    const c=document.getElementById("bg-canvas"),ctx=c.getContext("2d");
-    let W,H,dots=[],mouse={x:-999,y:-999};
-    const resize=()=>{W=c.width=window.innerWidth;H=c.height=window.innerHeight};
-    const mk=()=>({x:Math.random()*W,y:Math.random()*H,r:Math.random()*1.5+.3,vx:(Math.random()-.5)*.18,vy:(Math.random()-.5)*.18,a:Math.random()*.35+.07});
-    const init=()=>{resize();dots=Array.from({length:110},mk)};
-    const frame=()=>{
-      ctx.clearRect(0,0,W,H);
-      for(const d of dots){
-        const dx=d.x-mouse.x,dy=d.y-mouse.y,dist=Math.sqrt(dx*dx+dy*dy);
-        if(dist<100){d.vx+=(dx/dist)*.3;d.vy+=(dy/dist)*.3}
-        d.vx*=.98;d.vy*=.98;d.x+=d.vx;d.y+=d.vy;
-        if(d.x<-4)d.x=W+4;else if(d.x>W+4)d.x=-4;
-        if(d.y<-4)d.y=H+4;else if(d.y>H+4)d.y=-4;
-        ctx.beginPath();ctx.arc(d.x,d.y,d.r,0,Math.PI*2);
-        ctx.fillStyle=`rgba(180,220,255,${d.a})`;ctx.fill();
-      }
-      requestAnimationFrame(frame);
-    };
-    window.addEventListener("mousemove",e=>{mouse.x=e.clientX;mouse.y=e.clientY});
-    init();frame();window.addEventListener("resize",resize);
-  })();
+  <!-- CENTER: LOGIN CARD -->
+  <div class="card">
+    <div class="logo"><span class="logo-main">SOURCE</span><span class="logo-acc">FINDER</span></div>
+    <div class="card-sub">PRIVATE SOURCING PLATFORM</div>
 
-  // Feed posts — platform names blurred, features redacted
-  const POSTS=[
-    {name:"Marcus K.",handle:"marcusk_resell",initials:"MK",color:"#1d9bf0",bg:"rgba(29,155,240,.2)",verified:true,
-     text:'Found a factory making what I needed with <b>special auth chips</b> in 10 min. Used to spend days digging. Actual cheat code 🔥',
-     tag:"[redacted]",tagColor:"#a78bfa",tagBg:"rgba(167,139,250,.1)",likes:"847",reposts:"234",replies:"91"},
-    {name:"Tyler L.",handle:"tyler_drip",initials:"TL",color:"#a78bfa",bg:"rgba(167,139,250,.2)",verified:false,
-     text:'The <b>image scanner</b> pulled a supplier contact straight from a product banner. I thought it was broken then it just worked 👀',
-     tag:"[redacted]",tagColor:"#2dd4bf",tagBg:"rgba(45,212,191,.1)",likes:"1.2k",reposts:"389",replies:"145"},
-    {name:"Alex J.",handle:"alexj_imports",initials:"AJ",color:"#4ade80",bg:"rgba(74,222,128,.2)",verified:true,
-     text:'Found a forwarder for my route for way less than my last agent was charging. Already shipped 3 orders through them 🙌',
-     tag:"[redacted]",tagColor:"#4ade80",tagBg:"rgba(74,222,128,.1)",likes:"2.1k",reposts:"567",replies:"203"},
-    {name:"Ryan W.",handle:"ryanw_fits",initials:"RW",color:"#fbbf24",bg:"rgba(251,191,36,.2)",verified:false,
-     text:'Used the <b>smart refresh feature</b> on one of the Chinese platform modes. 30+ different suppliers in a few clicks. Found my main plug',
-     tag:"[redacted]",tagColor:"#fbbf24",tagBg:"rgba(251,191,36,.1)",likes:"934",reposts:"278",replies:"88"},
-    {name:"Sophie K.",handle:"sophiek_source",initials:"SK",color:"#2dd4bf",bg:"rgba(45,212,191,.2)",verified:true,
-     text:'<b>The QR feature</b> decoded a supplier contact from a product image on the first try. Was fully skeptical until it worked lmao',
-     tag:"[redacted]",tagColor:"#7dd3fc",tagBg:"rgba(125,211,252,.1)",likes:"1.8k",reposts:"445",replies:"167"},
-    {name:"Dev M.",handle:"devm_wholesale",initials:"DM",color:"#f87171",bg:"rgba(248,113,113,.2)",verified:false,
-     text:'Searched using the <b>social platform mode</b> for luxury bags. Got 8 verified supplier contacts in one search. No debate this is the plug',
-     tag:"[redacted]",tagColor:"#f87171",tagBg:"rgba(248,113,113,.1)",likes:"3.4k",reposts:"891",replies:"312"},
-    {name:"Jamie T.",handle:"jamiet_resell",initials:"JT",color:"#38bdf8",bg:"rgba(56,189,248,.2)",verified:true,
-     text:'The <b>confidence scoring system</b> is actually accurate. Every top-rated contact I hit up has been a legit factory. 10/10',
-     tag:"[redacted]",tagColor:"#38bdf8",tagBg:"rgba(56,189,248,.1)",likes:"654",reposts:"189",replies:"72"},
-    {name:"Chris V.",handle:"chrisv_source",initials:"CV",color:"#c084fc",bg:"rgba(192,132,252,.2)",verified:false,
-     text:'The <b>resale/surplus platform mode</b> is a goldmine for factory overstock. Found samples for basically nothing. Crazy finds',
-     tag:"[redacted]",tagColor:"#c084fc",tagBg:"rgba(192,132,252,.1)",likes:"1.1k",reposts:"334",replies:"128"},
-    {name:"Mia R.",handle:"mia_sourcing",initials:"MR",color:"#fb923c",bg:"rgba(251,146,60,.2)",verified:true,
-     text:'<b>Deep scan mode</b> on one of the B2B pages found 3 supplier contacts the normal search completely missed. Worth every second',
-     tag:"[redacted]",tagColor:"#fb923c",tagBg:"rgba(251,146,60,.1)",likes:"743",reposts:"201",replies:"64"},
-    {name:"Kai B.",handle:"kaib_resell",initials:"KB",color:"#34d399",bg:"rgba(52,211,153,.2)",verified:false,
-     text:'The <b>copy all contacts</b> button is so slept on. Grabbed like 12 suppliers from one search and messaged them all in 5 minutes',
-     tag:"[redacted]",tagColor:"#34d399",tagBg:"rgba(52,211,153,.1)",likes:"512",reposts:"143",replies:"47"},
-    {name:"Priya S.",handle:"priyas_import",initials:"PS",color:"#e879f9",bg:"rgba(232,121,249,.2)",verified:true,
-     text:'Used the <b>factory direct search mode</b> and got wholesale pricing. Saving like 40% vs what I was paying to middlemen before',
-     tag:"[redacted]",tagColor:"#e879f9",tagBg:"rgba(232,121,249,.1)",likes:"1.5k",reposts:"412",replies:"189"},
-    {name:"Sam K.",handle:"samk_plugs",initials:"SK",color:"#60a5fa",bg:"rgba(96,165,250,.2)",verified:false,
-     text:'Found a <b>passing supplier</b> with all the right specs through the specialized mode. Contacts are legit and actually respond fast',
-     tag:"[redacted]",tagColor:"#60a5fa",tagBg:"rgba(96,165,250,.1)",likes:"2.8k",reposts:"734",replies:"267"},
-  ];
+    <div class="stats-row">
+      <div class="stat"><div class="stat-n">2.4k+</div><div class="stat-l">Suppliers</div></div>
+      <div class="stat"><div class="stat-n">840+</div><div class="stat-l">WeChats</div></div>
+      <div class="stat"><div class="stat-n">98%</div><div class="stat-l">Success</div></div>
+    </div>
 
-  const TIMES=["just now","1m ago","2m ago","3m ago","5m ago","7m ago","10m ago","14m ago","18m ago","23m ago","31m ago","42m ago","1h ago"];
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('login',this)">Login</button>
+      <button class="tab" onclick="switchTab('request',this)">Request Access</button>
+    </div>
 
-  function buildPost(p,idx){
-    const div=document.createElement("div");
-    div.className="fpost";
-    div.innerHTML=`
-      <div class="fp-header">
-        <div class="fp-avatar" style="background:${p.bg};color:${p.color}">${p.initials}</div>
-        <div>
-          <div class="fp-name">${p.name}${p.verified?' <span class="fp-verified">✓</span>':''}</div>
-          <div class="fp-handle">@${p.handle}</div>
-        </div>
-        <div class="fp-time">${TIMES[idx%TIMES.length]}</div>
+    <!-- LOGIN -->
+    <div class="panel active" id="panel-login">
+      <label for="email">Email</label>
+      <input type="email" id="email" placeholder="your@email.com"/>
+      <label for="password">Password</label>
+      <input type="password" id="password" placeholder="••••••••"/>
+      <button class="btn" id="loginBtn" onclick="doLogin()">Login</button>
+      <div class="msg" id="loginMsg"></div>
+      <div class="forgot" onclick="switchTab('request',document.querySelectorAll('.tab')[1])">No password yet? Request access →</div>
+    </div>
+
+    <!-- REQUEST -->
+    <div class="panel" id="panel-request">
+      <label for="rname">Name</label>
+      <input type="text" id="rname" placeholder="Your name"/>
+      <label for="remail">Email</label>
+      <input type="email" id="remail" placeholder="your@email.com"/>
+      <label for="rdiscord">Discord or WeChat</label>
+      <input type="text" id="rdiscord" placeholder="Discord: user#1234 or WeChat ID"/>
+      <label for="rwhy">Why do you want access?</label>
+      <textarea id="rwhy" placeholder="What are you sourcing? How did you find SourceFinder?"></textarea>
+      <button class="btn" id="requestBtn" onclick="doRequest()" style="background:var(--c2);color:#fff">Request Access</button>
+      <div class="msg" id="requestMsg"></div>
+      <div class="req-note">Requests reviewed within 24hrs. Admin will DM you your password via Discord or WeChat.</div>
+    </div>
+  </div>
+
+  <!-- RIGHT: LIVE FEED -->
+  <div class="feed">
+    <div class="feed-inner" id="feedInner"></div>
+  </div>
+</div>
+
+<script>
+// Canvas particles
+const cv=document.getElementById('c'),ctx=cv.getContext('2d');
+let W,H,pts=[];
+function rsz(){W=cv.width=innerWidth;H=cv.height=innerHeight}
+window.addEventListener('resize',rsz);rsz();
+class P{constructor(){this.x=Math.random()*W;this.y=Math.random()*H;this.vx=(Math.random()-.5)*.25;this.vy=(Math.random()-.5)*.25;this.r=Math.random()*1.2+.3;this.a=Math.random()*.3+.05;this.life=Math.random()*400+200;this.age=0;this.c=['rgba(0,245,255,','rgba(124,58,237,','rgba(0,255,136,'][Math.floor(Math.random()*3)]}
+update(){this.x+=this.vx;this.y+=this.vy;this.age++;if(this.x<0)this.x=W;if(this.x>W)this.x=0;if(this.y<0)this.y=H;if(this.y>H)this.y=0}
+draw(){const f=this.age<30?this.age/30:this.age>this.life-30?(this.life-this.age)/30:1;ctx.beginPath();ctx.arc(this.x,this.y,this.r,0,Math.PI*2);ctx.fillStyle=this.c+(this.a*f)+')';ctx.fill()}
+dead(){return this.age>=this.life}}
+for(let i=0;i<60;i++)pts.push(new P());
+function frame(){ctx.clearRect(0,0,W,H);
+  for(let i=0;i<pts.length;i++)for(let j=i+1;j<pts.length;j++){const dx=pts[i].x-pts[j].x,dy=pts[i].y-pts[j].y,d=Math.sqrt(dx*dx+dy*dy);if(d<100){ctx.beginPath();ctx.moveTo(pts[i].x,pts[i].y);ctx.lineTo(pts[j].x,pts[j].y);ctx.strokeStyle='rgba(0,245,255,'+(0.05*(1-d/100))+')';ctx.lineWidth=.4;ctx.stroke()}}
+  pts=pts.filter(p=>{p.update();p.draw();return!p.dead()});
+  while(pts.length<60)pts.push(new P());
+  requestAnimationFrame(frame)}
+frame();
+
+// Tabs
+function switchTab(name,btn){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('panel-'+name).classList.add('active');
+}
+
+// Login
+async function doLogin(){
+  const email=document.getElementById('email').value.trim();
+  const password=document.getElementById('password').value;
+  const msg=document.getElementById('loginMsg');
+  const btn=document.getElementById('loginBtn');
+  if(!email||!password){msg.className='msg err';msg.textContent='Fill in all fields.';return}
+  btn.disabled=true;btn.textContent='Logging in...';msg.className='msg';msg.textContent='';
+  try{
+    const r=await fetch('/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password})});
+    const d=await r.json();
+    if(d.ok){msg.className='msg ok';msg.textContent='✓ Welcome back!';setTimeout(()=>window.location.href='/',800)}
+    else{msg.className='msg err';msg.textContent=d.error||'Login failed.';btn.disabled=false;btn.textContent='Login'}
+  }catch{msg.className='msg err';msg.textContent='Network error.';btn.disabled=false;btn.textContent='Login'}
+}
+
+// Request
+async function doRequest(){
+  const name=document.getElementById('rname').value.trim();
+  const email=document.getElementById('remail').value.trim();
+  const discord=document.getElementById('rdiscord').value.trim();
+  const why=document.getElementById('rwhy').value.trim();
+  const msg=document.getElementById('requestMsg');
+  const btn=document.getElementById('requestBtn');
+  if(!name||!email||!discord){msg.className='msg err';msg.textContent='Name, email and Discord/WeChat required.';return}
+  btn.disabled=true;btn.textContent='Sending...';msg.className='msg';msg.textContent='';
+  try{
+    const r=await fetch('/request-access',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,email,discord,why})});
+    const d=await r.json();
+    if(d.ok){msg.className='msg ok';msg.textContent='✓ Request sent! We\'ll DM you within 24hrs.';btn.textContent='Sent!'}
+    else{msg.className='msg err';msg.textContent=d.error||'Error.';btn.disabled=false;btn.textContent='Request Access'}
+  }catch{msg.className='msg err';msg.textContent='Network error.';btn.disabled=false;btn.textContent='Request Access'}
+}
+
+// Enter key
+document.addEventListener('keydown',e=>{if(e.key==='Enter'){const panel=document.querySelector('.panel.active');if(panel.id==='panel-login')doLogin();else doRequest()}});
+
+// Live feed
+const POSTS=[
+  {name:'RAGGY',color:'#00f5ff',bg:'rgba(0,245,255,.08)',text:'Just found a fire 1:1 tech fleece factory, WeChat responded in 10 mins 🔥',wc:'ptx351',tags:['1688','VERIFIED','NFC'],tc:['ft-c','ft-g','ft-a'],time:'2m ago'},
+  {name:'MONK',color:'#00ff88',bg:'rgba(0,255,136,.08)',text:'Sourced 50 pairs Jordan 4s from Putian, passed all checks. Factory has full size run',wc:'nkt858',tags:['PUTIAN','PASSING','J4'],tc:['ft-g','ft-p','ft-c'],time:'8m ago'},
+  {name:'FLEX',color:'#f0abfc',bg:'rgba(240,171,252,.08)',text:'ImportYeti pulled 3 verified factory names for my brand. All have WeChat 📱',wc:'nbs156',tags:['IMPORTYETI','VERIFIED'],tc:['ft-a','ft-g'],time:'15m ago'},
+  {name:'ACE',color:'#ffaa00',bg:'rgba(255,170,0,.08)',text:'Deep scan hit a QR code on page 3, decoded WeChat instantly. Wild tool fr',wc:'xcn224',tags:['QR DECODE','DEEP SCAN'],tc:['ft-c','ft-p'],time:'23m ago'},
+  {name:'DASH',color:'#00f5ff',bg:'rgba(0,245,255,.08)',text:'Yupoo album with 40+ products, WeChat in the bio. New connect 💪',wc:'hek968',tags:['YUPOO','DIRECT'],tc:['ft-c','ft-g'],time:'31m ago'},
+  {name:'GRIM',color:'#7c3aed',bg:'rgba(124,58,237,.08)',text:'NFC chips scan perfectly on all 12 pairs. Factory contact was super responsive',wc:'BBQ200517',tags:['NFC','1:1','VERIFIED'],tc:['ft-p','ft-g','ft-a'],time:'44m ago'},
+  {name:'ZEN',color:'#00ff88',bg:'rgba(0,255,136,.08)',text:'Freight forwarder found through tool, $3.2/kg to USA, way cheaper than before',tags:['FREIGHT','USA ROUTE'],tc:['ft-g','ft-c'],time:'52m ago'},
+  {name:'RYZE',color:'#f0abfc',bg:'rgba(240,171,252,.08)',text:'Factory replied with price list same day. Smaller MOQ than expected 🙌',wc:'ptw160',tags:['LOW MOQ','FACTORY DIRECT'],tc:['ft-c','ft-p'],time:'1h ago'},
+  {name:'KASH',color:'#ffaa00',bg:'rgba(255,170,0,.08)',text:'OCR pulled WeChat from a blurry image. Stuff I\'d never find manually',wc:'xtb881',tags:['OCR','IMAGE SCAN'],tc:['ft-a','ft-c'],time:'1h ago'},
+  {name:'NOVA',color:'#00f5ff',bg:'rgba(0,245,255,.08)',text:'Three verified factories for same product. Comparing quotes now',tags:['COMPARISON','SOURCING'],tc:['ft-g','ft-c'],time:'2h ago'},
+];
+
+function buildFeed(){
+  const inner=document.getElementById('feedInner');
+  const doubled=[...POSTS,...POSTS];
+  inner.innerHTML=doubled.map(p=>`
+    <div class="feed-item">
+      <div class="feed-item-top">
+        <div class="feed-avatar" style="background:${p.bg};border-color:${p.color}22;color:${p.color}">${p.name[0]}</div>
+        <span class="feed-name">${p.name}</span>
+        <span class="feed-time">${p.time}</span>
       </div>
-      <div class="fp-text">${p.text}</div>
-      <div class="fp-tag" style="color:${p.tagColor};background:${p.tagBg};border:1px solid ${p.tagColor}33">${p.tag}</div>
-      <div class="fp-stats">
-        <span class="fp-stat">💬 ${p.replies}</span>
-        <span class="fp-stat">🔁 ${p.reposts}</span>
-        <span class="fp-stat">❤️ ${p.likes}</span>
-      </div>`;
-    return div;
-  }
-
-  // Infinite smooth scroll
-  const scroller=document.getElementById("feedScroller");
-  const panel=document.getElementById("feedPanel");
-  let postIdx=0;
-  let scrollY=0;
-
-  function addPost(){
-    const p=POSTS[postIdx%POSTS.length];
-    const el=buildPost(p,postIdx);
-    scroller.appendChild(el);
-    postIdx++;
-  }
-
-  // Seed initial posts
-  for(let i=0;i<10;i++) addPost();
-
-  function animate(){
-    scrollY+=0.5;
-    const realH=scroller.scrollHeight;
-    const panelH=panel.offsetHeight||580;
-
-    if(scrollY>realH-panelH*1.5){
-      for(let i=0;i<3;i++) addPost();
-      // Clean up old nodes
-      while(scroller.children.length>35){
-        const removed=scroller.firstChild;
-        const h=removed.offsetHeight+10;
-        scroller.removeChild(removed);
-        scrollY-=h;
-      }
-    }
-
-    scroller.style.transform=`translateY(-${scrollY}px)`;
-    requestAnimationFrame(animate);
-  }
-
-  setTimeout(()=>requestAnimationFrame(animate),150);
-
-  // Tick up search count
-  let searchCount=247;
-  setInterval(()=>{
-    searchCount+=Math.floor(Math.random()*3)+1;
-    const el=document.getElementById("feedCount");
-    if(el) el.textContent=`${searchCount} searches today`;
-  },9000);
-
-  function switchTab(tab){
-    document.querySelectorAll(".tab").forEach((t,i)=>t.classList.toggle("active",(i===0&&tab==="login")||(i===1&&tab==="request")));
-    document.getElementById("panel-login").classList.toggle("active",tab==="login");
-    document.getElementById("panel-request").classList.toggle("active",tab==="request");
-  }
-
-  async function doLogin(){
-    const btn=document.getElementById("loginBtn"),msg=document.getElementById("loginMsg");
-    const email=document.getElementById("loginEmail").value.trim();
-    const password=document.getElementById("loginPass").value.trim();
-    if(!email||!password){msg.className="msg error";msg.textContent="Enter email and password.";return}
-    btn.disabled=true;btn.textContent="Logging in...";msg.className="msg";msg.textContent="";
-    try{
-      const r=await fetch("/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email,password})});
-      const data=await r.json();
-      if(r.ok){msg.className="msg success";msg.textContent="Welcome! Loading...";setTimeout(()=>location.reload(),700)}
-      else{msg.className="msg error";msg.textContent=data.error||"Invalid credentials.";btn.disabled=false;btn.textContent="Login"}
-    }catch{msg.className="msg error";msg.textContent="Network error.";btn.disabled=false;btn.textContent="Login"}
-  }
-
-  async function doRequest(){
-    const btn=document.getElementById("reqBtn"),msg=document.getElementById("reqMsg");
-    const name=document.getElementById("reqName").value.trim();
-    const email=document.getElementById("reqEmail").value.trim();
-    const discord=document.getElementById("reqDiscord").value.trim();
-    const wechat=document.getElementById("reqWechat").value.trim();
-    const usecase=document.getElementById("reqUseCase").value.trim();
-    if(!name){msg.className="msg error";msg.textContent="Please enter your name.";return}
-    if(!email){msg.className="msg error";msg.textContent="Please enter your email.";return}
-    if(!discord&&!wechat){
-      document.getElementById("reqDiscord").classList.add("err");
-      document.getElementById("reqWechat").classList.add("err");
-      msg.className="msg error";msg.textContent="Enter Discord or WeChat — we need this to reach you.";return
-    }
-    document.getElementById("reqDiscord").classList.remove("err");
-    document.getElementById("reqWechat").classList.remove("err");
-    btn.disabled=true;btn.textContent="Sending...";msg.className="msg";msg.textContent="";
-    try{
-      const r=await fetch("/request-access",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name,email,discord,wechat,reason:usecase})});
-      const data=await r.json();
-      if(data.status==="submitted"){msg.className="msg success";msg.textContent="Request sent! We'll message you on Discord or WeChat.";btn.textContent="Sent ✓"}
-      else if(data.status==="already_requested"){msg.className="msg";msg.textContent="Already requested — sit tight!";btn.disabled=false;btn.textContent="Request Access"}
-      else if(data.status==="already_approved"){msg.className="msg success";msg.textContent="You're approved! Use the Login tab.";btn.textContent="Already approved ✓"}
-      else{msg.className="msg error";msg.textContent=data.error||"Error.";btn.disabled=false;btn.textContent="Request Access"}
-    }catch{msg.className="msg error";msg.textContent="Network error.";btn.disabled=false;btn.textContent="Request Access"}
-  }
-
-  document.addEventListener("keydown",e=>{if(e.key==="Enter"&&document.getElementById("panel-login").classList.contains("active"))doLogin()});
-  </script>
+      <div class="feed-text">${p.text}</div>
+      <div class="feed-tags">${p.tags.map((t,i)=>`<span class="feed-tag ${p.tc[i]||'ft-c'}">${t}</span>`).join('')}</div>
+      ${p.wc?`<div class="feed-wc">wx: ${p.wc}</div>`:''}
+    </div>
+  `).join('');
+}
+buildFeed();
+</script>
 </body>
 </html>
