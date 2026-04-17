@@ -50,17 +50,30 @@ FF_TERMS       = ["freight","forwarder","logistics","shipping","customs","货代
 PASSING_TERMS  = ["passing","nfc","芯片","过货","验货","防伪","莆田","1:1","高仿","复刻"]
 
 REP_INJECT   = "复刻 高仿 1:1 莆田 代工 原单 余单 工厂货 rep replica fashionreps"
-ALL_Q1_INJECT = f"工厂 厂家 微信 联系方式 yupoo 1688 小红书 微店 weidian 源头 ODM OEM 供应商 {REP_INJECT}"
-ALL_Q2_INJECT = f"passing NFC 莆田 代工厂 一手货源 微信号 加v 联系 {REP_INJECT}"
+# Q1: rep/factory supplier pages with WeChat contacts
+ALL_Q1_INJECT = f"莆田 一手货源 工厂 微信号 联系方式 {REP_INJECT} 批发 代理"
+# Q2: platform-specific searches 
+ALL_Q2_INJECT = f"yupoo 1688 微店 weidian 厂家直销 微信 源头工厂 {REP_INJECT}"
 
 BLOCKED_DOMAINS = {
-    "nike.com","jordan.com","adidas.com","yeezy.com","newbalance.com",
-    "puma.com","reebok.com","vans.com","converse.com","gucci.com",
-    "louisvuitton.com","lv.com","chanel.com","prada.com","balenciaga.com",
-    "supreme.com","amazon.com","amazon.cn","ebay.com","tmall.com","jd.com",
+    # Official brand sites
+    "nike.com","nike.com.cn","jordan.com","adidas.com","yeezy.com",
+    "newbalance.com","puma.com","reebok.com","vans.com","converse.com",
+    "gucci.com","louisvuitton.com","lv.com","chanel.com","prada.com",
+    "balenciaga.com","supreme.com","off-white.com","bape.com",
+    "underarmour.com","asics.com","salomon.com","dior.com","fendi.com",
+    # Retail/marketplace
+    "amazon.com","amazon.cn","ebay.com","tmall.com","jd.com",
     "stockx.com","goat.com","kickscrew.com","flightclub.com",
+    "klarna.com","paypal.com","shopify.com","etsy.com",
+    # Social/search
     "wikipedia.org","baidu.com","google.com","youtube.com",
     "instagram.com","facebook.com","twitter.com","x.com","tiktok.com",
+    "weibo.com","weibo.cn","zhihu.com","douyin.com",
+    # Maps/directories (not suppliers)
+    "mapbar.com","amap.com","dianping.com","yelp.com",
+    "163.com","sohu.com","sina.com","qq.com",
+    # Gov/edu
     "gov.cn","gov.com","edu.cn","edu.com",
 }
 
