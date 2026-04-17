@@ -35,11 +35,19 @@ except ImportError:
 WECHAT_VALID   = re.compile(r"^[a-zA-Z][a-zA-Z0-9_-]{5,19}$")
 WECHAT_GARBAGE = re.compile(r"(1234|aaaa|test|demo|fake|xxxx|0000|abcd)", re.I)
 WECHAT_PATTERNS = [
+    # Standard WeChat patterns
     re.compile(r"(?:wechat|weixin|微信|wx号|vx|加v|加微|v信|微信号|扫码加|联系微信|wx)[\s:：#\-「」【】]*([a-zA-Z0-9_-]{5,20})", re.I),
     re.compile(r"加[Vv][\s:：「」【】]*([a-zA-Z0-9_-]{5,20})"),
     re.compile(r"微信[：:号码id ID]*[\s]*([a-zA-Z0-9_-]{5,20})"),
     re.compile(r"(?:wx|VX|WX)[\s:：#]*([a-zA-Z0-9_-]{5,20})"),
     re.compile(r"联系方式[\s:：]*([a-zA-Z0-9_-]{5,20})"),
+    # Rep seller specific patterns
+    re.compile(r"(?:v信|威信|围脖|巍新)[\s:：]*([a-zA-Z0-9_-]{5,20})", re.I),
+    re.compile(r"(?:加我|扫我|联系我|找我|私信)[\s:：]*([a-zA-Z0-9_-]{5,20})", re.I),
+    re.compile(r"微信[：:\s]*([a-zA-Z][a-zA-Z0-9_-]{5,19})"),
+    re.compile(r"([a-zA-Z][a-zA-Z0-9_-]{5,19})\s*(?:微信|vx|wx)", re.I),
+    # Common rep seller WeChat format: letters+numbers like ptx351, nkt858
+    re.compile(r"(?:微信号|wx号|vx号)[：:\s]*([a-z]{2,4}\d{3,6})", re.I),
 ]
 EMAIL_RE = re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b")
 PHONE_RE = re.compile(r"(?:\+?86[-\s]?)?(1[3-9]\d{9}|\d{3,4}[-\s]?\d{7,8})")
@@ -62,20 +70,39 @@ BLOCKED_DOMAINS = {
     "gucci.com","louisvuitton.com","lv.com","chanel.com","prada.com",
     "balenciaga.com","supreme.com","off-white.com","bape.com",
     "underarmour.com","asics.com","salomon.com","dior.com","fendi.com",
-    # Retail/marketplace
-    "amazon.com","amazon.cn","ebay.com","tmall.com","jd.com",
+    "apple.com","apple.com.cn","samsung.com","sony.com","huawei.com",
+    # Western retail
+    "amazon.com","amazon.cn","ebay.com","target.com","walmart.com",
+    "bestbuy.com","costco.com","etsy.com","shopify.com",
     "stockx.com","goat.com","kickscrew.com","flightclub.com",
-    "klarna.com","paypal.com","shopify.com","etsy.com",
-    # Social/search
+    "klarna.com","paypal.com","aliexpress.com",
+    # Chinese retail (official)
+    "tmall.com","jd.com","pinduoduo.com","taobao.com",
+    # Social/search/news
     "wikipedia.org","baidu.com","google.com","youtube.com",
     "instagram.com","facebook.com","twitter.com","x.com","tiktok.com",
     "weibo.com","weibo.cn","zhihu.com","douyin.com",
-    # Maps/directories (not suppliers)
-    "mapbar.com","amap.com","dianping.com","yelp.com",
-    "163.com","sohu.com","sina.com","qq.com",
+    "163.com","sohu.com","sina.com.cn","qq.com","ifeng.com",
+    # Maps/directories
+    "mapbar.com","amap.com","dianping.com","yelp.com","maps.google.com",
     # Gov/edu
     "gov.cn","gov.com","edu.cn","edu.com",
 }
+
+# Domains that are likely real supplier pages - get score boost
+SUPPLIER_DOMAINS = {
+    "1688.com","taobao.com","weidian.com","yupoo.com",
+    "pinduoduo.com","xianyu.taobao.com","2.taobao.com",
+    "53shop.com","ptxcj.com","goodseller.cn",
+}
+
+def _is_supplier_domain(url):
+    if not url: return False
+    try:
+        from urllib.parse import urlparse
+        host = urlparse(url).netloc.lower().lstrip("www.")
+        return any(host == d or host.endswith("."+d) for d in SUPPLIER_DOMAINS)
+    except: return False
 
 def _is_blocked(url):
     if not url: return False
