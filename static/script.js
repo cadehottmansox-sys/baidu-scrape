@@ -1,3 +1,13 @@
+// Inject popup animations
+const _popStyle = document.createElement('style');
+_popStyle.textContent = `
+  @keyframes popIn{from{opacity:0;transform:scale(.85) translateY(10px)}to{opacity:1;transform:scale(1) translateY(0)}}
+  @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+  .tab-locked{cursor:not-allowed!important;opacity:.6}
+  .tab-locked:hover{background:rgba(255,68,102,.04)!important;color:#ff4466!important}
+`;
+document.head.appendChild(_popStyle);
+
 // ── Session stats ─────────────────────────────────────────────────
 const sessionStats = {suppliers:0, wechats:0, deep:0, searches:0};
 function updateStats(results){
@@ -1100,17 +1110,82 @@ async function initUser(){
     const d = await r.json();
     if(!d.valid) return;
     currentUser = d;
-    // Show admin tab if admin
-    if(d.is_admin){
-      const adminBtn = document.getElementById('adminTabBtn');
-      if(adminBtn) adminBtn.style.display = '';
+
+    // Show/lock admin tab
+    const adminBtn = document.getElementById('adminTabBtn');
+    if(adminBtn){
+      adminBtn.style.display = '';
+      if(!d.is_admin){
+        // Lock it for non-admins
+        adminBtn.classList.add('tab-locked');
+        adminBtn.innerHTML = adminBtn.innerHTML.replace(/Admin/,'🔒 Admin');
+        adminBtn.addEventListener('click', e=>{
+          e.stopPropagation();
+          e.preventDefault();
+          shakeScreen();
+          showNoAccessPopup();
+        }, true);
+      }
     }
-    // Show user name somewhere
+
+    // Show user name
     const heroSub = document.querySelector('.hero-sub');
     if(heroSub && d.name) heroSub.textContent = `Welcome back, ${d.name} · Chinese suppliers · Factory WeChats · Passing goods`;
   } catch(e){ console.log('Could not load user info') }
 }
 initUser();
+
+function shakeScreen(){
+  document.body.style.transition = 'transform .08s ease';
+  let i = 0;
+  const shakes = [6,-6,5,-5,4,-4,2,-2,0];
+  const shake = () => {
+    if(i >= shakes.length){ document.body.style.transform=''; return; }
+    document.body.style.transform = `translateX(${shakes[i++]}px)`;
+    setTimeout(shake, 50);
+  };
+  shake();
+}
+
+function showNoAccessPopup(){
+  // Remove existing
+  document.getElementById('noAccessPopup')?.remove();
+  const popup = document.createElement('div');
+  popup.id = 'noAccessPopup';
+  popup.style.cssText = `
+    position:fixed;inset:0;z-index:500;
+    display:flex;align-items:center;justify-content:center;
+    background:rgba(0,0,0,.75);backdrop-filter:blur(12px);
+    animation:fadeIn .15s ease;
+  `;
+  popup.innerHTML = `
+    <div style="
+      background:rgba(10,14,22,.99);
+      border:1px solid rgba(255,68,102,.3);
+      border-radius:16px;padding:36px 40px;
+      text-align:center;max-width:340px;width:90%;
+      position:relative;
+      animation:popIn .2s cubic-bezier(.34,1.56,.64,1);
+    ">
+      <div style="font-size:48px;margin-bottom:12px">🔒</div>
+      <div style="font-family:'Rajdhani',sans-serif;font-size:22px;font-weight:700;color:#ff4466;margin-bottom:8px;letter-spacing:-.3px">Admin Only</div>
+      <div style="font-size:13px;color:#8892a4;line-height:1.6;margin-bottom:20px">
+        You don't have permission to access the admin panel.<br>
+        Contact the owner if you think this is a mistake.
+      </div>
+      <button onclick="document.getElementById('noAccessPopup').remove()" style="
+        background:#ff4466;color:#fff;border:none;border-radius:8px;
+        padding:10px 28px;font-size:13px;font-weight:700;
+        font-family:'Inter',sans-serif;cursor:pointer;
+        transition:all .15s;letter-spacing:.3px;
+      " onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">Got it</button>
+    </div>
+  `;
+  popup.addEventListener('click', e=>{ if(e.target===popup) popup.remove(); });
+  document.body.appendChild(popup);
+  // Auto-dismiss after 4s
+  setTimeout(()=>popup?.remove(), 4000);
+}
 
 // ── SET PASSWORD FLOW ─────────────────────────────────────────────
 // Called when login returns needs_password=true
