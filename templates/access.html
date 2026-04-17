@@ -179,9 +179,13 @@
       <input type="text" id="rdiscord" placeholder="Discord: user#1234 or WeChat ID"/>
       <label for="rwhy">Why do you want access?</label>
       <textarea id="rwhy" placeholder="What are you sourcing? How did you find SourceFinder?"></textarea>
-      <button class="btn" id="requestBtn" onclick="doRequest()" style="background:var(--c2);color:#fff">Request Access</button>
+      <label for="rpw">Set Your Password</label>
+      <input type="password" id="rpw" placeholder="Choose a password (6+ chars)"/>
+      <label for="rpw2">Confirm Password</label>
+      <input type="password" id="rpw2" placeholder="Confirm password"/>
+      <button class="btn" id="requestBtn" onclick="doRequest()" style="background:var(--c2);color:#fff">Submit Request</button>
       <div class="msg" id="requestMsg"></div>
-      <div class="req-note">Requests reviewed within 24hrs. Admin will DM you your password via Discord or WeChat.</div>
+      <div class="req-note">Your request will be reviewed. Once approved you can log in with this password — no waiting for us to send you one.</div>
     </div>
   </div>
 
