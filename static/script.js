@@ -44,80 +44,98 @@ function updateStats(results){
   if(sr) sr.textContent = fmt(sessionStats.searches);
 }
 
-// ── Animated background canvas ───────────────────────────────────
+// ── Background: Dot grid + drifting aurora blobs ─────────────────
 (function(){
   const canvas = document.getElementById('bg-canvas');
   if(!canvas) return;
   const ctx = canvas.getContext('2d');
-  let W, H, particles = [], mouse = {x:0, y:0};
-  const COLORS = ['rgba(56,189,248,', 'rgba(129,140,248,', 'rgba(244,114,182,', 'rgba(52,211,153,'];
+  let W, H, t = 0;
+  const mouse = {x: -9999, y: -9999};
 
-  function resize(){ W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
+  function resize(){
+    W = canvas.width = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+  }
   window.addEventListener('resize', resize);
   resize();
+  document.addEventListener('mousemove', e=>{ mouse.x=e.clientX; mouse.y=e.clientY; });
 
-  document.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
+  // Aurora blobs
+  const blobs = [
+    {x:.15, y:.1,  r:.45, c:'rgba(0,245,255,',   a:.055, sx:.00018, sy:.00012},
+    {x:.82, y:.85, r:.4,  c:'rgba(124,58,237,',  a:.06,  sx:-.00014, sy:.00016},
+    {x:.5,  y:.5,  r:.35, c:'rgba(0,255,136,',   a:.03,  sx:.0001,  sy:-.00012},
+    {x:.7,  y:.2,  r:.3,  c:'rgba(236,72,153,',  a:.03,  sx:-.0001, sy:.00008},
+  ];
 
-  class Particle {
-    constructor(){
-      this.x = Math.random() * W;
-      this.y = Math.random() * H;
-      this.vx = (Math.random() - 0.5) * 0.3;
-      this.vy = (Math.random() - 0.5) * 0.3;
-      this.r = Math.random() * 1.5 + 0.5;
-      this.color = COLORS[Math.floor(Math.random() * COLORS.length)];
-      this.alpha = Math.random() * 0.4 + 0.1;
-      this.life = Math.random() * 300 + 200;
-      this.age = 0;
-    }
-    update(){
-      this.x += this.vx; this.y += this.vy;
-      this.age++;
-      const dx = mouse.x - this.x, dy = mouse.y - this.y;
-      const dist = Math.sqrt(dx*dx+dy*dy);
-      if(dist < 150){ this.vx -= dx/dist*0.02; this.vy -= dy/dist*0.02; }
-      if(this.x<0)this.x=W; if(this.x>W)this.x=0;
-      if(this.y<0)this.y=H; if(this.y>H)this.y=0;
-    }
-    draw(){
-      const fade = this.age < 30 ? this.age/30 : this.age > this.life-30 ? (this.life-this.age)/30 : 1;
-      ctx.beginPath();
-      ctx.arc(this.x, this.y, this.r, 0, Math.PI*2);
-      ctx.fillStyle = this.color + (this.alpha * fade) + ')';
-      ctx.fill();
-    }
-    dead(){ return this.age >= this.life; }
-  }
+  // Dot grid settings
+  const SPACING = 32;
+  const DOT_R   = 1.2;
+  const DOT_COL = 'rgba(255,255,255,';
+  const GLOW_R  = 120; // mouse glow radius
 
-  // Init particles
-  for(let i=0;i<80;i++) particles.push(new Particle());
-
-  // Draw connecting lines between nearby particles
-  function drawLines(){
-    for(let i=0;i<particles.length;i++){
-      for(let j=i+1;j<particles.length;j++){
-        const dx=particles[i].x-particles[j].x, dy=particles[i].y-particles[j].y;
-        const dist=Math.sqrt(dx*dx+dy*dy);
-        if(dist<120){
-          ctx.beginPath();
-          ctx.moveTo(particles[i].x, particles[i].y);
-          ctx.lineTo(particles[j].x, particles[j].y);
-          ctx.strokeStyle = 'rgba(56,189,248,' + (0.06*(1-dist/120)) + ')';
-          ctx.lineWidth = 0.5;
-          ctx.stroke();
+  function drawDotGrid(){
+    const cols = Math.ceil(W / SPACING) + 1;
+    const rows = Math.ceil(H / SPACING) + 1;
+    for(let i=0; i<cols; i++){
+      for(let j=0; j<rows; j++){
+        const x = i * SPACING;
+        const y = j * SPACING;
+        // Mouse proximity glow
+        const dx = mouse.x - x, dy = mouse.y - y;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        let alpha = 0.09;
+        let r = DOT_R;
+        if(dist < GLOW_R){
+          const prox = 1 - dist/GLOW_R;
+          alpha = 0.09 + prox * 0.5;
+          r = DOT_R + prox * 2.5;
         }
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI*2);
+        ctx.fillStyle = DOT_COL + alpha + ')';
+        ctx.fill();
       }
     }
   }
 
-  function animate(){
-    ctx.clearRect(0,0,W,H);
-    drawLines();
-    particles = particles.filter(p=>{ p.update(); p.draw(); return !p.dead(); });
-    while(particles.length < 80) particles.push(new Particle());
-    requestAnimationFrame(animate);
+  function drawBlobs(){
+    blobs.forEach(b=>{
+      // Drift
+      b.x += b.sx; b.y += b.sy;
+      if(b.x < -.2) b.x = 1.2; if(b.x > 1.2) b.x = -.2;
+      if(b.y < -.2) b.y = 1.2; if(b.y > 1.2) b.y = -.2;
+      const grd = ctx.createRadialGradient(b.x*W, b.y*H, 0, b.x*W, b.y*H, b.r*Math.max(W,H));
+      grd.addColorStop(0,   b.c + b.a + ')');
+      grd.addColorStop(0.5, b.c + (b.a*.3) + ')');
+      grd.addColorStop(1,   b.c + '0)');
+      ctx.fillStyle = grd;
+      ctx.fillRect(0, 0, W, H);
+    });
   }
-  animate();
+
+  // Scan line every ~4s
+  let scanY = -H;
+  function drawScan(){
+    scanY += 1.2;
+    if(scanY > H) scanY = -H;
+    const grd = ctx.createLinearGradient(0, scanY-40, 0, scanY+40);
+    grd.addColorStop(0,   'rgba(0,245,255,0)');
+    grd.addColorStop(0.5, 'rgba(0,245,255,.04)');
+    grd.addColorStop(1,   'rgba(0,245,255,0)');
+    ctx.fillStyle = grd;
+    ctx.fillRect(0, scanY-40, W, 80);
+  }
+
+  function frame(){
+    ctx.clearRect(0, 0, W, H);
+    drawBlobs();
+    drawDotGrid();
+    drawScan();
+    t++;
+    requestAnimationFrame(frame);
+  }
+  frame();
 })();
 
 "use strict";
@@ -392,7 +410,7 @@ function buildCard(item,index){
     contactSection.innerHTML = `<div class="card-contact-label">CONTACTS</div>`;
     const chips = document.createElement("div");
     chips.className = "card-contacts";
-    wechats.forEach(w=>chips.appendChild(wcChip(w)));
+    wechats.slice(0,6).forEach(w=>chips.appendChild(wcChip(w)));
     (item.phones||[]).forEach(p=>{
       const e=document.createElement("div");e.className="contact-chip contact-phone";
       e.innerHTML=`📞 ${p}`;e.title="Click to copy";
