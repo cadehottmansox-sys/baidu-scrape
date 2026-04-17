@@ -110,7 +110,8 @@ function updateHint(brand,query,platformEl,hintEl,injectMap){
   const inj=injectMap[plat]||"";
   if(!q){hintEl.innerHTML="";return}
   if(plat==="all"){
-    hintEl.innerHTML=`<b>All-in-One:</b> Searching Yupoo, 1688, RedNote, Weidian, Bilibili + more for "${[b,q].filter(Boolean).join(" ")}"`;
+    const searchTerm = b && q && q.toLowerCase().includes(b.toLowerCase()) ? q : [b,q].filter(Boolean).join(" ");
+    hintEl.innerHTML=`<b>All-in-One:</b> Smart search across Yupoo, 1688, RedNote, Weidian + more for "<em>${searchTerm}</em>"`;
     return;
   }
   hintEl.innerHTML=`<b>Baidu query:</b> ${[b,q,inj].filter(Boolean).join(" ")}`;
@@ -156,6 +157,27 @@ function wcChip(w){
   d.title=`${isQR?"QR scan":isOCR?"Image OCR":w.quality>=3?"Looks legit":w.quality===2?"Possibly valid":"Unverified"} · ${Math.round(conf*100)}% confidence · Click to copy`;
   d.innerHTML=`${lbl} ${w.id}<div class="confidence-bar" style="width:${Math.round(conf*100)}%"></div>`;
   d.addEventListener("click",()=>copyText(w.id,w.id));
+
+  // Verify button
+  const vbtn = document.createElement("button");
+  vbtn.className="scan-btn";vbtn.style.marginLeft="4px";vbtn.style.fontSize="9px";vbtn.textContent="verify";
+  vbtn.addEventListener("click", async(e)=>{
+    e.stopPropagation();
+    vbtn.textContent="...";vbtn.disabled=true;
+    try{
+      const r=await fetch("/verify-wechat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({wechat:w.id})});
+      const data=await r.json();
+      const s=data.status;
+      const score=data.score||0;
+      const srcs=(data.sources||[]).length;
+      if(s==="verified"){vbtn.textContent=`✓ verified (${score})`;vbtn.style.color="#4ade80";vbtn.title=`Found on ${srcs} sources`}
+      else if(s==="likely"){vbtn.textContent=`~ likely (${score})`;vbtn.style.color="#7dd3fc";vbtn.title=`Found on ${srcs} source(s)`}
+      else if(s==="weak"){vbtn.textContent=`? weak (${score})`;vbtn.style.color="#fbbf24"}
+      else if(s==="not_found"){vbtn.textContent="✗ not found";vbtn.style.color="#f87171"}
+      else{vbtn.textContent="?";vbtn.disabled=false}
+    }catch{vbtn.textContent="err";vbtn.disabled=false}
+  });
+  d.appendChild(vbtn);
   return d;
 }
 
@@ -398,6 +420,7 @@ async function runSearch({query,brand,platform,mode,deep_scan,wechat_only,btnId,
   try{
     const data=await fetchSearch({query,brand,platform,mode,deep_scan,wechat_only,page_num:1,variation:0,seen_links:[]});
     res.innerHTML="";
+    clearInterval(progressInterval);
     const results=data.results||[];
     if(!results.length){res.innerHTML=`<div class="empty">No results. Try different keywords or platform.</div>`;setStatus(dotId,statusId,"No results.","idle");return}
     if(bar){bar.style.display="flex";bar.querySelectorAll(".filter-pill").forEach((p,i)=>p.classList.toggle("active",i===0))}
@@ -413,7 +436,7 @@ async function runSearch({query,brand,platform,mode,deep_scan,wechat_only,btnId,
     if(results[0]?.baidu_query&&hintId) document.getElementById(hintId).innerHTML=`<b>Baidu query used:</b> ${results[0].baidu_query}`;
     res.appendChild(buildRefreshBar(tabKey,results.length));
     s.lastParams={query,brand,platform,mode,deep_scan,wechat_only,btnId,dotId,statusId,resultsId,filtersId,hintId,platformLabel};
-  }catch(err){res.innerHTML="";setStatus(dotId,statusId,err.message||"Error.","error")}
+  }catch(err){clearInterval(progressInterval);res.innerHTML="";setStatus(dotId,statusId,err.message||"Error.","error")}
   finally{btn.disabled=false}
 }
 

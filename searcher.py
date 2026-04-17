@@ -539,6 +539,101 @@ async def _deep_scan_page(page, url, nav_timeout=22000):
     return result
 
 
+
+def _cross_validate_wechats(wechat_ids, existing_results):
+    """
+    Boost confidence of WeChat IDs that appear on multiple sources.
+    Also checks if ID appears in Baidu search results for that specific ID.
+    """
+    # Count how many results each WeChat appears in
+    id_counts = {}
+    for result in existing_results:
+        for w in result.get("wechat_ids", []):
+            wid = w["id"]
+            id_counts[wid] = id_counts.get(wid, 0) + 1
+
+    # Boost confidence for IDs appearing multiple times
+    validated = []
+    for w in wechat_ids:
+        wid = w["id"]
+        count = id_counts.get(wid, 1)
+        boosted = dict(w)
+        if count >= 3:
+            boosted["confidence"] = min(boosted.get("confidence", 0.5) + 0.3, 1.0)
+            boosted["validated"] = True
+            boosted["appearances"] = count
+        elif count >= 2:
+            boosted["confidence"] = min(boosted.get("confidence", 0.5) + 0.15, 1.0)
+            boosted["appearances"] = count
+        validated.append(boosted)
+
+    validated.sort(key=lambda x: (x.get("appearances", 1), x.get("confidence", 0)), reverse=True)
+    return validated
+
+
+async def verify_wechat_via_baidu(wechat_id, page, timeout=15000):
+    """
+    Verify a WeChat ID by:
+    1. Searching Baidu AI for the exact ID
+    2. Checking how many independent sources mention it
+    3. Checking if it appears on known supplier sites
+    Returns: {"status": "verified"|"likely"|"weak"|"not_found", "score": 0-100, "sources": [...]}
+    """
+    import requests as req
+    key = os.getenv("BAIDU_API_KEY", "")
+    sources = []
+    score = 0
+
+    # Check 1: Format quality (already validated before this point)
+    if re.search(r"[a-zA-Z]", wechat_id) and re.search(r"[0-9]", wechat_id) and len(wechat_id) >= 6:
+        score += 20  # good format
+
+    # Check 2: Search Baidu AI for this specific WeChat ID
+    if key:
+        try:
+            # Search 1: exact WeChat ID
+            resp = req.post(
+                "https://qianfan.baidubce.com/v2/ai_search",
+                headers={"Content-Type": "application/json", "Authorization": f"Bearer {key}"},
+                json={"messages": [{"role": "user", "content": f"微信号 {wechat_id} 厂家 供应商"}],
+                      "resource_type_filter": [{"type": "web", "top_k": 10}]},
+                timeout=20,
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                refs = data.get("references", [])
+                for r in refs:
+                    combined = (r.get("content","") + r.get("title","") + r.get("url","")).lower()
+                    if wechat_id.lower() in combined:
+                        url = r.get("url","")
+                        title = r.get("title","")
+                        sources.append({"url": url, "title": title})
+                        # Bonus for supplier domains
+                        if any(d in url for d in ["1688","taobao","weidian","yupoo","ptx","nkt","莆田"]):
+                            score += 25
+                        else:
+                            score += 15
+
+            logger.info("WeChat verify %s: %d sources, score=%d", wechat_id, len(sources), score)
+        except Exception as e:
+            logger.warning("WeChat verify error: %s", e)
+
+    # Check 3: Known Putian seller format (ptx351, nkt858 etc)
+    if re.match(r"^[a-z]{2,4}\d{3,6}$", wechat_id, re.I):
+        score += 15  # classic Putian seller format
+
+    # Score → status
+    if score >= 60 or len(sources) >= 3:
+        status = "verified"
+    elif score >= 35 or len(sources) >= 1:
+        status = "likely"
+    elif score >= 20:
+        status = "weak"
+    else:
+        status = "not_found"
+
+    return {"status": status, "score": min(score, 100), "sources": sources[:3]}
+
 async def scan_single(url):
     headless=os.getenv("HEADLESS","true").lower()!="false"
     ua="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"

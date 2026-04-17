@@ -100,7 +100,7 @@ def create_app() -> Flask:
         if not result["valid"]:
             return jsonify({"error": result.get("error", "Invalid credentials.")}), 401
         resp = make_response(jsonify({"status": "ok", "name": result["name"]}))
-        resp.set_cookie("sf_token", result["token"], httponly=True, samesite="Lax")
+        resp.set_cookie("sf_token", result["token"], max_age=60*60*24*365, httponly=True, samesite="Lax")
         return resp
 
     @app.post("/logout")
@@ -148,6 +148,40 @@ def create_app() -> Flask:
             app.logger.exception("Search failed: %s", exc)
             return jsonify({"error": "Something went wrong. Try again."}), 500
 
+    @app.post("/verify-wechat")
+    @require_auth
+    def verify_wechat():
+        """Verify a WeChat ID by searching Baidu for it."""
+        data   = request.get_json(silent=True) or {}
+        wechat = (data.get("wechat") or "").strip()
+        if not wechat:
+            return jsonify({"error": "WeChat ID required"}), 400
+        try:
+            from searcher import verify_wechat_via_baidu
+            import asyncio
+            from playwright.async_api import async_playwright
+
+            async def _run():
+                from searcher import _launch
+                async with async_playwright() as p:
+                    browser = await _launch(p, True)
+                    ctx  = await browser.new_context()
+                    page = await ctx.new_page()
+                    try:
+                        result = await verify_wechat_via_baidu(wechat, page)
+                    finally:
+                        await ctx.close()
+                        await browser.close()
+                return result
+
+            result = asyncio.run(_run())
+            if isinstance(result, dict):
+                return jsonify({"wechat": wechat, **result}), 200
+            return jsonify({"wechat": wechat, "status": result}), 200
+        except Exception as e:
+            app.logger.exception("Verify WeChat failed: %s", e)
+            return jsonify({"error": "Verification failed"}), 500
+
     @app.post("/scan-page")
     @require_auth
     def scan_page():
@@ -162,6 +196,33 @@ def create_app() -> Flask:
         except Exception as exc:
             app.logger.exception("Scan page failed: %s", exc)
             return jsonify({"error": "Scan failed. Try again."}), 500
+
+    # ── Debug endpoint ───────────────────────────────────────────────
+    @app.get("/debug/baidu-html")
+    @require_admin
+    def debug_baidu_html():
+        """Read saved Baidu HTML to debug parser."""
+        from pathlib import Path
+        p = Path("/app/data/debug_baidu.html")
+        if not p.exists():
+            return "No debug HTML saved yet. Run a search first.", 404
+        html = p.read_text(errors="replace")
+        # Find h3 tags
+        import re
+        h3s = re.findall(r'<h3[^>]*>.*?</h3>', html, re.S)[:5]
+        links = re.findall(r'href="([^"]+)"', html[:5000])[:20]
+        return f"""<pre>
+HTML length: {len(html)}
+
+=== FIRST 5 H3 TAGS ===
+{chr(10).join(h3s[:5])}
+
+=== FIRST 20 HREFS IN PAGE ===
+{chr(10).join(links)}
+
+=== HTML SAMPLE 2000-4000 ===
+{html[2000:4000]}
+</pre>"""
 
     # ── Finds board ───────────────────────────────────────────────
     @app.get("/finds")
@@ -216,6 +277,34 @@ def create_app() -> Flask:
         finds = [f for f in finds if f["id"] != find_id]
         _save_finds(finds)
         return jsonify({"status": "deleted"}), 200
+
+    # ── Debug ────────────────────────────────────────────────────
+    @app.get("/debug/html")
+    @require_admin
+    def debug_html():
+        from pathlib import Path
+        p = Path("/app/data/debug_baidu.html")
+        if not p.exists():
+            return "No debug HTML saved yet", 404
+        html = p.read_text(errors="replace")
+        # Find h3 tags
+        import re
+        h3s = re.findall(r'<h3[^>]*>.*?</h3>', html[:100000], re.S)
+        links = re.findall(r'href="([^"]{20,})"', html[:100000])
+        return f"""
+        <pre>
+FILE SIZE: {len(html)} chars
+
+=== H3 TAGS FOUND ({len(h3s)}) ===
+{chr(10).join(h3s[:5])}
+
+=== ALL HREFS ({len(links)}) ===
+{chr(10).join(links[:30])}
+
+=== HTML SAMPLE (chars 5000-8000) ===
+{html[5000:8000]}
+        </pre>
+        """
 
     # ── Admin ─────────────────────────────────────────────────────
     @app.get("/admin")
