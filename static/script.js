@@ -279,19 +279,40 @@ function wcChip(w){
 
 // ── Card builder ──────────────────────────────────────────────────
 function buildCard(item,index){
-  const score=item.factory_score??0;
-  const wechats=item.wechat_ids||[];
-  const hasQR=wechats.some(w=>w.source==="qr");
-  const hasOCR=wechats.some(w=>w.source==="ocr");
-  const allWeak=wechats.length>0&&!wechats.some(w=>w.quality>=3);
-  const isSaved=!!savedResults[item.link];
-  const cardNote=notes[item.link]||"";
+  const score    = item.factory_score ?? 0;
+  const wechats  = item.wechat_ids || [];
+  const hasQR    = wechats.some(w=>w.source==="qr");
+  const hasOCR   = wechats.some(w=>w.source==="ocr");
+  const allWeak  = wechats.length>0 && !wechats.some(w=>w.quality>=3);
+  const isSaved  = !!savedResults[item.link];
+  const cardNote = notes[item.link]||"";
+  const bestWQ   = wechats.length ? Math.max(...wechats.map(w=>w.quality||0)) : 0;
 
-  const card=document.createElement("article");
-  card.className="result-card"+(allWeak&&!item.emails?.length&&!item.phones?.length?" unverified":"")+(isSaved?" saved":"");
-  card.style.animationDelay=`${index*.04}s`;
-  card.dataset.score=score;
-  card.dataset.link=item.link;
+  // Confidence meter
+  const confPct  = Math.min(100, Math.round((score/12)*100));
+  const confCol  = score>=8?"var(--g)":score>=4?"var(--a)":"var(--r)";
+  const confLbl  = score>=8?"HIGH":score>=4?"MED":"LOW";
+
+  // Platform icon
+  const platIcons = {Yupoo:"🖼️","All-in-One":"⚡",Baidu:"🔍","1688":"🏪",ImportYeti:"📦",Xianyu:"♻️",Weidian:"🛒",Xiaohongshu:"📕"};
+  const platIcon  = platIcons[item.platform] || "🌐";
+
+  // Source domain
+  let domain = "";
+  try{ domain = new URL(item.link||"https://x").hostname.replace("www.",""); }catch{}
+
+  // Extraction method badges
+  const extractBadges = [
+    hasQR  ? `<span class="extract-badge qr-badge">QR</span>` : "",
+    hasOCR ? `<span class="extract-badge ocr-badge">OCR</span>` : "",
+    item.deep_scanned ? `<span class="extract-badge deep-badge2">DEEP</span>` : "",
+    wechats.length>0 && !hasQR && !hasOCR ? `<span class="extract-badge text-badge">TEXT</span>` : "",
+  ].filter(Boolean).join("");
+
+  const card = document.createElement("article");
+  card.className = "result-card" + (isSaved?" saved":"");
+  card.style.animationDelay = `${index*.05}s`;
+  card.dataset.score=score; card.dataset.link=item.link;
   card.dataset.hasContact=item.has_contact?"1":"0";
   card.dataset.hasWechat=(wechats.length>0)?"1":"0";
   card.dataset.verifiedWechat=item.has_verified_wechat?"1":"0";
@@ -299,38 +320,92 @@ function buildCard(item,index){
   card.dataset.ocrWechat=hasOCR?"1":"0";
   card.dataset.factoryLike=item.is_factory_like?"1":"0";
 
-  const sc=score>=8?"tag-high":score>=4?"tag-mid":"tag-low";
-  const varTag=item.variation>0?`<span class="tag" style="color:#a78bfa;background:rgba(167,139,250,.07);border:1px solid rgba(167,139,250,.14)">var${item.variation}</span>`:"";
-
-  card.innerHTML=`
-    <div class="card-header">
-      <h3 class="card-title"><a href="${item.link||"#"}" target="_blank" rel="noopener noreferrer">${item.title||"Untitled"}</a></h3>
-      <div class="card-actions">
-        <div class="card-tags">
-          ${item.deep_scanned?'<span class="deep-badge">deep</span>':""}
-          ${varTag}
-          <span class="tag tag-platform">${item.platform||""}</span>
-          <span class="tag ${sc}">score ${score}</span>
+  card.innerHTML = `
+    <div class="card-top">
+      <div class="card-meta-row">
+        <span class="card-platform-pill">${platIcon} ${item.platform||"Unknown"}</span>
+        <span class="card-domain">${domain}</span>
+        <div class="card-extract-badges">${extractBadges}</div>
+        <div class="card-top-actions">
+          <button class="icon-btn ${isSaved?"saved":""}" title="${isSaved?"Unsave":"Save"}" data-save="${item.link}">
+            <svg width="11" height="11" viewBox="0 0 16 16" fill="${isSaved?"currentColor":"none"}"><path d="M8 1l2 4.5 5 .5-3.5 3.5 1 5L8 12l-4.5 2.5 1-5L1 6l5-.5z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+          </button>
         </div>
-        <button class="icon-btn ${isSaved?"saved":""}" title="${isSaved?"Unsave":"Save"}" data-save="${item.link}">
-          <svg width="12" height="12" viewBox="0 0 16 16" fill="${isSaved?"currentColor":"none"}"><path d="M8 1l2 4.5 5 .5-3.5 3.5 1 5L8 12l-4.5 2.5 1-5L1 6l5-.5z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
-        </button>
       </div>
+
+      <a class="card-title-link" href="${item.link||"#"}" target="_blank" rel="noopener noreferrer">
+        ${(item.title||"Untitled").slice(0,80)}${(item.title||"").length>80?"…":""}
+      </a>
     </div>
-    <p class="card-link">${item.link||""}</p>
-    <p class="card-snippet">${item.snippet||"No description available."}</p>`;
 
-  const contacts=document.createElement("div");contacts.className="card-contacts";
-  wechats.forEach(w=>contacts.appendChild(wcChip(w)));
-  (item.phones||[]).forEach(p=>{const e=document.createElement("div");e.className="contact-chip contact-phone";e.textContent=p;e.title="Click to copy";e.addEventListener("click",()=>copyText(p,p));contacts.appendChild(e)});
-  (item.emails||[]).forEach(e=>{const el=document.createElement("div");el.className="contact-chip contact-email";el.textContent=e;el.title="Click to copy";el.addEventListener("click",()=>copyText(e,e));contacts.appendChild(el)});
-  if(contacts.children.length) card.appendChild(contacts);
+    <div class="card-body">
+      <div class="card-left">
+        <div class="card-snippet-text">${(item.snippet||"No description available.").slice(0,180)}${(item.snippet||"").length>180?"…":""}</div>
+      </div>
 
-  // Per-card scan button
+      <div class="card-right">
+        <div class="confidence-block">
+          <div class="conf-label">FACTORY CONFIDENCE</div>
+          <div class="conf-bar-wrap">
+            <div class="conf-bar" style="width:${confPct}%;background:${confCol}"></div>
+          </div>
+          <div class="conf-val" style="color:${confCol}">${confLbl} · ${score}/12</div>
+        </div>
+
+        <div class="wechat-count-block">
+          <div class="conf-label">WECHATS FOUND</div>
+          <div class="wechat-count-val" style="color:${wechats.length?'var(--g)':'var(--text3)'}">${wechats.length}</div>
+        </div>
+      </div>
+    </div>`;
+
+  // WeChat chips section
+  if(wechats.length || item.phones?.length || item.emails?.length){
+    const contactSection = document.createElement("div");
+    contactSection.className = "card-contact-section";
+    contactSection.innerHTML = `<div class="card-contact-label">CONTACTS</div>`;
+    const chips = document.createElement("div");
+    chips.className = "card-contacts";
+    wechats.forEach(w=>chips.appendChild(wcChip(w)));
+    (item.phones||[]).forEach(p=>{
+      const e=document.createElement("div");e.className="contact-chip contact-phone";
+      e.innerHTML=`📞 ${p}`;e.title="Click to copy";
+      e.addEventListener("click",()=>copyText(p,p));chips.appendChild(e);
+    });
+    (item.emails||[]).forEach(em=>{
+      const e=document.createElement("div");e.className="contact-chip contact-email";
+      e.innerHTML=`✉ ${em}`;e.title="Click to copy";
+      e.addEventListener("click",()=>copyText(em,em));chips.appendChild(e);
+    });
+    contactSection.appendChild(chips);
+    card.appendChild(contactSection);
+  }
+
+  // Action row
+  const actions = document.createElement("div");
+  actions.className = "card-action-row";
+
+  // Translate button
+  const transBtn = document.createElement("button");
+  transBtn.className="card-action-btn translate-btn";
+  transBtn.textContent="🌐 Translate";
+  transBtn.addEventListener("click",()=>translateText(item.snippet||item.title||"",transBtn));
+  actions.appendChild(transBtn);
+
+  // CRM button
+  const crmBtn = document.createElement("button");
+  crmBtn.className="card-action-btn";
+  crmBtn.textContent="+ CRM";
+  crmBtn.style.cssText="color:var(--c2);border-color:rgba(124,58,237,.25);background:rgba(124,58,237,.06)";
+  crmBtn.addEventListener("click",()=>addToCrm(item));
+  actions.appendChild(crmBtn);
+
+  // Scan button
   if(!item.deep_scanned){
     const scanBtn=document.createElement("button");
-    scanBtn.className="scan-btn";
-    scanBtn.textContent="Scan page for more WeChats";
+    scanBtn.className="card-action-btn";
+    scanBtn.textContent="🔍 Deep Scan";
+    scanBtn.style.cssText="color:var(--a);border-color:rgba(255,170,0,.25);background:rgba(255,170,0,.06)";
     scanBtn.addEventListener("click",async()=>{
       scanBtn.disabled=true;scanBtn.textContent="Scanning...";
       try{
@@ -339,30 +414,37 @@ function buildCard(item,index){
         scanBtn.remove();
         const newWc=data.wechat_ids||[];
         const existingIds=new Set(wechats.map(w=>w.id));
-        newWc.filter(w=>!existingIds.has(w.id)).forEach(w=>{contacts.appendChild(wcChip(w));wechats.push(w)});
-        if(newWc.length===0) toast("No new WeChats found on this page");
-        else toast(`Found ${newWc.length} WeChat(s) on page!`);
-        card.querySelector(".deep-badge")||card.querySelector(".card-tags")?.insertAdjacentHTML("afterbegin",'<span class="deep-badge">scanned</span>');
-      }catch{scanBtn.disabled=false;scanBtn.textContent="Scan page for more WeChats";toast("Scan failed")}
+        let added=0;
+        newWc.filter(w=>!existingIds.has(w.id)).forEach(w=>{
+          let chips=card.querySelector(".card-contacts");
+          if(!chips){
+            const cs=document.createElement("div");cs.className="card-contact-section";
+            cs.innerHTML='<div class="card-contact-label">CONTACTS</div>';
+            chips=document.createElement("div");chips.className="card-contacts";
+            cs.appendChild(chips);card.appendChild(cs);
+          }
+          chips.appendChild(wcChip(w));wechats.push(w);added++;
+        });
+        showToast(added>0?`Found ${added} WeChat(s)!`:"No new WeChats found");
+        // Update count
+        const countEl=card.querySelector(".wechat-count-val");
+        if(countEl) countEl.textContent=wechats.length;
+        if(countEl) countEl.style.color=wechats.length?"var(--g)":"var(--text3)";
+      }catch{scanBtn.disabled=false;scanBtn.textContent="🔍 Deep Scan";showToast("Scan failed")}
     });
-    card.appendChild(scanBtn);
+    actions.appendChild(scanBtn);
   }
 
-  // Note textarea
+  card.appendChild(actions);
+
+  // Note
   const noteEl=document.createElement("textarea");
-  noteEl.className="card-note";
-  noteEl.placeholder="Add a note... (auto-saved)";
+  noteEl.className="card-note";noteEl.placeholder="Note...";
   noteEl.value=cardNote;
   noteEl.addEventListener("input",()=>{notes[item.link]=noteEl.value;saveNotes()});
   card.appendChild(noteEl);
 
-  if(allWeak&&!item.deep_scanned){
-    const n=document.createElement("p");n.className="unverified-note";
-    n.textContent="WeChat found but unverified. Click 'Scan page' or enable Deep Scan.";
-    card.appendChild(n);
-  }
-
-  // Save button logic
+  // Save logic
   card.querySelector("[data-save]")?.addEventListener("click",()=>{
     const link=item.link;
     if(savedResults[link]){delete savedResults[link];card.classList.remove("saved")}
@@ -371,7 +453,7 @@ function buildCard(item,index){
     const btn=card.querySelector("[data-save]");
     btn?.classList.toggle("saved");
     btn?.querySelector("path")?.setAttribute("fill",savedResults[link]?"currentColor":"none");
-    toast(savedResults[link]?"Saved!":"Removed from saved");
+    showToast(savedResults[link]?"Saved!":"Removed");
   });
 
   return card;
