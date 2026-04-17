@@ -114,12 +114,13 @@ body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
   overflow:hidden;
 }
 .tab-btn{
-  display:flex;align-items:center;justify-content:center;gap:7px;
+  flex:1;
+  display:flex;align-items:center;justify-content:center;gap:6px;
   height:46px;border:none;border-right:1px solid var(--b);
   background:transparent;color:var(--text3);
-  font-size:12px;font-weight:700;font-family:var(--font);
-  letter-spacing:.3px;cursor:pointer;transition:all .18s;
-  position:relative;overflow:hidden;
+  font-size:11px;font-weight:700;font-family:var(--font);
+  letter-spacing:.2px;cursor:pointer;transition:all .18s;
+  position:relative;overflow:hidden;white-space:nowrap;
 }
 .tab-btn:last-child{border-right:none}
 .tab-btn::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:var(--c);transform:scaleX(0);transition:transform .2s}
