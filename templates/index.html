@@ -49,6 +49,10 @@
         <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M8 2l1.5 3 3.5.5-2.5 2.5.5 3.5L8 10l-3 1.5.5-3.5L3 5.5l3.5-.5z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
         Finds
       </button>
+      <button class="tab-btn" data-tab="crm">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="6" cy="5" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M2 13c0-2.2 1.8-4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M11 9v4M9 11h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        CRM
+      </button>
     </nav>
 
     <!-- SUPPLIER -->
@@ -241,7 +245,73 @@
       </div>
     </section>
 
+    <!-- CRM TAB -->
+    <section class="tab-panel" id="tab-crm">
+      <div class="crm-header">
+        <div>
+          <h2 class="finds-title">Supplier CRM</h2>
+          <p class="finds-sub">Track every supplier · Status · Prices · Notes</p>
+        </div>
+        <button class="btn-primary" onclick="openCrmModal()">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          Add Supplier
+        </button>
+      </div>
+
+      <!-- CRM STATS -->
+      <div class="crm-stats" id="crmStats"></div>
+
+      <!-- CRM TABLE -->
+      <div class="crm-table-wrap">
+        <div class="crm-table-head">
+          <span>Supplier</span><span>WeChat</span><span>Product</span><span>Price</span><span>Status</span><span>Last Contact</span><span></span>
+        </div>
+        <div id="crmRows"></div>
+        <div class="crm-empty" id="crmEmpty" style="display:none">No suppliers tracked yet. Add your first one!</div>
+      </div>
+
+      <!-- QR GENERATOR -->
+      <div class="qr-section">
+        <div class="qr-title">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="9" y="2" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="2" y="9" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.5"/><path d="M9 9h2v2H9zM11 11h2v2h-2zM13 9h.01M9 13h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          WeChat QR Generator
+        </div>
+        <p class="qr-sub">Enter a WeChat ID to generate a QR code you can screenshot to add them directly</p>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <input type="text" id="qrInput" placeholder="WeChat ID e.g. ptx351" style="flex:1;height:38px"/>
+          <button class="btn-primary" onclick="genQR()" style="height:38px;padding:0 16px;white-space:nowrap">Generate QR</button>
+        </div>
+        <div id="qrOutput" style="margin-top:12px;text-align:center"></div>
+      </div>
+    </section>
+
   </main>
+
+  <!-- CRM MODAL -->
+  <div class="modal-overlay" id="crmModal" style="display:none" onclick="if(event.target===this)closeCrmModal()">
+    <div class="modal-card">
+      <h3 class="modal-title">Add Supplier</h3>
+      <label>Supplier Name *</label><input type="text" id="crmName" placeholder="Factory name or nickname"/>
+      <label>WeChat ID</label><input type="text" id="crmWechat" placeholder="e.g. ptx351"/>
+      <label>Product</label><input type="text" id="crmProduct" placeholder="e.g. Jordan 4, Tech Fleece"/>
+      <label>Price</label><input type="text" id="crmPrice" placeholder="e.g. ¥180/pair, MOQ 10"/>
+      <label>Status</label>
+      <select id="crmStatus" style="height:40px;padding:0 12px;background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.07);border-radius:8px;color:#f1f5f9;font-family:Inter,sans-serif;margin-bottom:10px;width:100%;outline:none">
+        <option value="new">🆕 New Lead</option>
+        <option value="contacted">📨 Contacted</option>
+        <option value="replied">💬 Replied</option>
+        <option value="sampling">📦 Sampling</option>
+        <option value="ordered">✅ Ordered</option>
+        <option value="passed">❌ Passed</option>
+      </select>
+      <label>Notes</label><textarea id="crmNotes" placeholder="Quality, communication, anything useful…"></textarea>
+      <div class="modal-btns">
+        <button class="btn-primary" onclick="saveCrmEntry()">Save Supplier</button>
+        <button class="tool-btn" onclick="closeCrmModal()">Cancel</button>
+      </div>
+      <p class="msg" id="crmMsg"></p>
+    </div>
+  </div>
 
   <!-- POST FIND MODAL -->
   <div class="modal-overlay" id="findModal" style="display:none" onclick="if(event.target===this)closeFindModal()">
