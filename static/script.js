@@ -414,13 +414,57 @@ async function runSearch({query,brand,platform,mode,deep_scan,wechat_only,btnId,
   if(bar) bar.style.display="none";
   if(toolbar) toolbar.style.display="none";
   document.getElementById(`${tabKey}RefreshBar`)?.remove();
-  showLoader(res,deep_scan?`Deep scanning — OCR + QR on every image (max 90s)`:`Searching ${platformLabel} via Baidu...`);
-  setStatus(dotId,statusId,deep_scan?"Deep scanning...":"Searching...","active");
   addHistory({query,brand,platform,mode});
+
+  // Progress bar
+  res.innerHTML=`<div id="searchProgress" style="padding:48px 20px;text-align:center">
+    <div style="font-size:14px;color:var(--blue);font-weight:700;margin-bottom:20px;letter-spacing:-.2px" id="progressLabel">🔍 Connecting to Baidu AI...</div>
+    <div style="background:rgba(255,255,255,.06);border:1px solid rgba(125,211,252,.1);border-radius:20px;height:8px;overflow:hidden;max-width:420px;margin:0 auto 14px">
+      <div id="progressBar" style="height:100%;border-radius:20px;background:linear-gradient(90deg,#1a6fa4,#7dd3fc,#a78bfa);width:3%;transition:width .6s ease;box-shadow:0 0 12px rgba(125,211,252,.4)"></div>
+    </div>
+    <div style="font-size:11px;color:var(--text3);font-family:monospace" id="progressSub">initializing...</div>
+  </div>`;
+
+  const _steps = deep_scan ? [
+    [8,  "🔍 Querying Baidu AI Search...",     "searching supplier databases"],
+    [22, "📡 Got results — following links...", "visiting supplier pages"],
+    [38, "🖥️ Scanning page 1...",               "extracting text + WeChat IDs"],
+    [52, "🖥️ Scanning page 2...",               "running OCR on images"],
+    [64, "🔎 Scanning page 3...",               "decoding QR codes"],
+    [75, "🖥️ Scanning page 4...",               "deep scanning HTML source"],
+    [85, "🧹 Filtering results...",             "removing official brand sites"],
+    [93, "✨ Almost done...",                   "ranking by confidence score"],
+  ] : [
+    [8,  "🔍 Querying Baidu AI Search...",     "connecting to Baidu API"],
+    [25, "📦 Processing results...",            "found supplier listings"],
+    [50, "🔎 Extracting contacts...",           "scanning for WeChat IDs"],
+    [72, "🧹 Filtering results...",             "removing official brand sites"],
+    [90, "✨ Almost done...",                   "ranking by confidence score"],
+  ];
+  let _si=0;
+  const progressInterval=setInterval(()=>{
+    if(_si<_steps.length){
+      const [pct,lbl,sub]=_steps[_si++];
+      const pb=document.getElementById("progressBar");
+      const pl=document.getElementById("progressLabel");
+      const ps=document.getElementById("progressSub");
+      if(pb)pb.style.width=pct+"%";
+      if(pl)pl.textContent=lbl;
+      if(ps)ps.textContent=sub;
+    }
+  }, deep_scan?11000:5500);
+
+  setStatus(dotId,statusId,deep_scan?"Deep scanning...":"Searching...","active");
   try{
     const data=await fetchSearch({query,brand,platform,mode,deep_scan,wechat_only,page_num:1,variation:0,seen_links:[]});
-    res.innerHTML="";
     clearInterval(progressInterval);
+    // Complete the bar
+    const pb=document.getElementById("progressBar");
+    const pl=document.getElementById("progressLabel");
+    if(pb)pb.style.width="100%";
+    if(pl)pl.textContent="✅ Done!";
+    await new Promise(r=>setTimeout(r,400));
+    res.innerHTML="";
     const results=data.results||[];
     if(!results.length){res.innerHTML=`<div class="empty">No results. Try different keywords or platform.</div>`;setStatus(dotId,statusId,"No results.","idle");return}
     if(bar){bar.style.display="flex";bar.querySelectorAll(".filter-pill").forEach((p,i)=>p.classList.toggle("active",i===0))}
