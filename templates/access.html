@@ -229,6 +229,14 @@ async function doLogin(){
     const r=await fetch('/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password})});
     const d=await r.json();
     if(d.ok){msg.className='msg ok';msg.textContent='✓ Welcome back!';setTimeout(()=>window.location.href='/',800)}
+    else if(d.needs_password){
+      // Show set password overlay
+      document.getElementById('setPwEmail').value=d.email||email;
+      const ov=document.getElementById('setPwOverlay');
+      ov.style.display='flex';
+      msg.className='msg';msg.textContent='';
+      btn.disabled=false;btn.textContent='Login';
+    }
     else{msg.className='msg err';msg.textContent=d.error||'Login failed.';btn.disabled=false;btn.textContent='Login'}
   }catch{msg.className='msg err';msg.textContent='Network error.';btn.disabled=false;btn.textContent='Login'}
 }
@@ -249,6 +257,23 @@ async function doRequest(){
     if(d.ok){msg.className='msg ok';msg.textContent='✓ Request sent! We\'ll DM you within 24hrs.';btn.textContent='Sent!'}
     else{msg.className='msg err';msg.textContent=d.error||'Error.';btn.disabled=false;btn.textContent='Request Access'}
   }catch{msg.className='msg err';msg.textContent='Network error.';btn.disabled=false;btn.textContent='Request Access'}
+}
+
+// Set password (first time)
+async function doSetPassword(){
+  const email=document.getElementById('setPwEmail').value;
+  const pass=document.getElementById('setPwPass').value;
+  const confirm=document.getElementById('setPwConfirm').value;
+  const msg=document.getElementById('setPwMsg');
+  if(pass.length<6){msg.textContent='Password must be at least 6 characters.';return}
+  if(pass!==confirm){msg.textContent='Passwords do not match.';return}
+  msg.textContent='Setting password...';
+  try{
+    const r=await fetch('/set-password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password:pass})});
+    const d=await r.json();
+    if(d.ok){msg.style.color='#00ff88';msg.textContent='✓ Password set! Entering...';setTimeout(()=>window.location.href='/',800)}
+    else{msg.textContent=d.error||'Error setting password.'}
+  }catch{msg.textContent='Network error.'}
 }
 
 // Enter key
@@ -285,6 +310,22 @@ function buildFeed(){
   `).join('');
 }
 buildFeed();
+
+async function doSetPw(email){
+  const pw1=document.getElementById('spPw1').value;
+  const pw2=document.getElementById('spPw2').value;
+  const msg=document.getElementById('spMsg');
+  const btn=document.getElementById('spBtn');
+  if(pw1.length<6){msg.className='msg err';msg.textContent='At least 6 characters.';return}
+  if(pw1!==pw2){msg.className='msg err';msg.textContent="Passwords don't match.";return}
+  btn.disabled=true;btn.textContent='Setting password...';
+  try{
+    const r=await fetch('/set-password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password:pw1})});
+    const d=await r.json();
+    if(d.ok){msg.className='msg ok';msg.textContent='✓ Done! Loading...';setTimeout(()=>location.href='/',700)}
+    else{msg.className='msg err';msg.textContent=d.error||'Error.';btn.disabled=false;btn.textContent='Set Password & Login'}
+  }catch{msg.className='msg err';msg.textContent='Network error.';btn.disabled=false;btn.textContent='Set Password & Login'}
+}
 </script>
 </body>
 </html>
