@@ -138,7 +138,60 @@ async def _launch(pw,headless):
         raise
 
 
-# ScraperAPI removed — using Playwright directly
+# ScraperAPI removed — using Baidu AI Search API + Playwright
+
+def _baidu_ai_search(query, count=20):
+    """
+    Call Baidu AI Search API directly.
+    Returns list of {title, url, snippet} dicts.
+    API key from console.bce.baidu.com/ai-search/qianfan/ais/console/apiKey
+    """
+    import requests
+    key = os.getenv("BAIDU_API_KEY", "")
+    if not key:
+        return None
+    try:
+        resp = requests.post(
+            "https://qianfan.baidubce.com/v2/ai_search",
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {key}",
+            },
+            json={
+                "query": query,
+                "count": count,
+                "resource_type_filter": [{"type": "web", "top_k": count}],
+            },
+            timeout=30,
+        )
+        logger.info("Baidu AI Search status: %d", resp.status_code)
+        if resp.status_code != 200:
+            logger.warning("Baidu AI Search error: %s", resp.text[:200])
+            return None
+        data = resp.json()
+        logger.info("Baidu AI Search response keys: %s", list(data.keys()))
+        # Extract references/results
+        results = []
+        # Try different response structures
+        refs = (data.get("search_results") or 
+                data.get("references") or 
+                data.get("results") or
+                data.get("web_search_results") or [])
+        if not refs and "result" in data:
+            refs = data["result"].get("search_results") or data["result"].get("references") or []
+        logger.info("Baidu AI Search: got %d references", len(refs))
+        for r in refs:
+            title   = r.get("title") or r.get("name") or ""
+            url     = r.get("url") or r.get("link") or r.get("id") or ""
+            snippet = r.get("content") or r.get("snippet") or r.get("summary") or ""
+            if title or url:
+                results.append({"title": title, "url": url, "snippet": snippet})
+        return results if results else None
+    except Exception as e:
+        logger.warning("Baidu AI Search exception: %s", e)
+        return None
+
+
 
 
 def _parse_baidu_html(html, full_q, platform_label, mode, seen_links, max_r, page_num):
@@ -218,10 +271,40 @@ def _parse_baidu_html(html, full_q, platform_label, mode, seen_links, max_r, pag
 
 
 async def _baidu_search(page, full_q, max_r, timeout, delay, seen_links, platform_label, mode, page_num=1):
-    """Search Baidu directly via Playwright with anti-detection."""
+    """Search Baidu — uses official AI Search API if key set, else Playwright."""
     results = []
     pn  = (page_num - 1) * 10
     url = f"https://www.baidu.com/s?wd={quote_plus(full_q)}&pn={pn}&rn=20"
+
+    # Try Baidu AI Search API first (no IP blocks, clean JSON)
+    if os.getenv("BAIDU_API_KEY"):
+        logger.info("Using Baidu AI Search API for: %s", full_q[:60])
+        api_results = await asyncio.get_event_loop().run_in_executor(
+            None, lambda: _baidu_ai_search(full_q, count=max_r)
+        )
+        if api_results:
+            for r in api_results:
+                href    = r["url"]
+                title   = r["title"]
+                snippet = r["snippet"]
+                if not title or href in seen_links or _is_blocked(href): continue
+                c       = _contacts(" ".join([title, snippet, href]))
+                sc      = _score(title, snippet, href, mode)
+                best_wq = max((w["quality"] for w in c["wechat_ids"]), default=0)
+                results.append({
+                    "title": title, "link": href or url, "snippet": snippet,
+                    "wechat_ids": c["wechat_ids"], "emails": c["emails"], "phones": c["phones"],
+                    "factory_score": sc, "wechat_quality": best_wq,
+                    "has_contact": bool(c["wechat_ids"] or c["emails"] or c["phones"]),
+                    "has_verified_wechat": best_wq >= 3, "is_factory_like": sc >= 3,
+                    "platform": platform_label, "baidu_query": full_q, "mode": mode,
+                    "deep_scanned": False, "page_num": page_num, "variation": 0,
+                })
+                seen_links.add(href)
+            logger.info("Baidu AI API: %d results", len(results))
+            if results:
+                return results
+        logger.warning("Baidu AI API returned nothing, falling back to Playwright")
 
     try:
         await page.goto(url, wait_until="domcontentloaded", timeout=timeout)
