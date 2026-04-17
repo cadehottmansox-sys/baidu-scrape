@@ -109,6 +109,32 @@ def create_app() -> Flask:
         resp.delete_cookie("sf_token")
         return resp
 
+    @app.get("/admin/analytics")
+    @require_admin
+    def admin_analytics():
+        """Show usage analytics."""
+        users = load_json(USERS_FILE, {})
+        analytics = []
+        for email, u in users.items():
+            analytics.append({
+                "email": email,
+                "name": u.get("name", "?"),
+                "searches": u.get("search_count", 0),
+                "last_search": u.get("last_search", "never"),
+                "last_query": u.get("last_query", ""),
+                "approved": u.get("approved", False),
+                "joined": u.get("approved_at", "?"),
+            })
+        analytics.sort(key=lambda x: x["searches"], reverse=True)
+        html = "<h2 style='font-family:monospace;color:#00f5ff;padding:20px'>SourceFinder Analytics</h2>"
+        html += "<table style='font-family:monospace;font-size:12px;border-collapse:collapse;width:100%;padding:20px'>"
+        html += "<tr style='color:#555'><th>Email</th><th>Name</th><th>Searches</th><th>Last Search</th><th>Last Query</th></tr>"
+        for a in analytics:
+            if not a["approved"]: continue
+            html += f"<tr style='border-bottom:1px solid #1a1a2e'><td style='padding:8px'>{a['email']}</td><td>{a['name']}</td><td style='color:#00f5ff'>{a['searches']}</td><td style='color:#555'>{a['last_search']}</td><td style='color:#8892a4;max-width:200px;overflow:hidden'>{a['last_query'][:50]}</td></tr>"
+        html += "</table>"
+        return html
+
     @app.post("/search")
     @require_auth
     def search() -> tuple[Any, int]:
