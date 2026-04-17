@@ -6,93 +6,85 @@
   <title>SourceFinder</title>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"/>
 </head>
 <body>
   <canvas id="bg-canvas"></canvas>
-  <div class="aurora"></div>
-
-  <!-- Keyboard shortcut hint -->
-  <div class="kb-hint" id="kbHint">Press <kbd>/</kbd> to search · <kbd>F</kbd> for finds · <kbd>Esc</kbd> to close</div>
+  <div class="noise"></div>
+  <div class="kb-hint" id="kbHint">Press <kbd class="kb">/</kbd> to search &nbsp;·&nbsp; <kbd class="kb">Esc</kbd> to close</div>
 
   <main class="app">
     <header class="hero">
-      <div class="hero-eyebrow">Private · Zero API keys · Powered by Baidu</div>
-      <h1 class="hero-title" id="heroTitle"></h1>
-      <p class="hero-sub">Find Chinese suppliers, factories, freight forwarders &amp; passing goods</p>
+      <div class="hero-pill"><span class="hero-pill-dot"></span>PRIVATE ACCESS · BAIDU AI · ZERO RATE LIMITS</div>
+      <h1 class="hero-title">Source<span class="hero-accent">Finder</span></h1>
+      <p class="hero-sub">Chinese suppliers · Factory WeChats · Passing goods · Freight</p>
     </header>
 
     <nav class="tab-nav">
       <button class="tab-btn active" data-tab="supplier">
-        <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><rect x="2" y="8" width="3" height="6" rx="1" fill="currentColor"/><rect x="6.5" y="5" width="3" height="9" rx="1" fill="currentColor"/><rect x="11" y="2" width="3" height="12" rx="1" fill="currentColor"/></svg>
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><rect x="2" y="8" width="3" height="6" rx="1" fill="currentColor"/><rect x="6.5" y="5" width="3" height="9" rx="1" fill="currentColor"/><rect x="11" y="2" width="3" height="12" rx="1" fill="currentColor"/></svg>
         Supplier
       </button>
       <button class="tab-btn" data-tab="ff">
-        <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M2 8h8M8 5l3 3-3 3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M13 3v10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M2 8h8M8 5l3 3-3 3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M13 3v10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
         Freight
       </button>
       <button class="tab-btn" data-tab="passing">
-        <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><rect x="3" y="3" width="10" height="10" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M6 8h4M8 6v4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-        Passing
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><rect x="3" y="3" width="10" height="10" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M6 8h4M8 6v4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        Passing / NFC
       </button>
       <button class="tab-btn" data-tab="finds">
-        <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M8 2l1.5 3 3.5.5-2.5 2.5.5 3.5L8 10l-3 1.5.5-3.5L3 5.5l3.5-.5z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M8 2l1.5 3 3.5.5-2.5 2.5.5 3.5L8 10l-3 1.5.5-3.5L3 5.5l3.5-.5z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
         Finds
       </button>
     </nav>
 
-    <!-- SUPPLIER TAB -->
+    <!-- SUPPLIER -->
     <section class="tab-panel active" id="tab-supplier">
       <div class="search-card">
         <form id="supplierForm" autocomplete="off">
           <div class="field-row">
-            <div class="field"><label for="brandInput">Brand name</label><input type="text" id="brandInput" placeholder="e.g. Nike"/></div>
-            <div class="field field--wide"><label for="queryInput">Product / keywords</label><input type="text" id="queryInput" placeholder="e.g. Jordan 4, leather belt, hoodies" required/></div>
+            <div class="field"><label for="brandInput">Brand Name</label><input type="text" id="brandInput" placeholder="Nike, Jordan, Supreme…"/></div>
+            <div class="field field--wide"><label for="queryInput">Product / Keywords</label><input type="text" id="queryInput" placeholder="Tech Fleece, Jordan 4, leather belt…" required/></div>
           </div>
           <div class="platform-row">
             <label class="row-label">Platform</label>
             <div class="chips" id="supplierChips">
-              <button type="button" class="chip chip-all active" data-platform="all">🔥 All-in-One</button>
+              <button type="button" class="chip chip-all active" data-platform="all">⚡ All-in-One</button>
               <button type="button" class="chip" data-platform="baidu">Baidu</button>
               <button type="button" class="chip" data-platform="yupoo">Yupoo</button>
               <button type="button" class="chip" data-platform="1688">1688</button>
               <button type="button" class="chip" data-platform="xianyu">Xianyu</button>
-              <button type="button" class="chip" data-platform="xiaohongshu">Xiaohongshu</button>
-              <button type="button" class="chip" data-platform="taobao">Taobao</button>
+              <button type="button" class="chip" data-platform="xiaohongshu">小红书</button>
               <button type="button" class="chip" data-platform="weidian">Weidian</button>
               <button type="button" class="chip" data-platform="pinduoduo">Pinduoduo</button>
-              <button type="button" class="chip" data-platform="bilibili">Bilibili</button>
-              <button type="button" class="chip" data-platform="reddit">Reddit</button>
-              <button type="button" class="chip" data-platform="importyeti">ImportYeti</button>
-              <button type="button" class="chip" data-platform="made-in-china">Made-in-China</button>
               <button type="button" class="chip" data-platform="wechat">WeChat</button>
             </div>
             <input type="hidden" id="supplierPlatform" value="all"/>
           </div>
           <div class="action-row">
-            <button type="submit" class="btn-search" id="supplierBtn">
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" stroke-width="1.6"/><path d="M10 10L14 14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+            <button type="submit" class="btn-primary" id="supplierBtn">
+              <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" stroke-width="1.8"/><path d="M10 10L14 14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
               Search
             </button>
-            <label class="toggle-wrap" title="Visits each page + OCR + QR. Max 90 seconds total.">
+            <label class="toggle-wrap" title="Visits each page, OCR + QR decode. Max 90s.">
               <input type="checkbox" id="supplierDeepScan" checked/>
               <span class="toggle-track"><span class="toggle-thumb"></span></span>
-              <span class="toggle-label">Deep scan<span class="toggle-sub">OCR + QR · 90s max</span></span>
+              <span class="toggle-label">Deep Scan<span class="toggle-sub">OCR + QR · 90s max</span></span>
             </label>
             <label class="toggle-wrap">
               <input type="checkbox" id="supplierWcOnly"/>
               <span class="toggle-track"><span class="toggle-thumb"></span></span>
-              <span class="toggle-label">WeChat only</span>
+              <span class="toggle-label">WeChat Only</span>
             </label>
             <div class="status-wrap">
               <span class="status-dot" id="supplierDot"></span>
-              <span class="status-txt" id="supplierStatus">Ready. <kbd class="kb">/</kbd></span>
+              <span class="status-txt" id="supplierStatus">Ready</span>
             </div>
           </div>
         </form>
       </div>
-
       <div class="toolbar" id="supplierToolbar" style="display:none">
         <div class="filters-bar" id="supplierFilters">
           <span class="filters-label">Filter</span>
@@ -103,60 +95,58 @@
           <button class="filter-pill" data-filter="ocr_wechat">OCR</button>
           <button class="filter-pill" data-filter="factory_like">Factory</button>
           <div class="score-filter">
-            <label>Min score <span id="scoreVal">0</span></label>
+            <label>Score <span id="scoreVal">0</span>+</label>
             <input type="range" id="scoreFilter" min="0" max="20" value="0" step="1"/>
           </div>
         </div>
         <div class="toolbar-actions">
-          <button class="tool-btn" id="copyAllWc" title="Copy all WeChat IDs">
+          <button class="tool-btn" id="copyAllWc">
             <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><rect x="5" y="5" width="9" height="9" rx="1.5" stroke="currentColor" stroke-width="1.5"/><path d="M11 5V3.5A1.5 1.5 0 009.5 2h-6A1.5 1.5 0 002 3.5v6A1.5 1.5 0 003.5 11H5" stroke="currentColor" stroke-width="1.5"/></svg>
-            Copy all WeChats
+            Copy WeChats
           </button>
-          <button class="tool-btn" id="exportCsv" title="Export to CSV">
-            <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M3 12l3-3 2 2 4-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><rect x="1.5" y="1.5" width="13" height="13" rx="2" stroke="currentColor" stroke-width="1.5"/></svg>
-            Export CSV
+          <button class="tool-btn" id="exportCsv">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M4 12l4-4 4 4M8 8V2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 14h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            Export
           </button>
-          <button class="tool-btn" id="showHistory" title="Search history">
+          <button class="tool-btn" id="showHistory">
             <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"/><path d="M8 5v3l2 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
             History
           </button>
         </div>
       </div>
-
       <div class="query-hint" id="supplierHint"></div>
       <section class="results" id="supplierResults"></section>
     </section>
 
-    <!-- FF TAB -->
+    <!-- FREIGHT -->
     <section class="tab-panel" id="tab-ff">
       <div class="search-card">
         <form id="ffForm" autocomplete="off">
           <div class="field-row">
-            <div class="field field--wide"><label for="ffQuery">Route / cargo / keywords</label><input type="text" id="ffQuery" placeholder="e.g. China to USA electronics, apparel" required/></div>
-            <div class="field"><label for="ffOrigin">Origin city</label><input type="text" id="ffOrigin" placeholder="e.g. Guangzhou"/></div>
+            <div class="field field--wide"><label for="ffQuery">Route / Cargo / Keywords</label><input type="text" id="ffQuery" placeholder="China to USA electronics, apparel…" required/></div>
+            <div class="field"><label for="ffOrigin">Origin City</label><input type="text" id="ffOrigin" placeholder="Guangzhou, Shenzhen…"/></div>
           </div>
           <div class="platform-row">
             <label class="row-label">Platform</label>
             <div class="chips" id="ffChips">
               <button type="button" class="chip active" data-platform="baidu">Baidu</button>
               <button type="button" class="chip" data-platform="1688">1688</button>
-              <button type="button" class="chip" data-platform="globalsources">Global Sources</button>
             </div>
             <input type="hidden" id="ffPlatform" value="baidu"/>
           </div>
           <div class="action-row">
-            <button type="submit" class="btn-search" id="ffBtn">
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" stroke-width="1.6"/><path d="M10 10L14 14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+            <button type="submit" class="btn-primary" id="ffBtn">
+              <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" stroke-width="1.8"/><path d="M10 10L14 14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
               Find Forwarders
             </button>
             <label class="toggle-wrap">
               <input type="checkbox" id="ffDeepScan"/>
               <span class="toggle-track"><span class="toggle-thumb"></span></span>
-              <span class="toggle-label">Deep scan<span class="toggle-sub">OCR + QR · 90s max</span></span>
+              <span class="toggle-label">Deep Scan<span class="toggle-sub">OCR + QR · 90s max</span></span>
             </label>
             <div class="status-wrap">
               <span class="status-dot" id="ffDot"></span>
-              <span class="status-txt" id="ffStatus">Ready.</span>
+              <span class="status-txt" id="ffStatus">Ready</span>
             </div>
           </div>
         </form>
@@ -165,23 +155,22 @@
         <span class="filters-label">Filter</span>
         <button class="filter-pill active" data-filter="all">All</button>
         <button class="filter-pill" data-filter="has_wechat">Has WeChat</button>
-        <button class="filter-pill" data-filter="verified_wechat">Verified</button>
       </div>
       <div class="query-hint" id="ffHint"></div>
       <section class="results" id="ffResults"></section>
     </section>
 
-    <!-- PASSING TAB -->
+    <!-- PASSING -->
     <section class="tab-panel" id="tab-passing">
       <div class="passing-banner">
         <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><rect x="3" y="3" width="10" height="10" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M6 8h4M8 6v4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-        Passing / NFC mode — searches for suppliers with NFC chips, passing auth &amp; 1:1 quality
+        Passing / NFC Mode — finds 1:1 suppliers with NFC chips &amp; factory-direct quality
       </div>
       <div class="search-card">
         <form id="passingForm" autocomplete="off">
           <div class="field-row">
-            <div class="field"><label for="passingBrand">Brand</label><input type="text" id="passingBrand" placeholder="e.g. Nike, Jordan"/></div>
-            <div class="field field--wide"><label for="passingQuery">Product</label><input type="text" id="passingQuery" placeholder="e.g. Jordan 4, Yeezy 350, AJ1" required/></div>
+            <div class="field"><label for="passingBrand">Brand</label><input type="text" id="passingBrand" placeholder="Nike, Jordan, LV…"/></div>
+            <div class="field field--wide"><label for="passingQuery">Product</label><input type="text" id="passingQuery" placeholder="Jordan 4, Yeezy 350, AJ1…" required/></div>
           </div>
           <div class="platform-row">
             <label class="row-label">Platform</label>
@@ -191,23 +180,23 @@
             <input type="hidden" id="passingPlatform" value="baidu"/>
           </div>
           <div class="action-row">
-            <button type="submit" class="btn-search btn-passing" id="passingBtn">
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" stroke-width="1.6"/><path d="M10 10L14 14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-              Search
+            <button type="submit" class="btn-primary btn-purple" id="passingBtn">
+              <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" stroke-width="1.8"/><path d="M10 10L14 14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+              Search Passing
             </button>
             <label class="toggle-wrap">
               <input type="checkbox" id="passingDeepScan" checked/>
               <span class="toggle-track"><span class="toggle-thumb"></span></span>
-              <span class="toggle-label">Deep scan<span class="toggle-sub">OCR + QR · 90s max</span></span>
+              <span class="toggle-label">Deep Scan<span class="toggle-sub">OCR + QR · 90s max</span></span>
             </label>
             <label class="toggle-wrap">
               <input type="checkbox" id="passingWcOnly"/>
               <span class="toggle-track"><span class="toggle-thumb"></span></span>
-              <span class="toggle-label">WeChat only</span>
+              <span class="toggle-label">WeChat Only</span>
             </label>
             <div class="status-wrap">
               <span class="status-dot" id="passingDot"></span>
-              <span class="status-txt" id="passingStatus">Ready.</span>
+              <span class="status-txt" id="passingStatus">Ready</span>
             </div>
           </div>
         </form>
@@ -224,53 +213,48 @@
       <section class="results" id="passingResults"></section>
     </section>
 
-    <!-- FINDS TAB -->
+    <!-- FINDS -->
     <section class="tab-panel" id="tab-finds">
       <div class="finds-header">
         <div>
           <h2 class="finds-title">Community Finds</h2>
-          <p class="finds-sub">Share supplier leads, WeChat contacts, and sourcing wins with the community</p>
+          <p class="finds-sub">Share supplier leads · WeChat contacts · Sourcing wins</p>
         </div>
-        <button class="btn-search" id="newFindBtn" onclick="openFindModal()">
+        <button class="btn-primary" onclick="openFindModal()">
           <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-          Post a Find
+          Post Find
         </button>
       </div>
       <div class="finds-grid" id="findsGrid">
-        <div class="loader"><div class="loader-dots"><span></span><span></span><span></span></div>Loading finds...</div>
+        <div class="loader"><div class="loader-dots"><span></span><span></span><span></span></div>Loading finds…</div>
       </div>
     </section>
 
   </main>
 
-  <!-- Post find modal -->
+  <!-- POST FIND MODAL -->
   <div class="modal-overlay" id="findModal" style="display:none" onclick="if(event.target===this)closeFindModal()">
     <div class="modal-card">
       <h3 class="modal-title">Post a Find</h3>
-      <label>Title <span style="color:#f87171;font-size:11px">*</span></label>
-      <input type="text" id="findTitle" placeholder="e.g. Putian Jordan 4 NFC factory"/>
-      <label>Product / category</label>
-      <input type="text" id="findProduct" placeholder="e.g. Sneakers, Bags, Electronics"/>
-      <label>WeChat ID (if you have it)</label>
-      <input type="text" id="findWechat" placeholder="supplier WeChat"/>
-      <label>Price range</label>
-      <input type="text" id="findPrice" placeholder="e.g. ¥120-180, MOQ 10"/>
-      <label>Description</label>
-      <textarea id="findDesc" placeholder="What did you find? Quality, communication, turnaround..."></textarea>
+      <label>Title *</label><input type="text" id="findTitle" placeholder="e.g. Putian Jordan 4 NFC factory"/>
+      <label>Product / Category</label><input type="text" id="findProduct" placeholder="Sneakers, Bags, Electronics"/>
+      <label>WeChat ID</label><input type="text" id="findWechat" placeholder="supplier WeChat ID"/>
+      <label>Price Range</label><input type="text" id="findPrice" placeholder="¥120–180, MOQ 10"/>
+      <label>Description</label><textarea id="findDesc" placeholder="Quality, communication, turnaround…"></textarea>
       <div class="modal-btns">
-        <button class="btn-search" onclick="submitFind()">Post Find</button>
+        <button class="btn-primary" onclick="submitFind()">Post Find</button>
         <button class="tool-btn" onclick="closeFindModal()">Cancel</button>
       </div>
       <p class="msg" id="findMsg"></p>
     </div>
   </div>
 
-  <!-- History modal -->
+  <!-- HISTORY MODAL -->
   <div class="modal-overlay" id="historyModal" style="display:none" onclick="if(event.target===this)closeHistory()">
     <div class="modal-card">
       <h3 class="modal-title">Search History</h3>
       <div id="historyList"></div>
-      <button class="tool-btn" style="margin-top:12px;width:100%" onclick="closeHistory()">Close</button>
+      <button class="tool-btn" style="margin-top:14px;width:100%;justify-content:center" onclick="closeHistory()">Close</button>
     </div>
   </div>
 
