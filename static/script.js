@@ -1294,13 +1294,11 @@ async function adminToggleAdmin(email, makeAdmin){
   loadAdmin();
 }
 
-// Load admin when tab clicked
-document.addEventListener('DOMContentLoaded', ()=>{
-  document.querySelectorAll('.tab-btn').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      if(btn.dataset.tab==='admin') loadAdmin();
-    });
-  });
+// Load admin when tab clicked — use event delegation so it works after DOM ready
+document.addEventListener('click', e=>{
+  const btn = e.target.closest('.tab-btn');
+  if(btn && btn.dataset.tab==='admin') setTimeout(loadAdmin, 100);
+  if(btn && btn.dataset.tab==='crm') setTimeout(renderCrm, 100);
 });
 
 // Handle needs_password on login — intercept the fetch in access.html
