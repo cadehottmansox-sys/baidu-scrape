@@ -1,3 +1,23 @@
+// ── Session stats ─────────────────────────────────────────────────
+const sessionStats = {suppliers:0, wechats:0, deep:0, searches:0};
+function updateStats(results){
+  sessionStats.searches++;
+  sessionStats.suppliers += results.length;
+  results.forEach(r=>{
+    sessionStats.wechats += (r.wechat_ids||[]).length;
+    if(r.deep_scanned) sessionStats.deep++;
+  });
+  const fmt = n => n >= 1000 ? (n/1000).toFixed(1)+'k' : n;
+  const s = document.getElementById('statSuppliers');
+  const w = document.getElementById('statWechats');
+  const d = document.getElementById('statDeep');
+  const sr = document.getElementById('statSearches');
+  if(s) s.textContent = fmt(sessionStats.suppliers);
+  if(w) w.textContent = fmt(sessionStats.wechats);
+  if(d) d.textContent = fmt(sessionStats.deep);
+  if(sr) sr.textContent = fmt(sessionStats.searches);
+}
+
 // ── Animated background canvas ───────────────────────────────────
 (function(){
   const canvas = document.getElementById('bg-canvas');
@@ -542,6 +562,7 @@ async function runSearch({query,brand,platform,mode,deep_scan,wechat_only,btnId,
     await new Promise(r=>setTimeout(r,400));
     res.innerHTML="";
     const results=data.results||[];
+    updateStats(results);
     if(!results.length){res.innerHTML=`<div class="empty">No results. Try different keywords or platform.</div>`;setStatus(dotId,statusId,"No results.","idle");return}
     if(bar){bar.style.display="flex";bar.querySelectorAll(".filter-pill").forEach((p,i)=>p.classList.toggle("active",i===0))}
     if(toolbar&&tabKey==="supplier") toolbar.style.display="flex";
