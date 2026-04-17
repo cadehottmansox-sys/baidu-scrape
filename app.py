@@ -63,10 +63,20 @@ def create_app() -> Flask:
     def require_admin(f):
         @wraps(f)
         def decorated(*args, **kwargs):
+            # Check old secret key method (for /admin page)
             secret = request.args.get("secret") or request.headers.get("X-Admin-Secret")
-            if secret != ADMIN_SECRET:
-                return "Unauthorized", 403
-            return f(*args, **kwargs)
+            if secret == ADMIN_SECRET:
+                return f(*args, **kwargs)
+            # Check session token + is_admin flag
+            token = request.cookies.get("sf_token","")
+            if token:
+                info = auth.validate_token(token, get_ip())
+                if info.get("valid") and info.get("is_admin"):
+                    return f(*args, **kwargs)
+            # JSON endpoints return 403 JSON, others return string
+            if request.path.startswith("/api/"):
+                return jsonify({"error": "Not authorized"}), 403
+            return "Not authorized", 403
         return decorated
 
     @app.get("/")
