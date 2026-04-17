@@ -99,10 +99,26 @@ def create_app() -> Flask:
             return jsonify({"error": "Email and password required."}), 400
         result = auth.login_user(email, password, get_ip())
         if not result["valid"]:
+            if result.get("needs_password"):
+                return jsonify({"ok": False, "needs_password": True, "email": email, "error": result.get("error", "")}), 200
             return jsonify({"error": result.get("error", "Invalid credentials.")}), 401
-        resp = make_response(jsonify({"ok": True, "status": "ok", "name": result["name"]}))
+        resp = make_response(jsonify({"ok": True, "status": "ok", "name": result["name"], "is_admin": result.get("is_admin", False)}))
         resp.set_cookie("sf_token", result["token"], max_age=60*60*24*365, httponly=True, samesite="Lax")
         return resp
+
+    @app.post("/set-password")
+    def set_password_route():
+        data     = request.get_json(silent=True) or {}
+        email    = (data.get("email") or "").strip()
+        password = (data.get("password") or "").strip()
+        if not email or not password:
+            return jsonify({"ok": False, "error": "Email and password required."}), 400
+        result = auth.set_password(email, password)
+        if result.get("ok"):
+            resp = make_response(jsonify({"ok": True, "name": result["name"]}))
+            resp.set_cookie("sf_token", result["token"], max_age=60*60*24*365, httponly=True, samesite="Lax")
+            return resp
+        return jsonify(result), 400
 
     @app.post("/logout")
     def logout():
@@ -110,31 +126,161 @@ def create_app() -> Flask:
         resp.delete_cookie("sf_token")
         return resp
 
-    @app.get("/admin/analytics")
+    # ── Admin API endpoints ──────────────────────────────────────────
+    @app.get("/api/admin/data")
     @require_admin
-    def admin_analytics():
-        """Show usage analytics."""
-        users = load_json(USERS_FILE, {})
+    def api_admin_data():
+        """Return all admin data as JSON for the in-app admin tab."""
+        import time as _time
+        data = auth.get_admin_data()
+        pending  = [r for r in data.get("requests",[]) if r.get("status")=="pending"]
+        approved = data.get("approved",[])
+        # Sort pending by newest first
+        pending.sort(key=lambda x: x.get("timestamp",0), reverse=True)
+        approved.sort(key=lambda x: x.get("last_login") or 0, reverse=True)
+        # Format times
+        def fmt_time(ts):
+            if not ts: return "never"
+            import datetime
+            return datetime.datetime.fromtimestamp(ts).strftime("%b %d, %H:%M")
+        for r in pending:
+            r["_time"] = fmt_time(r.get("timestamp"))
+        for u in approved:
+            u["_last_login"] = fmt_time(u.get("last_login"))
+            u["_approved_at"] = fmt_time(u.get("approved_at"))
+        return jsonify({
+            "pending":  pending,
+            "approved": [{"name":u["name"],"email":u["email"],"is_admin":u.get("is_admin",False),
+                          "revoked":u.get("revoked",False),"needs_password":u.get("needs_password",True),
+                          "search_count":u.get("search_count",0),"last_search":u.get("last_search",""),
+                          "last_query":u.get("last_query",""),"_last_login":u["_last_login"],
+                          "_approved_at":u["_approved_at"]} for u in approved],
+        })
+
+    @app.post("/api/admin/approve")
+    @require_admin
+    def api_approve():
+        data = request.get_json(silent=True) or {}
+        result = auth.approve_request(data.get("req_id",""))
+        return jsonify(result)
+
+    @app.post("/api/admin/deny")
+    @require_admin
+    def api_deny():
+        data = request.get_json(silent=True) or {}
+        result = auth.deny_request(data.get("req_id",""))
+        return jsonify(result)
+
+    @app.post("/api/admin/revoke")
+    @require_admin
+    def api_revoke():
+        data = request.get_json(silent=True) or {}
+        result = auth.revoke_user(data.get("email",""))
+        return jsonify(result)
+
+    @app.post("/api/admin/set-admin")
+    @require_admin
+    def api_set_admin():
+        data = request.get_json(silent=True) or {}
+        result = auth.set_admin(data.get("email",""), data.get("is_admin", True))
+        return jsonify(result)
+
+    @app.get("/api/me")
+    def api_me():
+        """Return current user info."""
+        token = request.cookies.get("sf_token","")
+        ip    = request.headers.get("X-Forwarded-For", request.remote_addr or "")
+        info  = auth.validate_token(token, ip)
+        if not info["valid"]: return jsonify({"valid":False}), 401
+        return jsonify({"valid":True,"name":info["name"],"email":info.get("email",""),"is_admin":info.get("is_admin",False)})
+
+    @app.get("/me")
+    @require_auth
+    def me():
+        """Return current user info including admin status."""
+        user = get_user()
+        return jsonify({"name": user["name"], "email": user["email"], "is_admin": user.get("is_admin", False)})
+
+    @app.post("/set-password")
+    def set_password():
+        """User sets their own password after being approved."""
+        data     = request.get_json(silent=True) or {}
+        email    = (data.get("email") or "").strip()
+        password = (data.get("password") or "").strip()
+        if not email or not password:
+            return jsonify({"ok": False, "error": "Email and password required."}), 400
+        result = auth.set_password(email, password)
+        if not result.get("ok"):
+            return jsonify(result), 400
+        resp = make_response(jsonify({"ok": True, "name": result["name"], "is_admin": result.get("is_admin", False)}))
+        resp.set_cookie("sf_token", result["token"], max_age=60*60*24*365, httponly=True, samesite="Lax")
+        return resp
+
+    @app.get("/admin/api/data")
+    @require_auth
+    def admin_api_data():
+        """Admin data for in-app admin tab."""
+        user = get_user()
+        if not user.get("is_admin"):
+            return jsonify({"error": "Admin only"}), 403
+        return jsonify(auth.get_admin_data())
+
+    @app.post("/admin/api/approve/<req_id>")
+    @require_auth
+    def admin_api_approve(req_id):
+        user = get_user()
+        if not user.get("is_admin"):
+            return jsonify({"error": "Admin only"}), 403
+        result = auth.approve_request(req_id)
+        return jsonify(result)
+
+    @app.get("/admin/api/deny/<req_id>")
+    @require_auth
+    def admin_api_deny(req_id):
+        user = get_user()
+        if not user.get("is_admin"):
+            return jsonify({"error": "Admin only"}), 403
+        return jsonify(auth.deny_request(req_id))
+
+    @app.post("/admin/api/revoke")
+    @require_auth
+    def admin_api_revoke():
+        user = get_user()
+        if not user.get("is_admin"):
+            return jsonify({"error": "Admin only"}), 403
+        data = request.get_json(silent=True) or {}
+        return jsonify(auth.revoke_user(data.get("email", "")))
+
+    @app.post("/admin/api/set-admin")
+    @require_auth
+    def admin_api_set_admin():
+        user = get_user()
+        if not user.get("is_admin"):
+            return jsonify({"error": "Admin only"}), 403
+        data = request.get_json(silent=True) or {}
+        return jsonify(auth.set_admin(data.get("email", ""), data.get("is_admin", True)))
+
+    @app.get("/admin/api/analytics")
+    @require_auth
+    def admin_api_analytics():
+        user = get_user()
+        if not user.get("is_admin"):
+            return jsonify({"error": "Admin only"}), 403
+        data = auth.get_admin_data()
         analytics = []
-        for email, u in users.items():
+        for u in data.get("approved", []):
             analytics.append({
-                "email": email,
-                "name": u.get("name", "?"),
-                "searches": u.get("search_count", 0),
+                "email":       u["email"],
+                "name":        u["name"],
+                "searches":    u.get("search_count", 0),
                 "last_search": u.get("last_search", "never"),
-                "last_query": u.get("last_query", ""),
-                "approved": u.get("approved", False),
-                "joined": u.get("approved_at", "?"),
+                "last_query":  u.get("last_query", ""),
+                "is_admin":    u.get("is_admin", False),
+                "revoked":     u.get("revoked", False),
+                "approved_at": u.get("approved_at", 0),
             })
         analytics.sort(key=lambda x: x["searches"], reverse=True)
-        html = "<h2 style='font-family:monospace;color:#00f5ff;padding:20px'>SourceFinder Analytics</h2>"
-        html += "<table style='font-family:monospace;font-size:12px;border-collapse:collapse;width:100%;padding:20px'>"
-        html += "<tr style='color:#555'><th>Email</th><th>Name</th><th>Searches</th><th>Last Search</th><th>Last Query</th></tr>"
-        for a in analytics:
-            if not a["approved"]: continue
-            html += f"<tr style='border-bottom:1px solid #1a1a2e'><td style='padding:8px'>{a['email']}</td><td>{a['name']}</td><td style='color:#00f5ff'>{a['searches']}</td><td style='color:#555'>{a['last_search']}</td><td style='color:#8892a4;max-width:200px;overflow:hidden'>{a['last_query'][:50]}</td></tr>"
-        html += "</table>"
-        return html
+        return jsonify(analytics)
 
     @app.post("/search")
     @require_auth
@@ -362,6 +508,12 @@ FILE SIZE: {len(html)} chars
     def admin_revoke():
         data  = request.get_json(silent=True) or {}
         return jsonify(auth.revoke_user(data.get("email", "")))
+
+    @app.post("/admin/set-admin")
+    @require_admin
+    def admin_set_admin():
+        data = request.get_json(silent=True) or {}
+        return jsonify(auth.set_admin(data.get("email", ""), data.get("is_admin", True)))
 
     @app.post("/admin/update-password")
     @require_admin
