@@ -760,3 +760,100 @@ PLATFORMS = {
     "xianyu": {"label":"Xianyu"},
     "weidian": {"label":"Weidian"},
 }
+
+
+# ── ImportYeti scraper ────────────────────────────────────────────
+async def _scrape_importyeti(brand, page, timeout=20000):
+    """
+    Scrape ImportYeti for real verified factory names.
+    Returns list of factory dicts with name, address, shipments.
+    """
+    factories = []
+    try:
+        # Search by brand name
+        url = f"https://www.importyeti.com/company/{brand.lower().replace(' ','-')}"
+        await page.goto(url, wait_until="domcontentloaded", timeout=timeout)
+        await asyncio.sleep(2.0)
+
+        # Get supplier names from the page
+        text = await page.inner_text("body")
+
+        # Also try the product search
+        url2 = f"https://www.importyeti.com/search?q={quote_plus(brand)}"
+        await page.goto(url2, wait_until="domcontentloaded", timeout=timeout)
+        await asyncio.sleep(2.0)
+        text2 = await page.inner_text("body")
+
+        combined = text + "\n" + text2
+
+        # Extract Chinese company names
+        cn_pattern = re.compile(r'[\u4e00-\u9fff]{2,}(?:有限公司|工厂|制造|鞋业|服装|科技|实业|贸易|集团|皮具|箱包)', re.U)
+        en_pattern = re.compile(r'[A-Z][A-Z\s]{5,50}(?:CO\.|LTD|LIMITED|FACTORY|MFG|MANUFACTURING|INTL|INTERNATIONAL)', re.I)
+
+        cn_names = list(set(cn_pattern.findall(combined)))[:8]
+        en_names = list(set(en_pattern.findall(combined)))[:8]
+
+        for name in cn_names + en_names:
+            name = name.strip()
+            if len(name) > 3:
+                factories.append({"name": name, "source": "importyeti"})
+
+        logger.info("ImportYeti found %d factories for %s", len(factories), brand)
+    except Exception as e:
+        logger.warning("ImportYeti scrape error: %s", e)
+    return factories
+
+
+# ── Yupoo direct scraper ─────────────────────────────────────────
+async def _scrape_yupoo(query, brand, page, timeout=25000, max_results=6):
+    """
+    Scrape Yupoo albums directly — sellers post WeChat in descriptions.
+    """
+    results = []
+    try:
+        q = f"{brand} {query}".strip() if brand else query
+        url = f"https://www.yupoo.com/search/?q={quote_plus(q)}&tab=album"
+        await page.goto(url, wait_until="domcontentloaded", timeout=timeout)
+        await asyncio.sleep(2.0)
+
+        # Get album links
+        links = await page.evaluate("""() => {
+            return [...document.querySelectorAll('a[href*="/photos/"]')]
+                .map(a => a.href)
+                .filter(h => h.includes('yupoo.com'))
+                .slice(0, 8);
+        }""")
+
+        logger.info("Yupoo found %d album links", len(links))
+
+        for link in links[:max_results]:
+            try:
+                await page.goto(link, wait_until="domcontentloaded", timeout=timeout)
+                await asyncio.sleep(1.0)
+                text = await page.inner_text("body")
+                html = await page.content()
+                combined = text + html
+                c = _contacts(combined)
+                if not c["wechat_ids"] and not c["emails"] and not c["phones"]:
+                    continue
+                title_el = page.locator("h1, .album-title, .username, title").first
+                title = (await title_el.inner_text()).strip() if await title_el.count() > 0 else link
+                sc = _score(title, text[:300], link, "supplier")
+                best_wq = max((w["quality"] for w in c["wechat_ids"]), default=0)
+                results.append({
+                    "title": title, "link": link, "snippet": text[:200],
+                    "wechat_ids": c["wechat_ids"], "emails": c["emails"], "phones": c["phones"],
+                    "factory_score": sc + 3, "wechat_quality": best_wq,
+                    "has_contact": bool(c["wechat_ids"] or c["emails"] or c["phones"]),
+                    "has_verified_wechat": best_wq >= 3, "is_factory_like": True,
+                    "platform": "Yupoo", "baidu_query": q, "mode": "supplier",
+                    "deep_scanned": True, "page_num": 1, "variation": 0,
+                })
+                logger.info("Yupoo album %s: %d WeChats", link[:50], len(c["wechat_ids"]))
+            except Exception as e:
+                logger.debug("Yupoo album error: %s", e)
+                continue
+
+    except Exception as e:
+        logger.warning("Yupoo scrape error: %s", e)
+    return results
