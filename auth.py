@@ -1,6 +1,9 @@
 """
-SourceFinder auth — admin approves users and sets their password.
-No email sending required. Users log in with email + password.
+SourceFinder auth:
+- Request access = set password at same time
+- Admin approves/denies
+- Sessions are SESSION-ONLY (no persistent cookie) — refresh = re-login
+- Admin accounts always work
 """
 
 import json
@@ -12,74 +15,97 @@ from pathlib import Path
 
 DATA_FILE = Path(__file__).parent / "data" / "users.json"
 
-
 def _load():
     DATA_FILE.parent.mkdir(exist_ok=True)
     if not DATA_FILE.exists():
         DATA_FILE.write_text(json.dumps({"requests": [], "approved": []}))
     return json.loads(DATA_FILE.read_text())
 
-
 def _save(data):
     DATA_FILE.write_text(json.dumps(data, indent=2))
-
 
 def _hash(password: str) -> str:
     return hashlib.sha256(password.encode()).hexdigest()
 
 
-def submit_request(name: str, email: str, reason: str, ip: str, discord: str = "", wechat: str = "", country: str = "", source: str = "") -> dict:
+def submit_request(name, email, reason, ip, discord="", wechat="", password="", **kwargs):
+    """Submit access request WITH password pre-set. Admin just approves/denies."""
     data = _load()
+
+    # Already approved
     if any(u["email"] == email for u in data["approved"]):
-        return {"status": "already_approved"}
-    if any(r["email"] == email and r["status"] == "pending" for r in data["requests"]):
-        return {"status": "already_requested"}
+        return {"ok": False, "error": "This email already has access."}
+
+    # Already pending — update it
+    existing = next((r for r in data["requests"] if r["email"] == email), None)
+    if existing and existing["status"] == "pending":
+        existing["name"]    = name
+        existing["reason"]  = reason
+        existing["discord"] = discord
+        existing["wechat"]  = wechat
+        if password:
+            existing["password_hash"] = _hash(password)
+        _save(data)
+        return {"ok": True, "status": "already_requested", "message": "Request updated — hang tight!"}
+
+    if not password or len(password) < 6:
+        return {"ok": False, "error": "Password must be at least 6 characters."}
+
     req = {
-        "id":        secrets.token_hex(8),
-        "name":      name,
-        "email":     email,
-        "reason":    reason,
-        "discord":   discord,
-        "wechat":    wechat,
-        "country":   country,
-        "source":    source,
-        "ip":        ip,
-        "timestamp": time.time(),
-        "status":    "pending",
+        "id":            secrets.token_hex(8),
+        "name":          name,
+        "email":         email,
+        "reason":        reason,
+        "discord":       discord,
+        "wechat":        wechat,
+        "password_hash": _hash(password),
+        "ip":            ip,
+        "timestamp":     time.time(),
+        "status":        "pending",
     }
     data["requests"].append(req)
     _save(data)
-    print(f"[AUTH] New request from {name} ({email}) IP={ip}")
-    return {"status": "submitted", "id": req["id"]}
+    print(f"[AUTH] New request from {name} ({email})")
+    return {"ok": True, "status": "submitted"}
 
 
-def approve_request(req_id: str, password: str) -> dict:
+def approve_request(req_id):
+    """Approve — moves request to approved list using their pre-set password."""
     data = _load()
     req  = next((r for r in data["requests"] if r["id"] == req_id), None)
     if not req:
         return {"status": "not_found"}
     if req["status"] == "approved":
         return {"status": "already_approved"}
-    if not password:
-        return {"status": "password_required"}
 
     req["status"]      = "approved"
     req["approved_at"] = time.time()
-    data["approved"].append({
-        "name":        req["name"],
-        "email":       req["email"],
-        "password":    _hash(password),
-        "ip_history":  [req["ip"]],
-        "approved_at": time.time(),
-        "last_login":  None,
-        "request_id":  req_id,
-    })
+
+    existing = next((u for u in data["approved"] if u["email"] == req["email"]), None)
+    if existing:
+        existing["approved"] = True
+        existing["revoked"]  = False
+        existing["password"] = req.get("password_hash")
+    else:
+        data["approved"].append({
+            "name":         req["name"],
+            "email":        req["email"],
+            "password":     req.get("password_hash"),
+            "is_admin":     False,
+            "ip_history":   [req["ip"]],
+            "approved_at":  time.time(),
+            "last_login":   None,
+            "request_id":   req_id,
+            "search_count": 0,
+            "last_search":  None,
+            "last_query":   "",
+        })
     _save(data)
-    print(f"[AUTH] Approved {req['email']} with password set")
+    print(f"[AUTH] Approved {req['email']}")
     return {"status": "approved"}
 
 
-def deny_request(req_id: str) -> dict:
+def deny_request(req_id):
     data = _load()
     req  = next((r for r in data["requests"] if r["id"] == req_id), None)
     if not req:
@@ -89,50 +115,70 @@ def deny_request(req_id: str) -> dict:
     return {"status": "denied"}
 
 
-def login_user(email: str, password: str, ip: str) -> dict:
+def login_user(email, password, ip):
     data = _load()
     user = next((u for u in data["approved"] if u["email"] == email), None)
     if not user:
-        return {"valid": False, "error": "Email not found."}
+        return {"valid": False, "error": "Email not found or not approved yet."}
+    if user.get("revoked"):
+        return {"valid": False, "error": "Access revoked."}
+    if not user.get("password"):
+        return {"valid": False, "error": "Account not set up. Contact admin."}
     if user["password"] != _hash(password):
         return {"valid": False, "error": "Wrong password."}
-    # Generate a session token
+
+    # Session token — short lived, cleared on server restart
     token = secrets.token_urlsafe(32)
     user["session_token"] = token
     user["last_login"]    = time.time()
-    if ip not in user["ip_history"]:
-        user["ip_history"].append(ip)
+    if ip not in user.get("ip_history", []):
+        user.setdefault("ip_history", []).append(ip)
     _save(data)
-    return {"valid": True, "token": token, "name": user["name"]}
+    return {"valid": True, "token": token, "name": user["name"], "is_admin": user.get("is_admin", False)}
 
 
-def validate_token(token: str, ip: str) -> dict:
+def validate_token(token, ip):
+    """Validate session token. No persistent sessions — token must exist in memory."""
     if not token:
         return {"valid": False}
     data = _load()
     user = next((u for u in data["approved"] if u.get("session_token") == token), None)
-    if not user:
+    if not user or user.get("revoked"):
         return {"valid": False}
-    user["last_login"] = time.time()
-    if ip not in user["ip_history"]:
-        user["ip_history"].append(ip)
-    _save(data)
-    return {"valid": True, "name": user["name"], "email": user["email"]}
+    return {
+        "valid":    True,
+        "name":     user["name"],
+        "email":    user["email"],
+        "is_admin": user.get("is_admin", False),
+    }
 
 
-def get_admin_data() -> dict:
+def get_admin_data():
     return _load()
 
 
-def revoke_user(email: str) -> dict:
-    data   = _load()
-    before = len(data["approved"])
-    data["approved"] = [u for u in data["approved"] if u["email"] != email]
+def revoke_user(email):
+    data = _load()
+    user = next((u for u in data["approved"] if u["email"] == email), None)
+    if not user:
+        return {"status": "not_found"}
+    user["revoked"]       = True
+    user["session_token"] = None
     _save(data)
-    return {"status": "revoked" if len(data["approved"]) < before else "not_found"}
+    return {"status": "revoked"}
 
 
-def update_password(email: str, new_password: str) -> dict:
+def set_admin(email, is_admin=True):
+    data = _load()
+    user = next((u for u in data["approved"] if u["email"] == email), None)
+    if not user:
+        return {"status": "not_found"}
+    user["is_admin"] = is_admin
+    _save(data)
+    return {"status": "updated", "is_admin": is_admin}
+
+
+def update_password(email, new_password):
     data = _load()
     user = next((u for u in data["approved"] if u["email"] == email), None)
     if not user:
@@ -140,3 +186,8 @@ def update_password(email: str, new_password: str) -> dict:
     user["password"] = _hash(new_password)
     _save(data)
     return {"status": "updated"}
+
+
+def get_user_by_email(email):
+    data = _load()
+    return next((u for u in data["approved"] if u["email"] == email), None)
