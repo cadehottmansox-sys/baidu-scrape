@@ -126,6 +126,31 @@ def create_app() -> Flask:
         resp.delete_cookie("sf_token")
         return resp
 
+    @app.get("/setup-admin")
+    def setup_admin():
+        secret = request.args.get("secret","")
+        if secret != os.getenv("ADMIN_SECRET","secretcode"):
+            return "Wrong secret", 403
+        email = request.args.get("email", "cadehottmansox@gmail.com")
+        import hashlib, time as t, json
+        from pathlib import Path
+        data = auth.get_admin_data()
+        user = next((u for u in data["approved"] if u["email"]==email), None)
+        if not user:
+            data["approved"].append({
+                "name":"Cade","email":email,
+                "password":hashlib.sha256(b"changeme123").hexdigest(),
+                "is_admin":True,"ip_history":[],"approved_at":t.time(),
+                "last_login":None,"request_id":None,"search_count":0,
+                "last_search":None,"last_query":"",
+            })
+            p = Path("/app/data/users.json")
+            p.parent.mkdir(exist_ok=True)
+            p.write_text(json.dumps(data, indent=2))
+            return f"Done! Login with {email} / changeme123 then change your password"
+        auth.set_admin(email, True)
+        return f"Done! {email} is now admin"
+
     # ── Admin API endpoints ──────────────────────────────────────────
     @app.get("/api/admin/data")
     @require_admin
