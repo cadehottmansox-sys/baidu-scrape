@@ -733,3 +733,129 @@ async function submitFind(){
 
 // ── Access page floating reviews (if on access page) ──────────────
 // handled in access.html
+
+// ── CRM ──────────────────────────────────────────────────────────
+let crmData = JSON.parse(localStorage.getItem('sf_crm') || '[]');
+
+function saveCrm(){ localStorage.setItem('sf_crm', JSON.stringify(crmData)); renderCrm(); }
+
+function openCrmModal(entry=null){
+  document.getElementById('crmName').value = entry?.name||'';
+  document.getElementById('crmWechat').value = entry?.wechat||'';
+  document.getElementById('crmProduct').value = entry?.product||'';
+  document.getElementById('crmPrice').value = entry?.price||'';
+  document.getElementById('crmStatus').value = entry?.status||'new';
+  document.getElementById('crmNotes').value = entry?.notes||'';
+  document.getElementById('crmMsg').textContent = '';
+  document.getElementById('crmModal')._editId = entry?.id||null;
+  document.getElementById('crmModal').style.display = 'flex';
+}
+function closeCrmModal(){ document.getElementById('crmModal').style.display = 'none'; }
+
+function saveCrmEntry(){
+  const name = document.getElementById('crmName').value.trim();
+  if(!name){ document.getElementById('crmMsg').className='msg err'; document.getElementById('crmMsg').textContent='Name required.'; return; }
+  const editId = document.getElementById('crmModal')._editId;
+  const entry = {
+    id: editId || Date.now().toString(),
+    name,
+    wechat: document.getElementById('crmWechat').value.trim(),
+    product: document.getElementById('crmProduct').value.trim(),
+    price: document.getElementById('crmPrice').value.trim(),
+    status: document.getElementById('crmStatus').value,
+    notes: document.getElementById('crmNotes').value.trim(),
+    date: new Date().toLocaleDateString(),
+    ts: Date.now(),
+  };
+  if(editId){ const i=crmData.findIndex(e=>e.id===editId); if(i>=0) crmData[i]=entry; }
+  else crmData.unshift(entry);
+  saveCrm();
+  closeCrmModal();
+}
+
+function deleteCrmEntry(id, e){
+  e.stopPropagation();
+  if(!confirm('Delete this supplier?')) return;
+  crmData = crmData.filter(e=>e.id!==id);
+  saveCrm();
+}
+
+const STATUS_LABELS = {new:'🆕 New',contacted:'📨 Contacted',replied:'💬 Replied',sampling:'📦 Sampling',ordered:'✅ Ordered',passed:'❌ Passed'};
+
+function renderCrm(){
+  const rows = document.getElementById('crmRows');
+  const empty = document.getElementById('crmEmpty');
+  const stats = document.getElementById('crmStats');
+  if(!rows) return;
+
+  // Stats
+  const counts = {new:0,contacted:0,replied:0,sampling:0,ordered:0,passed:0};
+  crmData.forEach(e=>{ if(counts[e.status]!==undefined) counts[e.status]++; });
+  if(stats) stats.innerHTML = [
+    {l:'Total',v:crmData.length,i:1},{l:'Replied',v:counts.replied+counts.sampling,i:2},
+    {l:'Ordered',v:counts.ordered,i:3},{l:'Passed',v:counts.passed,i:4},{l:'WeChats',v:crmData.filter(e=>e.wechat).length,i:5}
+  ].map(s=>`<div class="crm-stat"><div class="crm-stat-val">${s.v}</div><div class="crm-stat-label">${s.l}</div></div>`).join('');
+
+  if(!crmData.length){ rows.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display='none';
+  rows.innerHTML = crmData.map(e=>`
+    <div class="crm-row" onclick="openCrmModal(${JSON.stringify(e).replace(/"/g,'&quot;')})">
+      <div class="crm-row-name">${e.name}</div>
+      <div class="crm-row-wc" onclick="copyText(event,e.wechat||'');event.stopPropagation()" title="Click to copy">${e.wechat||'—'}</div>
+      <div class="crm-row-product">${e.product||'—'}</div>
+      <div class="crm-row-price">${e.price||'—'}</div>
+      <div><span class="crm-status crm-status-${e.status}">${STATUS_LABELS[e.status]||e.status}</span></div>
+      <div class="crm-row-date">${e.date}</div>
+      <div class="crm-row-del" onclick="deleteCrmEntry('${e.id}',event)">✕</div>
+    </div>
+  `).join('');
+}
+
+// Add to CRM from result card
+function addToCrm(item){
+  const existing = crmData.find(e=>e.wechat && item.wechat_ids?.some(w=>w.id===e.wechat));
+  if(existing){ showToast('Already in CRM: '+existing.name); return; }
+  openCrmModal({name:item.title?.slice(0,40)||'Unknown', wechat:item.wechat_ids?.[0]?.id||'', product:'', price:'', status:'new', notes:item.snippet?.slice(0,100)||''});
+}
+
+renderCrm();
+
+// ── QR GENERATOR ─────────────────────────────────────────────────
+function genQR(){
+  const id = document.getElementById('qrInput').value.trim();
+  if(!id){ showToast('Enter a WeChat ID first'); return; }
+  const out = document.getElementById('qrOutput');
+  // Use WeChat's own QR format
+  const url = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent('weixin://dl/chat?'+id)}`;
+  out.innerHTML = `
+    <img src="${url}" class="qr-img" alt="WeChat QR for ${id}"/>
+    <br><div style="margin-top:8px;font-family:var(--mono);font-size:11px;color:var(--text2)">QR for <span style="color:var(--g)">${id}</span> — right-click to save</div>
+    <div style="font-size:10px;color:var(--text3);font-family:var(--mono);margin-top:4px">Screenshot this to add on mobile</div>
+  `;
+}
+document.getElementById('qrInput')?.addEventListener('keydown',e=>{ if(e.key==='Enter') genQR(); });
+
+// ── AUTO-TRANSLATE ────────────────────────────────────────────────
+async function translateText(text, btn){
+  btn.textContent = '...';
+  btn.disabled = true;
+  try{
+    const r = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=zh&tl=en&dt=t&q=${encodeURIComponent(text)}`);
+    const d = await r.json();
+    const translated = d[0]?.map(s=>s[0]).join('') || text;
+    const snippet = btn.closest('.result-card')?.querySelector('.card-snippet');
+    if(snippet){ snippet.textContent = translated; snippet.style.color='#f0abfc'; }
+    btn.textContent = '✓ EN';
+    btn.style.color = 'var(--g)';
+  } catch {
+    btn.textContent = 'err';
+    btn.disabled = false;
+  }
+}
+
+// Hook translate button into card builder — patch buildCard
+const _origBuildCard = window.buildCard;
+
+// ── CRM BUTTON IN CARDS ───────────────────────────────────────────
+// patch card actions to include CRM + translate
+const _buildCardOrig = typeof buildCard !== 'undefined' ? buildCard : null;
