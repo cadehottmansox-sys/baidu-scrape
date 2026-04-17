@@ -859,3 +859,367 @@ const _origBuildCard = window.buildCard;
 // ── CRM BUTTON IN CARDS ───────────────────────────────────────────
 // patch card actions to include CRM + translate
 const _buildCardOrig = typeof buildCard !== 'undefined' ? buildCard : null;
+
+// ── ADMIN TAB ─────────────────────────────────────────────────────
+async function initAdminTab(){
+  try{
+    const r = await fetch('/me');
+    const me = await r.json();
+    if(me.is_admin){
+      const tab = document.getElementById('adminTab');
+      if(tab) tab.style.display = '';
+    }
+  }catch{}
+}
+initAdminTab();
+
+async function loadAdminData(){
+  await Promise.all([loadAdminRequests(), loadAdminUsers(), loadAdminAnalytics()]);
+}
+
+async function loadAdminRequests(){
+  const el = document.getElementById('adminRequests');
+  if(!el) return;
+  try{
+    const r = await fetch('/admin/api/data');
+    const d = await r.json();
+    const pending = (d.requests||[]).filter(r=>r.status==='pending');
+    if(!pending.length){ el.innerHTML='<div class="crm-empty">No pending requests 🎉</div>'; return; }
+    el.innerHTML = pending.map(req=>`
+      <div class="admin-req" id="req-${req.id}">
+        <div class="admin-req-info">
+          <div class="admin-req-name">${req.name}</div>
+          <div class="admin-req-email">${req.email}</div>
+          <div class="admin-req-meta">
+            ${req.discord?`Discord: ${req.discord} · `:''} 
+            ${req.wechat?`WeChat: ${req.wechat} · `:''}
+            ${new Date(req.timestamp*1000).toLocaleDateString()}
+          </div>
+          ${req.reason?`<div class="admin-req-reason">"${req.reason}"</div>`:''}
+        </div>
+        <div class="admin-req-actions">
+          <button class="btn-approve" onclick="adminApprove('${req.id}','${req.name}')">✓ Approve</button>
+          <button class="btn-deny" onclick="adminDeny('${req.id}')">✕ Deny</button>
+        </div>
+      </div>
+    `).join('');
+  }catch(e){ el.innerHTML='<div class="crm-empty">Error loading requests</div>'; }
+}
+
+async function adminApprove(id, name){
+  const btn = event.target;
+  btn.textContent = '...'; btn.disabled = true;
+  try{
+    const r = await fetch(`/admin/api/approve/${id}`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({})});
+    const d = await r.json();
+    if(d.status==='approved'){
+      showToast(`✓ ${name} approved — they can now set their password`);
+      document.getElementById(`req-${id}`)?.remove();
+      loadAdminUsers();
+    } else {
+      btn.textContent = d.status; btn.disabled = false;
+    }
+  }catch{ btn.textContent='Error'; btn.disabled=false; }
+}
+
+async function adminDeny(id){
+  if(!confirm('Deny this request?')) return;
+  await fetch(`/admin/api/deny/${id}`);
+  document.getElementById(`req-${id}`)?.remove();
+  showToast('Request denied');
+}
+
+async function loadAdminUsers(){
+  const el = document.getElementById('adminUsers');
+  if(!el) return;
+  try{
+    const r = await fetch('/admin/api/data');
+    const d = await r.json();
+    const users = (d.approved||[]);
+    if(!users.length){ el.innerHTML='<div class="crm-empty">No users yet</div>'; return; }
+    el.innerHTML = `
+      <div class="admin-user-head">
+        <span>Name / Email</span><span>Status</span><span>Role</span><span>Searches</span><span>Last Active</span><span>Actions</span>
+      </div>
+      ${users.map(u=>`
+        <div class="admin-user-row" style="${u.revoked?'opacity:.4':''}">
+          <div>
+            <div style="font-weight:700;color:var(--text)">${u.name}</div>
+            <div style="font-family:var(--mono);font-size:10px;color:var(--text2)">${u.email}</div>
+          </div>
+          <div>
+            ${u.revoked?'<span style="color:var(--r);font-size:11px">Revoked</span>':
+              u.needs_password||!u.password?'<span style="color:var(--a);font-size:11px;font-family:var(--mono)">Awaiting PW</span>':
+              '<span style="color:var(--g);font-size:11px">Active</span>'}
+          </div>
+          <div><span class="${u.is_admin?'badge-admin':'badge-user'}">${u.is_admin?'ADMIN':'USER'}</span></div>
+          <div style="font-family:var(--mono);font-size:12px;color:var(--c)">${u.search_count||0}</div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--text3)">${u.last_search||'never'}</div>
+          <div class="admin-actions">
+            ${!u.is_admin?`<button class="btn-sm btn-sm-cyan" onclick="makeAdmin('${u.email}')">Make Admin</button>`:''}
+            ${u.is_admin?`<button class="btn-sm btn-sm-red" onclick="removeAdmin('${u.email}')">Remove Admin</button>`:''}
+            ${!u.revoked?`<button class="btn-sm btn-sm-red" onclick="revokeUser('${u.email}')">Revoke</button>`:''}
+          </div>
+        </div>
+      `).join('')}
+    `;
+  }catch(e){ el.innerHTML='<div class="crm-empty">Error loading users</div>'; }
+}
+
+async function makeAdmin(email){
+  await fetch('/admin/api/set-admin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,is_admin:true})});
+  showToast(`${email} is now admin`);
+  loadAdminUsers();
+}
+async function removeAdmin(email){
+  await fetch('/admin/api/set-admin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,is_admin:false})});
+  showToast(`Admin removed from ${email}`);
+  loadAdminUsers();
+}
+async function revokeUser(email){
+  if(!confirm(`Revoke access for ${email}?`)) return;
+  await fetch('/admin/api/revoke',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email})});
+  showToast(`Access revoked for ${email}`);
+  loadAdminUsers();
+}
+
+async function loadAdminAnalytics(){
+  const el = document.getElementById('adminAnalytics');
+  if(!el) return;
+  try{
+    const r = await fetch('/admin/api/analytics');
+    const d = await r.json();
+    if(!d.length){ el.innerHTML='<div class="crm-empty">No data yet</div>'; return; }
+    el.innerHTML = `
+      <div class="analytics-head"><span>Name</span><span>Email</span><span>Searches</span><span>Last Search</span><span>Last Query</span></div>
+      ${d.map(u=>`
+        <div class="analytics-row" style="${u.revoked?'opacity:.3':''}">
+          <div style="font-weight:700">${u.name} ${u.is_admin?'<span class="badge-admin">ADMIN</span>':''}</div>
+          <div style="font-family:var(--mono);font-size:11px;color:var(--text2)">${u.email}</div>
+          <div style="font-family:var(--mono);font-size:13px;color:var(--c);font-weight:700">${u.searches}</div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--text3)">${u.last_search||'never'}</div>
+          <div style="font-size:11px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${u.last_query||'—'}</div>
+        </div>
+      `).join('')}
+    `;
+  }catch(e){ el.innerHTML='<div class="crm-empty">Error loading analytics</div>'; }
+}
+
+// Load admin data when tab is clicked
+const _origTabSwitch = window.switchTab;
+
+// ── USER SESSION + ADMIN ──────────────────────────────────────────
+let currentUser = null;
+
+async function initUser(){
+  try{
+    const r = await fetch('/api/me');
+    if(!r.ok) return;
+    const d = await r.json();
+    if(!d.valid) return;
+    currentUser = d;
+    // Show admin tab if admin
+    if(d.is_admin){
+      const adminBtn = document.getElementById('adminTabBtn');
+      if(adminBtn) adminBtn.style.display = '';
+    }
+    // Show user name somewhere
+    const heroSub = document.querySelector('.hero-sub');
+    if(heroSub && d.name) heroSub.textContent = `Welcome back, ${d.name} · Chinese suppliers · Factory WeChats · Passing goods`;
+  } catch(e){ console.log('Could not load user info') }
+}
+initUser();
+
+// ── SET PASSWORD FLOW ─────────────────────────────────────────────
+// Called when login returns needs_password=true
+function showSetPassword(email){
+  const overlay = document.createElement('div');
+  overlay.className = 'setpw-overlay';
+  overlay.innerHTML = `
+    <div class="setpw-card">
+      <div class="setpw-title">🎉 You're Approved!</div>
+      <div class="setpw-sub">Set your password to access SourceFinder.<br>You'll only need to do this once.</div>
+      <label>Email</label>
+      <input type="email" id="spEmail" value="${email}" readonly style="opacity:.5;cursor:not-allowed"/>
+      <label>Choose Password</label>
+      <input type="password" id="spPw1" placeholder="At least 6 characters" autofocus/>
+      <label>Confirm Password</label>
+      <input type="password" id="spPw2" placeholder="Confirm password"/>
+      <div class="setpw-req">Password must be at least 6 characters.</div>
+      <button class="btn-primary" id="spBtn" onclick="doSetPassword('${email}')" style="width:100%">Set Password & Login</button>
+      <p class="msg" id="spMsg"></p>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  document.getElementById('spPw1').focus();
+  document.addEventListener('keydown', function spEnter(e){
+    if(e.key==='Enter'){ doSetPassword(email); document.removeEventListener('keydown', spEnter); }
+  });
+}
+
+async function doSetPassword(email){
+  const pw1 = document.getElementById('spPw1')?.value || '';
+  const pw2 = document.getElementById('spPw2')?.value || '';
+  const msg = document.getElementById('spMsg');
+  const btn = document.getElementById('spBtn');
+  if(pw1.length < 6){ msg.className='msg err'; msg.textContent='Password must be at least 6 characters.'; return; }
+  if(pw1 !== pw2){ msg.className='msg err'; msg.textContent="Passwords don't match."; return; }
+  btn.disabled=true; btn.textContent='Setting password...';
+  try{
+    const r = await fetch('/set-password', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({email, password:pw1})});
+    const d = await r.json();
+    if(d.ok){ msg.className='msg ok'; msg.textContent='✓ Password set! Loading...'; setTimeout(()=>location.reload(), 800); }
+    else{ msg.className='msg err'; msg.textContent=d.error||'Error.'; btn.disabled=false; btn.textContent='Set Password & Login'; }
+  } catch{ msg.className='msg err'; msg.textContent='Network error.'; btn.disabled=false; btn.textContent='Set Password & Login'; }
+}
+
+// Patch login response to handle needs_password
+const _origFetch = window.fetch;
+
+// ── ADMIN PANEL ───────────────────────────────────────────────────
+async function loadAdmin(){
+  try{
+    const r = await fetch('/api/admin/data');
+    if(!r.ok){ alert('Not authorized'); return; }
+    const d = await r.json();
+    renderAdminStats(d);
+    renderPending(d.pending||[]);
+    renderApproved(d.approved||[]);
+    renderAnalytics(d.approved||[]);
+  } catch(e){ console.error('Admin load error:', e); }
+}
+
+function renderAdminStats(d){
+  const el = document.getElementById('adminStats');
+  if(!el) return;
+  const pending  = (d.pending||[]).length;
+  const approved = (d.approved||[]).length;
+  const active   = (d.approved||[]).filter(u=>!u.revoked && !u.needs_password).length;
+  const admins   = (d.approved||[]).filter(u=>u.is_admin).length;
+  const searches = (d.approved||[]).reduce((s,u)=>s+(u.search_count||0),0);
+  el.innerHTML = [
+    {l:'Pending',v:pending,i:1},{l:'Approved',v:approved,i:2},
+    {l:'Active',v:active,i:3},{l:'Admins',v:admins,i:4},{l:'Searches',v:searches,i:5}
+  ].map(s=>`<div class="crm-stat"><div class="crm-stat-val">${s.v}</div><div class="crm-stat-label">${s.l}</div></div>`).join('');
+}
+
+function renderPending(reqs){
+  const el = document.getElementById('pendingList');
+  const ct = document.getElementById('pendingCount');
+  if(!el) return;
+  if(ct) ct.textContent = reqs.length;
+  if(!reqs.length){ el.innerHTML='<div class="admin-empty">No pending requests 🎉</div>'; return; }
+  el.innerHTML = reqs.map(r=>`
+    <div class="admin-req" id="req-${r.id}">
+      <div>
+        <div class="admin-req-name">${r.name}</div>
+        <div class="admin-req-email">${r.email}</div>
+      </div>
+      <div>
+        <div class="admin-req-contact">${r.discord||r.wechat||'—'}</div>
+        <div class="admin-req-time">${r._time||''}</div>
+      </div>
+      <button class="admin-btn abtn-approve" onclick="adminApprove('${r.id}','${r.email}')">✓ Approve</button>
+      <button class="admin-btn abtn-deny" onclick="adminDeny('${r.id}')">✕ Deny</button>
+      <div></div>
+      ${r.reason||r.why ? `<div class="admin-req-why">"${(r.reason||r.why||'').slice(0,120)}"</div>` : ''}
+    </div>
+  `).join('');
+}
+
+function renderApproved(users){
+  const el = document.getElementById('approvedList');
+  const ct = document.getElementById('approvedCount');
+  if(!el) return;
+  if(ct) ct.textContent = users.length;
+  if(!users.length){ el.innerHTML='<div class="admin-empty">No approved users yet</div>'; return; }
+  el.innerHTML = users.map(u=>`
+    <div class="admin-user">
+      <div>
+        <div class="admin-user-name">${u.name}</div>
+        <div class="admin-user-email">${u.email}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:3px">
+        ${u.is_admin ? '<span class="admin-badge badge-admin">ADMIN</span>' : ''}
+        ${u.needs_password ? '<span class="admin-badge badge-setup">NEEDS PW</span>' : ''}
+        ${u.revoked ? '<span class="admin-badge badge-revoked">REVOKED</span>' : (!u.needs_password ? '<span class="admin-badge badge-active">ACTIVE</span>' : '')}
+      </div>
+      <div class="admin-user-searches">${u.search_count||0}<div style="font-size:8px;color:var(--text3);font-family:var(--mono);letter-spacing:.5px">SEARCHES</div></div>
+      <div class="admin-user-last">${u._last_login||'never'}</div>
+      <button class="admin-btn abtn-admin" onclick="adminToggleAdmin('${u.email}',${!u.is_admin})" title="${u.is_admin?'Remove admin':'Grant admin'}">
+        ${u.is_admin ? '★ Unadmin' : '☆ Admin'}
+      </button>
+      ${u.revoked
+        ? `<button class="admin-btn abtn-approve" onclick="adminRevoke('${u.email}',false)">Restore</button>`
+        : `<button class="admin-btn abtn-revoke" onclick="adminRevoke('${u.email}',true)">Revoke</button>`
+      }
+    </div>
+  `).join('');
+}
+
+function renderAnalytics(users){
+  const el = document.getElementById('analyticsTable');
+  if(!el) return;
+  const active = users.filter(u=>!u.revoked).sort((a,b)=>(b.search_count||0)-(a.search_count||0));
+  if(!active.length){ el.innerHTML='<div class="admin-empty">No search data yet</div>'; return; }
+  el.innerHTML = `
+    <div class="crm-table-head" style="grid-template-columns:2fr 1fr 1fr 2fr">
+      <span>User</span><span>Searches</span><span>Last Active</span><span>Last Query</span>
+    </div>
+    ${active.map(u=>`
+      <div class="crm-row" style="grid-template-columns:2fr 1fr 1fr 2fr">
+        <div><div class="crm-row-name">${u.name}</div><div style="font-size:10px;color:var(--text3);font-family:var(--mono)">${u.email}</div></div>
+        <div class="admin-user-searches">${u.search_count||0}</div>
+        <div class="admin-user-last">${u.last_search||'never'}</div>
+        <div style="font-size:11px;color:var(--text2);font-family:var(--mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${u.last_query||'—'}</div>
+      </div>
+    `).join('')}
+  `;
+}
+
+async function adminApprove(reqId, email){
+  const btn = event.target;
+  btn.disabled=true; btn.textContent='Approving...';
+  try{
+    const r = await fetch('/api/admin/approve', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({req_id:reqId})});
+    const d = await r.json();
+    if(d.status==='approved'||d.status==='already_approved'){
+      showToast(`✓ ${email} approved — they can now set their password`);
+      loadAdmin();
+    } else { showToast('Error: '+JSON.stringify(d)); btn.disabled=false; btn.textContent='✓ Approve'; }
+  } catch{ btn.disabled=false; btn.textContent='✓ Approve'; }
+}
+
+async function adminDeny(reqId){
+  if(!confirm('Deny this request?')) return;
+  const r = await fetch('/api/admin/deny', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({req_id:reqId})});
+  const d = await r.json();
+  showToast(d.status==='denied' ? 'Request denied' : 'Error');
+  loadAdmin();
+}
+
+async function adminRevoke(email, revoke){
+  if(revoke && !confirm(`Revoke access for ${email}?`)) return;
+  const r = await fetch('/api/admin/revoke', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({email})});
+  showToast(revoke ? `Access revoked for ${email}` : `Access restored for ${email}`);
+  loadAdmin();
+}
+
+async function adminToggleAdmin(email, makeAdmin){
+  const r = await fetch('/api/admin/set-admin', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({email, is_admin:makeAdmin})});
+  const d = await r.json();
+  showToast(makeAdmin ? `⚡ ${email} is now an admin` : `${email} admin removed`);
+  loadAdmin();
+}
+
+// Load admin when tab clicked
+document.addEventListener('DOMContentLoaded', ()=>{
+  document.querySelectorAll('.tab-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      if(btn.dataset.tab==='admin') loadAdmin();
+    });
+  });
+});
+
+// Handle needs_password on login — intercept the fetch in access.html
+// The access.html already handles this but we also need it if session expires
