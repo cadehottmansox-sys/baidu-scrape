@@ -131,15 +131,18 @@ def create_app() -> Flask:
         secret = request.args.get("secret","")
         if secret != os.getenv("ADMIN_SECRET","secretcode"):
             return "Wrong secret", 403
-        email = request.args.get("email", "cadehottmansox@gmail.com")
+        pw = request.args.get("pw", "sourcefinder2024")
+        result = auth.update_password("cadehottmansox@gmail.com", pw)
+        auth.set_admin("cadehottmansox@gmail.com", True)
+        # Ensure user exists
+        data = auth.get_admin_data()
         import hashlib, time as t, json
         from pathlib import Path
-        data = auth.get_admin_data()
-        user = next((u for u in data["approved"] if u["email"]==email), None)
+        user = next((u for u in data["approved"] if u["email"]=="cadehottmansox@gmail.com"), None)
         if not user:
             data["approved"].append({
-                "name":"Cade","email":email,
-                "password":hashlib.sha256(b"changeme123").hexdigest(),
+                "name":"Cade","email":"cadehottmansox@gmail.com",
+                "password":hashlib.sha256(pw.encode()).hexdigest(),
                 "is_admin":True,"ip_history":[],"approved_at":t.time(),
                 "last_login":None,"request_id":None,"search_count":0,
                 "last_search":None,"last_query":"",
@@ -147,17 +150,17 @@ def create_app() -> Flask:
             p = Path("/app/data/users.json")
             p.parent.mkdir(exist_ok=True)
             p.write_text(json.dumps(data, indent=2))
-            return f"Done! Login with {email} / changeme123 then change your password"
-        auth.set_admin(email, True)
-        return f"Done! {email} is now admin"
+        return f"<h2>Done!</h2><p>Email: cadehottmansox@gmail.com</p><p>Password: {pw}</p><p><a href='/'>Go to app</a></p>"
 
     # ── Admin API endpoints ──────────────────────────────────────────
     @app.get("/api/admin/data")
     @require_admin
     def api_admin_data():
         """Return all admin data as JSON for the in-app admin tab."""
-        import time as _time
-        data = auth.get_admin_data()
+        try:
+            data = auth.get_admin_data()
+        except Exception as e:
+            return jsonify({"pending":[],"approved":[],"error":str(e)}), 200
         pending  = [r for r in data.get("requests",[]) if r.get("status")=="pending"]
         approved = data.get("approved",[])
         # Sort pending by newest first
