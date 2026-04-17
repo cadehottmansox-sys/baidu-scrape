@@ -165,11 +165,11 @@ def _baidu_ai_search(query, count=20):
             timeout=30,
         )
         logger.info("Baidu AI Search status: %d", resp.status_code)
+        data = resp.json()
+        logger.info("Baidu AI Search full response: %s", str(data)[:500])
         if resp.status_code != 200:
             logger.warning("Baidu AI Search error: %s", resp.text[:200])
             return None
-        data = resp.json()
-        logger.info("Baidu AI Search response keys: %s", list(data.keys()))
         # Extract references/results
         results = []
         # Try different response structures
