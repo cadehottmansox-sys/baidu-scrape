@@ -1,3 +1,79 @@
+// ── Animated background canvas ───────────────────────────────────
+(function(){
+  const canvas = document.getElementById('bg-canvas');
+  if(!canvas) return;
+  const ctx = canvas.getContext('2d');
+  let W, H, particles = [], mouse = {x:0, y:0};
+  const COLORS = ['rgba(56,189,248,', 'rgba(129,140,248,', 'rgba(244,114,182,', 'rgba(52,211,153,'];
+
+  function resize(){ W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
+  window.addEventListener('resize', resize);
+  resize();
+
+  document.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
+
+  class Particle {
+    constructor(){
+      this.x = Math.random() * W;
+      this.y = Math.random() * H;
+      this.vx = (Math.random() - 0.5) * 0.3;
+      this.vy = (Math.random() - 0.5) * 0.3;
+      this.r = Math.random() * 1.5 + 0.5;
+      this.color = COLORS[Math.floor(Math.random() * COLORS.length)];
+      this.alpha = Math.random() * 0.4 + 0.1;
+      this.life = Math.random() * 300 + 200;
+      this.age = 0;
+    }
+    update(){
+      this.x += this.vx; this.y += this.vy;
+      this.age++;
+      const dx = mouse.x - this.x, dy = mouse.y - this.y;
+      const dist = Math.sqrt(dx*dx+dy*dy);
+      if(dist < 150){ this.vx -= dx/dist*0.02; this.vy -= dy/dist*0.02; }
+      if(this.x<0)this.x=W; if(this.x>W)this.x=0;
+      if(this.y<0)this.y=H; if(this.y>H)this.y=0;
+    }
+    draw(){
+      const fade = this.age < 30 ? this.age/30 : this.age > this.life-30 ? (this.life-this.age)/30 : 1;
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.r, 0, Math.PI*2);
+      ctx.fillStyle = this.color + (this.alpha * fade) + ')';
+      ctx.fill();
+    }
+    dead(){ return this.age >= this.life; }
+  }
+
+  // Init particles
+  for(let i=0;i<80;i++) particles.push(new Particle());
+
+  // Draw connecting lines between nearby particles
+  function drawLines(){
+    for(let i=0;i<particles.length;i++){
+      for(let j=i+1;j<particles.length;j++){
+        const dx=particles[i].x-particles[j].x, dy=particles[i].y-particles[j].y;
+        const dist=Math.sqrt(dx*dx+dy*dy);
+        if(dist<120){
+          ctx.beginPath();
+          ctx.moveTo(particles[i].x, particles[i].y);
+          ctx.lineTo(particles[j].x, particles[j].y);
+          ctx.strokeStyle = 'rgba(56,189,248,' + (0.06*(1-dist/120)) + ')';
+          ctx.lineWidth = 0.5;
+          ctx.stroke();
+        }
+      }
+    }
+  }
+
+  function animate(){
+    ctx.clearRect(0,0,W,H);
+    drawLines();
+    particles = particles.filter(p=>{ p.update(); p.draw(); return !p.dead(); });
+    while(particles.length < 80) particles.push(new Particle());
+    requestAnimationFrame(animate);
+  }
+  animate();
+})();
+
 "use strict";
 
 // ── Typing hero ───────────────────────────────────────────────────
