@@ -81,12 +81,13 @@ def create_app() -> Flask:
         data    = request.get_json(silent=True) or {}
         name    = (data.get("name") or "").strip()
         email   = (data.get("email") or "").strip()
-        reason  = (data.get("reason") or "").strip()
+        reason  = (data.get("reason") or data.get("why") or "").strip()
         discord = (data.get("discord") or "").strip()
         wechat  = (data.get("wechat") or "").strip()
         if not name or not email:
             return jsonify({"error": "Name and email required."}), 400
         result = auth.submit_request(name, email, reason, get_ip(), discord=discord, wechat=wechat)
+        result["ok"] = result.get("ok", True)
         return jsonify(result), 200
 
     @app.post("/login")
@@ -99,7 +100,7 @@ def create_app() -> Flask:
         result = auth.login_user(email, password, get_ip())
         if not result["valid"]:
             return jsonify({"error": result.get("error", "Invalid credentials.")}), 401
-        resp = make_response(jsonify({"status": "ok", "name": result["name"]}))
+        resp = make_response(jsonify({"ok": True, "status": "ok", "name": result["name"]}))
         resp.set_cookie("sf_token", result["token"], max_age=60*60*24*365, httponly=True, samesite="Lax")
         return resp
 
