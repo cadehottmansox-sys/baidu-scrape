@@ -395,3 +395,53 @@ kbd.kb{font-size:9px;font-family:var(--mono);background:rgba(0,245,255,.08);bord
   .finds-grid{grid-template-columns:1fr}
   .tab-btn span{display:none}
 }
+
+/* ── CRM ── */
+.crm-header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:16px;flex-wrap:wrap}
+.crm-stats{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.crm-stat{flex:1;min-width:100px;background:var(--card);border:1px solid var(--b);border-radius:var(--rad);padding:12px 14px;position:relative;overflow:hidden}
+.crm-stat::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.crm-stat:nth-child(1)::before{background:var(--c)}
+.crm-stat:nth-child(2)::before{background:var(--g)}
+.crm-stat:nth-child(3)::before{background:var(--a)}
+.crm-stat:nth-child(4)::before{background:var(--r)}
+.crm-stat:nth-child(5)::before{background:var(--c2)}
+.crm-stat-val{font-family:var(--display);font-size:24px;font-weight:700;line-height:1}
+.crm-stat:nth-child(1) .crm-stat-val{color:var(--c)}
+.crm-stat:nth-child(2) .crm-stat-val{color:var(--g)}
+.crm-stat:nth-child(3) .crm-stat-val{color:var(--a)}
+.crm-stat:nth-child(4) .crm-stat-val{color:var(--r)}
+.crm-stat:nth-child(5) .crm-stat-val{color:var(--c2)}
+.crm-stat-label{font-family:var(--mono);font-size:8px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);margin-top:3px}
+
+.crm-table-wrap{background:var(--card);border:1px solid var(--b);border-radius:var(--rad);overflow:hidden;margin-bottom:16px}
+.crm-table-head{display:grid;grid-template-columns:2fr 1.2fr 1.5fr 1fr 1fr 1fr .5fr;gap:0;padding:10px 16px;background:rgba(0,0,0,.2);border-bottom:1px solid var(--b);font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3)}
+.crm-row{display:grid;grid-template-columns:2fr 1.2fr 1.5fr 1fr 1fr 1fr .5fr;gap:0;padding:12px 16px;border-bottom:1px solid var(--b);align-items:center;transition:background .13s;cursor:pointer}
+.crm-row:last-child{border-bottom:none}
+.crm-row:hover{background:rgba(0,245,255,.03)}
+.crm-row-name{font-size:13px;font-weight:700;color:var(--text)}
+.crm-row-wc{font-family:var(--mono);font-size:11px;color:var(--g);cursor:pointer}
+.crm-row-wc:hover{text-decoration:underline}
+.crm-row-product{font-size:12px;color:var(--text2)}
+.crm-row-price{font-family:var(--mono);font-size:11px;color:var(--a)}
+.crm-status{font-size:10px;font-weight:700;font-family:var(--mono);border-radius:5px;padding:2px 8px;border:1px solid;letter-spacing:.3px}
+.crm-status-new{color:var(--c);background:rgba(0,245,255,.07);border-color:rgba(0,245,255,.2)}
+.crm-status-contacted{color:var(--a);background:rgba(255,170,0,.07);border-color:rgba(255,170,0,.2)}
+.crm-status-replied{color:var(--c2);background:rgba(124,58,237,.07);border-color:rgba(124,58,237,.2)}
+.crm-status-sampling{color:#60a5fa;background:rgba(96,165,250,.07);border-color:rgba(96,165,250,.2)}
+.crm-status-ordered{color:var(--g);background:rgba(0,255,136,.07);border-color:rgba(0,255,136,.2)}
+.crm-status-passed{color:var(--r);background:rgba(255,68,102,.07);border-color:rgba(255,68,102,.2)}
+.crm-row-date{font-family:var(--mono);font-size:10px;color:var(--text3)}
+.crm-row-del{font-size:10px;color:var(--text3);cursor:pointer;transition:color .13s;text-align:center}
+.crm-row-del:hover{color:var(--r)}
+.crm-empty{padding:40px;text-align:center;color:var(--text3);font-family:var(--mono);font-size:12px;letter-spacing:.5px}
+
+/* ── QR SECTION ── */
+.qr-section{background:var(--card);border:1px solid var(--b);border-radius:var(--rad);padding:18px;margin-top:16px}
+.qr-title{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700;color:var(--text);margin-bottom:6px}
+.qr-sub{font-size:12px;color:var(--text2);font-family:var(--mono)}
+.qr-img{width:180px;height:180px;border:2px solid var(--b2);border-radius:12px;background:#fff;padding:8px;display:inline-block}
+
+/* ── TRANSLATE BTN ── */
+.translate-btn{font-size:9px;font-weight:700;font-family:var(--mono);color:var(--a);background:rgba(255,170,0,.06);border:1px solid rgba(255,170,0,.18);border-radius:5px;padding:3px 8px;cursor:pointer;transition:all .13s;letter-spacing:.5px;text-transform:uppercase}
+.translate-btn:hover{background:rgba(255,170,0,.12)}
