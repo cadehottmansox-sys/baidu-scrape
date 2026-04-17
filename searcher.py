@@ -158,8 +158,7 @@ def _baidu_ai_search(query, count=20):
                 "Authorization": f"Bearer {key}",
             },
             json={
-                "query": query,
-                "count": count,
+                "messages": [{"role": "user", "content": query}],
                 "resource_type_filter": [{"type": "web", "top_k": count}],
             },
             timeout=30,
