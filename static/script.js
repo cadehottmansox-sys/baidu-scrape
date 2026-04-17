@@ -1,3 +1,19 @@
+// ── Session guard — logout on refresh/new tab ─────────────────────
+(function(){
+  const alive = sessionStorage.getItem('sf_alive');
+  if(!alive){
+    // New session (refresh or new tab) — clear cookie by logging out
+    fetch('/logout', {method:'POST'}).catch(()=>{});
+    // Small delay then redirect to login if not already there
+    if(!window.location.pathname.includes('access')){
+      window.location.href = '/';
+    }
+  }
+  // Mark this session as alive
+  sessionStorage.setItem('sf_alive', '1');
+})();
+
+
 // Inject popup animations
 const _popStyle = document.createElement('style');
 _popStyle.textContent = `
