@@ -28,98 +28,166 @@ function updateStats(results){
   if(sr) sr.textContent = fmt(sessionStats.searches);
 }
 
-// ── Background: Dot grid + drifting aurora blobs ─────────────────
+// ── SICK INTERACTIVE BACKGROUND ──────────────────────────────────
 (function(){
-  const canvas = document.getElementById('bg-canvas');
-  if(!canvas) return;
-  const ctx = canvas.getContext('2d');
-  let W, H, t = 0;
-  const mouse = {x: -9999, y: -9999};
+  const cv = document.getElementById('bg-canvas');
+  if(!cv) return;
+  const ctx = cv.getContext('2d');
+  let W, H, frame = 0;
+  const mouse = {x: -9999, y: -9999, vx: 0, vy: 0, px: -9999, py: -9999};
 
-  function resize(){
-    W = canvas.width = window.innerWidth;
-    H = canvas.height = window.innerHeight;
-  }
-  window.addEventListener('resize', resize);
-  resize();
-  document.addEventListener('mousemove', e=>{ mouse.x=e.clientX; mouse.y=e.clientY; });
+  function resize(){ W = cv.width = innerWidth; H = cv.height = innerHeight; }
+  addEventListener('resize', resize); resize();
+  addEventListener('mousemove', e=>{
+    mouse.vx = e.clientX - mouse.px;
+    mouse.vy = e.clientY - mouse.py;
+    mouse.px = mouse.x; mouse.py = mouse.y;
+    mouse.x = e.clientX; mouse.y = e.clientY;
+  });
 
-  // Aurora blobs
-  const blobs = [
-    {x:.15, y:.1,  r:.45, c:'rgba(0,245,255,',   a:.055, sx:.00018, sy:.00012},
-    {x:.82, y:.85, r:.4,  c:'rgba(124,58,237,',  a:.06,  sx:-.00014, sy:.00016},
-    {x:.5,  y:.5,  r:.35, c:'rgba(0,255,136,',   a:.03,  sx:.0001,  sy:-.00012},
-    {x:.7,  y:.2,  r:.3,  c:'rgba(236,72,153,',  a:.03,  sx:-.0001, sy:.00008},
-  ];
+  // ── Web of nodes ──────────────────────────────────────────────────
+  const NODES = 55;
+  const nodes = Array.from({length: NODES}, ()=>({
+    x: Math.random()*1.2-.1,
+    y: Math.random()*1.2-.1,
+    vx: (Math.random()-.5)*.0004,
+    vy: (Math.random()-.5)*.0004,
+    r: Math.random()*2+1,
+    color: ['#00f5ff','#7c3aed','#00ff88','#f472b6'][Math.floor(Math.random()*4)],
+    pulse: Math.random()*Math.PI*2,
+    ps: Math.random()*.03+.01,
+  }));
 
-  // Dot grid settings
-  const SPACING = 32;
-  const DOT_R   = 1.2;
-  const DOT_COL = 'rgba(255,255,255,';
-  const GLOW_R  = 120; // mouse glow radius
-
-  function drawDotGrid(){
-    const cols = Math.ceil(W / SPACING) + 1;
-    const rows = Math.ceil(H / SPACING) + 1;
-    for(let i=0; i<cols; i++){
-      for(let j=0; j<rows; j++){
-        const x = i * SPACING;
-        const y = j * SPACING;
-        // Mouse proximity glow
-        const dx = mouse.x - x, dy = mouse.y - y;
-        const dist = Math.sqrt(dx*dx + dy*dy);
-        let alpha = 0.09;
-        let r = DOT_R;
-        if(dist < GLOW_R){
-          const prox = 1 - dist/GLOW_R;
-          alpha = 0.09 + prox * 0.5;
-          r = DOT_R + prox * 2.5;
-        }
-        ctx.beginPath();
-        ctx.arc(x, y, r, 0, Math.PI*2);
-        ctx.fillStyle = DOT_COL + alpha + ')';
-        ctx.fill();
+  function drawWeb(){
+    const CONN = 180; // px connection distance
+    for(let i=0;i<nodes.length;i++){
+      const a = nodes[i];
+      const ax = a.x*W, ay = a.y*H;
+      // Mouse interaction
+      const mdx = mouse.x-ax, mdy = mouse.y-ay;
+      const md = Math.sqrt(mdx*mdx+mdy*mdy);
+      if(md < 200){
+        const f = (200-md)/200 * .0015;
+        a.vx -= mdx*f; a.vy -= mdy*f;
       }
+      a.vx *= .995; a.vy *= .995;
+      a.x += a.vx; a.y += a.vy;
+      if(a.x<-.1)a.x=1.1; if(a.x>1.1)a.x=-.1;
+      if(a.y<-.1)a.y=1.1; if(a.y>1.1)a.y=-.1;
+      a.pulse += a.ps;
+
+      for(let j=i+1;j<nodes.length;j++){
+        const b = nodes[j];
+        const dx=(a.x-b.x)*W, dy=(a.y-b.y)*H;
+        const d=Math.sqrt(dx*dx+dy*dy);
+        if(d<CONN){
+          const alpha = (1-d/CONN)*.25;
+          const grd = ctx.createLinearGradient(ax,ay,b.x*W,b.y*H);
+          grd.addColorStop(0, a.color.replace(')',`,${alpha})`).replace('#','rgba(').replace(/([0-9a-f]{2})/gi,m=>parseInt(m,16)+',').replace(/,$/,''));
+          // simpler:
+          ctx.beginPath();
+          ctx.moveTo(ax,ay);
+          ctx.lineTo(b.x*W,b.y*H);
+          ctx.strokeStyle=`rgba(0,245,255,${alpha})`;
+          ctx.lineWidth=.6;
+          ctx.stroke();
+        }
+      }
+
+      // Draw node
+      const pr = 1+Math.sin(a.pulse)*.4;
+      ctx.beginPath();
+      ctx.arc(ax,ay,a.r*pr,0,Math.PI*2);
+      ctx.fillStyle=a.color;
+      ctx.shadowColor=a.color;
+      ctx.shadowBlur=8;
+      ctx.fill();
+      ctx.shadowBlur=0;
     }
   }
 
-  function drawBlobs(){
-    blobs.forEach(b=>{
-      // Drift
-      b.x += b.sx; b.y += b.sy;
-      if(b.x < -.2) b.x = 1.2; if(b.x > 1.2) b.x = -.2;
-      if(b.y < -.2) b.y = 1.2; if(b.y > 1.2) b.y = -.2;
-      const grd = ctx.createRadialGradient(b.x*W, b.y*H, 0, b.x*W, b.y*H, b.r*Math.max(W,H));
-      grd.addColorStop(0,   b.c + b.a + ')');
-      grd.addColorStop(0.5, b.c + (b.a*.3) + ')');
-      grd.addColorStop(1,   b.c + '0)');
-      ctx.fillStyle = grd;
-      ctx.fillRect(0, 0, W, H);
+  // ── Mouse ripple ───────────────────────────────────────────────────
+  const ripples=[];
+  addEventListener('click',e=>{ripples.push({x:e.clientX,y:e.clientY,r:0,a:1})});
+
+  function drawRipples(){
+    ripples.forEach((r,i)=>{
+      r.r+=4; r.a-=.025;
+      ctx.beginPath();
+      ctx.arc(r.x,r.y,r.r,0,Math.PI*2);
+      ctx.strokeStyle=`rgba(0,245,255,${r.a})`;
+      ctx.lineWidth=1.5;
+      ctx.stroke();
+      // Second ring
+      ctx.beginPath();
+      ctx.arc(r.x,r.y,r.r*.6,0,Math.PI*2);
+      ctx.strokeStyle=`rgba(124,58,237,${r.a*.7})`;
+      ctx.lineWidth=1;
+      ctx.stroke();
+    });
+    for(let i=ripples.length-1;i>=0;i--) if(ripples[i].a<=0) ripples.splice(i,1);
+  }
+
+  // ── Mouse trail ────────────────────────────────────────────────────
+  const trail=[];
+  function drawTrail(){
+    if(mouse.x<0) return;
+    trail.push({x:mouse.x,y:mouse.y,a:.4});
+    if(trail.length>20) trail.shift();
+    trail.forEach((t,i)=>{
+      t.a-=.02;
+      if(t.a<=0) return;
+      ctx.beginPath();
+      ctx.arc(t.x,t.y,2*(i/trail.length),0,Math.PI*2);
+      ctx.fillStyle=`rgba(0,245,255,${t.a*.5})`;
+      ctx.fill();
     });
   }
 
-  // Scan line every ~4s
-  let scanY = -H;
-  function drawScan(){
-    scanY += 1.2;
-    if(scanY > H) scanY = -H;
-    const grd = ctx.createLinearGradient(0, scanY-40, 0, scanY+40);
-    grd.addColorStop(0,   'rgba(0,245,255,0)');
-    grd.addColorStop(0.5, 'rgba(0,245,255,.04)');
-    grd.addColorStop(1,   'rgba(0,245,255,0)');
-    ctx.fillStyle = grd;
-    ctx.fillRect(0, scanY-40, W, 80);
+  // ── Ambient glow blobs ─────────────────────────────────────────────
+  const globs=[
+    {x:.1, y:.05, tx:.2, ty:.15, c:'rgba(0,245,255,', a:.07, s:.008},
+    {x:.85,y:.9,  tx:.75,ty:.8,  c:'rgba(124,58,237,',a:.08, s:.006},
+    {x:.5, y:.5,  tx:.4, ty:.6,  c:'rgba(0,255,136,', a:.04, s:.005},
+    {x:.8, y:.1,  tx:.7, ty:.2,  c:'rgba(236,72,153,',a:.04, s:.007},
+  ];
+  function drawGlobs(){
+    globs.forEach(g=>{
+      g.x+=(g.tx-g.x)*g.s; g.y+=(g.ty-g.y)*g.s;
+      if(Math.abs(g.x-g.tx)<.01){g.tx=Math.random();g.ty=Math.random();}
+      const rad=Math.max(W,H)*.5;
+      const grd=ctx.createRadialGradient(g.x*W,g.y*H,0,g.x*W,g.y*H,rad);
+      grd.addColorStop(0,g.c+g.a+')');
+      grd.addColorStop(.5,g.c+(g.a*.2)+')');
+      grd.addColorStop(1,g.c+'0)');
+      ctx.fillStyle=grd;
+      ctx.fillRect(0,0,W,H);
+    });
   }
 
-  function frame(){
-    ctx.clearRect(0, 0, W, H);
-    drawBlobs();
-    drawDotGrid();
-    drawScan();
-    t++;
-    requestAnimationFrame(frame);
+  // ── Scan line ─────────────────────────────────────────────────────
+  let scanY=0;
+  function drawScan(){
+    scanY=(scanY+.8)%H;
+    const g=ctx.createLinearGradient(0,scanY-30,0,scanY+30);
+    g.addColorStop(0,'rgba(0,245,255,0)');
+    g.addColorStop(.5,'rgba(0,245,255,.03)');
+    g.addColorStop(1,'rgba(0,245,255,0)');
+    ctx.fillStyle=g;
+    ctx.fillRect(0,scanY-30,W,60);
   }
-  frame();
+
+  function tick(){
+    ctx.clearRect(0,0,W,H);
+    drawGlobs();
+    drawWeb();
+    drawTrail();
+    drawRipples();
+    drawScan();
+    frame++;
+    requestAnimationFrame(tick);
+  }
+  tick();
 })();
 
 "use strict";
