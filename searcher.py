@@ -81,7 +81,7 @@ BLOCKED_DOMAINS = {
     # Social/search/news
     "wikipedia.org","baidu.com","google.com","youtube.com",
     "instagram.com","facebook.com","twitter.com","x.com","tiktok.com",
-    "weibo.com","weibo.cn","zhihu.com","douyin.com",
+    "douyin.com",
     "163.com","sohu.com","sina.com.cn","qq.com","ifeng.com",
     # Maps/directories
     "mapbar.com","amap.com","dianping.com","yelp.com","maps.google.com",
