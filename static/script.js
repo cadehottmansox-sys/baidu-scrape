@@ -30,7 +30,7 @@ function updateStats(results){
 
 // ── MATRIX RAIN + NEON GRID BACKGROUND ───────────────────────────
 (function(){
-  const cv = document.getElementById('bg-canvas');
+  const cv = document.getElementById('bg');
   if(!cv) return;
   const ctx = cv.getContext('2d');
   let W, H;
