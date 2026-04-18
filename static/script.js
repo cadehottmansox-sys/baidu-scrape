@@ -982,21 +982,7 @@ async function loadAdminRequests(){
   }catch(e){ el.innerHTML='<div class="crm-empty">Error loading requests</div>'; }
 }
 
-async function adminApprove(id, name){
-  const btn = event.target;
-  btn.textContent = '...'; btn.disabled = true;
-  try{
-    const r = await fetch(`/admin/api/approve/${id}`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({})});
-    const d = await r.json();
-    if(d.status==='approved'){
-      showToast(`✓ ${name} approved — they can now set their password`);
-      document.getElementById(`req-${id}`)?.remove();
-      loadAdminUsers();
-    } else {
-      btn.textContent = d.status; btn.disabled = false;
-    }
-  }catch{ btn.textContent='Error'; btn.disabled=false; }
-}
+
 
 async function adminDeny(id){
   if(!confirm('Deny this request?')) return;
@@ -1319,16 +1305,15 @@ function renderAnalytics(users){
 }
 
 async function adminApprove(reqId, email){
-  const btn = event.target;
-  btn.disabled=true; btn.textContent='Approving...';
   try{
+    showToast('Approving...');
     const r = await fetch('/api/admin/approve', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({req_id:reqId})});
     const d = await r.json();
     if(d.status==='approved'||d.status==='already_approved'){
-      showToast(`✓ ${email} approved — they can now set their password`);
+      showToast('✓ Approved! They can now log in.');
       loadAdmin();
-    } else { showToast('Error: '+JSON.stringify(d)); btn.disabled=false; btn.textContent='✓ Approve'; }
-  } catch{ btn.disabled=false; btn.textContent='✓ Approve'; }
+    } else { showToast('Error: '+(d.error||d.status||'unknown')); }
+  } catch(e){ showToast('Network error'); }
 }
 
 async function adminDeny(reqId){
