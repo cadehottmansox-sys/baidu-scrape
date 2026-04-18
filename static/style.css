@@ -356,3 +356,39 @@ kbd.kb{font-size:9px;font-family:var(--mono);background:rgba(0,245,255,.08);bord
   .crm-table-head,.crm-row{grid-template-columns:1fr 1fr auto}
   .admin-user{grid-template-columns:1fr auto}
 }
+
+/* ── CELL TOWER I ── */
+.tower-wrap{
+  position:relative;
+  display:inline-block;
+}
+.tower-i{
+  position:relative;
+  z-index:2;
+  display:inline-block;
+}
+.tower-waves{
+  position:absolute;
+  top:50%;left:50%;
+  transform:translate(-50%,-52%);
+  width:2em;height:2em;
+  pointer-events:none;
+  overflow:visible;
+  z-index:1;
+}
+.wave{
+  fill:none;
+  stroke:#00f5ff;
+  stroke-width:1.5;
+  opacity:0;
+  transform-origin:30px 30px;
+}
+.w1{ animation: towerPing 3s ease-out infinite; }
+.w2{ animation: towerPing 3s ease-out infinite .6s; }
+.w3{ animation: towerPing 3s ease-out infinite 1.2s; }
+
+@keyframes towerPing{
+  0%  { r:4;  opacity:.9; stroke-width:2; }
+  60% { r:28; opacity:.15; stroke-width:.8; }
+  100%{ r:34; opacity:0;  stroke-width:.3; }
+}
