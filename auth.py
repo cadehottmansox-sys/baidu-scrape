@@ -49,7 +49,7 @@ def submit_request(name, email, reason, ip, discord="", wechat="", password="", 
         _save(data)
         return {"ok": True, "status": "already_requested", "message": "Request updated — hang tight!"}
 
-    if not password or len(password) < 6:
+    if not password or len(password) < 4:
         return {"ok": False, "error": "Password must be at least 6 characters."}
 
     req = {
