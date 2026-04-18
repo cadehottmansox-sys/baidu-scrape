@@ -28,120 +28,80 @@ function updateStats(results){
   if(sr) sr.textContent = fmt(sessionStats.searches);
 }
 
-// ── MATRIX RAIN + NEON GRID BACKGROUND ───────────────────────────
+// ── MATRIX RAIN ──────────────────────────────────────────────────
 (function(){
   const cv = document.getElementById('bg');
   if(!cv) return;
   const ctx = cv.getContext('2d');
-  let W, H;
-  const mouse = {x:-999,y:-999};
+  let W, H, cols, drops;
+  const FONT = 14;
+  const CHARS = '源头工厂微信联系莆田复刻代工货源批发直销供应商ABCDEF0123456789';
+  const mouse = {x:-9999,y:-9999};
 
-  function resize(){ W=cv.width=innerWidth; H=cv.height=innerHeight; initRain(); }
-  addEventListener('resize',resize);
-  addEventListener('mousemove',e=>{mouse.x=e.clientX;mouse.y=e.clientY;});
-
-  // ── Matrix rain ───────────────────────────────────────────────────
-  const FONT_SIZE = 13;
-  const CHARS = '源头工厂微信联系莆田复刻代工01ABCDEF货源批发直销123456789供应商';
-  let drops = [];
-
-  function initRain(){
-    const cols = Math.floor(W/FONT_SIZE);
-    drops = Array.from({length:cols},()=>Math.random()*-100);
+  function init(){
+    W = cv.width  = window.innerWidth;
+    H = cv.height = window.innerHeight;
+    cols  = Math.ceil(W / FONT);
+    drops = Array.from({length:cols}, ()=> -(Math.random()*H/FONT)|0 );
   }
 
-  function drawRain(){
-    ctx.fillStyle='rgba(8,11,18,.18)';
+  window.addEventListener('resize', init);
+  window.addEventListener('mousemove', e=>{ mouse.x=e.clientX; mouse.y=e.clientY; });
+
+  const waves=[];
+  window.addEventListener('click', e=>{ waves.push({x:e.clientX,y:e.clientY,r:0,a:1}); });
+
+  function draw(){
+    // Fade trail
+    ctx.fillStyle = 'rgba(4,6,15,0.15)';
     ctx.fillRect(0,0,W,H);
 
-    ctx.font = FONT_SIZE+'px monospace';
-    drops.forEach((y,i)=>{
-      const x = i*FONT_SIZE;
-      const ch = CHARS[Math.floor(Math.random()*CHARS.length)];
+    ctx.font = 'bold '+FONT+'px monospace';
 
-      // Mouse proximity — chars near mouse glow brighter
-      const dx=mouse.x-x, dy=mouse.y-y*FONT_SIZE;
-      const dist=Math.sqrt(dx*dx+dy*dy);
-      const prox=Math.max(0,1-dist/200);
+    for(let i=0;i<cols;i++){
+      const x = i*FONT;
+      const y = drops[i]*FONT;
 
-      // Lead char — bright
-      ctx.fillStyle=`rgba(${Math.round(150+105*prox)},${Math.round(245+10*prox)},${Math.round(255)},${0.9+prox*.1})`;
-      ctx.fillText(ch, x, y*FONT_SIZE);
+      // Mouse glow
+      const md = Math.hypot(mouse.x-x, mouse.y-y);
+      const glow = Math.max(0, 1-md/180);
 
-      // Trail chars — fade to dark cyan
-      for(let t=1;t<6;t++){
-        const alpha=Math.max(0,(6-t)/6)*(.15+prox*.3);
-        ctx.fillStyle=`rgba(0,${Math.round(180+40*prox)},${Math.round(200+55*prox)},${alpha})`;
-        ctx.fillText(CHARS[Math.floor(Math.random()*CHARS.length)], x, (y-t)*FONT_SIZE);
+      // Bright lead char
+      const r=Math.round(0  + glow*0);
+      const g=Math.round(220 + glow*35);
+      const b=Math.round(180 + glow*75);
+      ctx.fillStyle = `rgba(${r},${g},${b},${0.85+glow*0.15})`;
+      ctx.fillText(CHARS[Math.random()*CHARS.length|0], x, y);
+
+      // Dim trail
+      ctx.fillStyle = `rgba(0,${Math.round(150+glow*70)},${Math.round(120+glow*80)},${0.25+glow*0.3})`;
+      for(let t=1;t<8;t++){
+        ctx.globalAlpha = Math.max(0,(8-t)/8) * (0.3+glow*0.4);
+        ctx.fillText(CHARS[Math.random()*CHARS.length|0], x, y - t*FONT);
       }
+      ctx.globalAlpha = 1;
 
-      // Reset drop
-      if(y*FONT_SIZE>H && Math.random()>.97) drops[i]=0;
-      else drops[i]+=.4+Math.random()*.3;
-    });
-  }
-
-  // ── Neon grid overlay ─────────────────────────────────────────────
-  function drawGrid(){
-    const SZ=60;
-    ctx.lineWidth=.4;
-    for(let x=0;x<W;x+=SZ){
-      const dx=mouse.x-x;
-      const prox=Math.max(0,1-Math.abs(dx)/300);
-      ctx.strokeStyle=`rgba(0,245,255,${0.04+prox*.12})`;
-      ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();
+      if(y>H && Math.random()>0.975) drops[i] = -(Math.random()*20|0);
+      else drops[i] += 0.5;
     }
-    for(let y=0;y<H;y+=SZ){
-      const dy=mouse.y-y;
-      const prox=Math.max(0,1-Math.abs(dy)/300);
-      ctx.strokeStyle=`rgba(0,245,255,${0.04+prox*.12})`;
-      ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();
-    }
-  }
 
-  // ── Glow blobs ────────────────────────────────────────────────────
-  const blobs=[
-    {x:.08,y:.06,tx:.2,ty:.18,c:[0,245,255],a:.08,s:.003},
-    {x:.88,y:.88,tx:.75,ty:.75,c:[124,58,237],a:.09,s:.004},
-    {x:.5,y:.5,tx:.35,ty:.65,c:[0,255,136],a:.04,s:.002},
-  ];
-  function drawBlobs(){
-    blobs.forEach(b=>{
-      b.x+=(b.tx-b.x)*b.s; b.y+=(b.ty-b.y)*b.s;
-      if(Math.hypot(b.x-b.tx,b.y-b.ty)<.005){b.tx=Math.random();b.ty=Math.random();}
-      const g=ctx.createRadialGradient(b.x*W,b.y*H,0,b.x*W,b.y*H,Math.max(W,H)*.45);
-      g.addColorStop(0,`rgba(${b.c},${b.a})`);
-      g.addColorStop(.6,`rgba(${b.c},${b.a*.15})`);
-      g.addColorStop(1,`rgba(${b.c},0)`);
-      ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
-    });
-  }
-
-  // ── Mouse shockwave on click ───────────────────────────────────────
-  const waves=[];
-  addEventListener('click',e=>{waves.push({x:e.clientX,y:e.clientY,r:0,a:.8});});
-  function drawWaves(){
+    // Shockwaves on click
     waves.forEach(w=>{
-      w.r+=5; w.a-=.015;
-      ctx.beginPath();ctx.arc(w.x,w.y,w.r,0,Math.PI*2);
-      ctx.strokeStyle=`rgba(0,245,255,${w.a})`;
-      ctx.lineWidth=2;ctx.stroke();
-      ctx.beginPath();ctx.arc(w.x,w.y,w.r*.5,0,Math.PI*2);
-      ctx.strokeStyle=`rgba(124,58,237,${w.a*.6})`;
-      ctx.lineWidth=1;ctx.stroke();
+      w.r+=4; w.a-=0.018;
+      ctx.globalAlpha=w.a;
+      ctx.strokeStyle='#00f5ff'; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.arc(w.x,w.y,w.r,0,Math.PI*2); ctx.stroke();
+      ctx.strokeStyle='#7c3aed'; ctx.lineWidth=1;
+      ctx.beginPath(); ctx.arc(w.x,w.y,w.r*0.5,0,Math.PI*2); ctx.stroke();
+      ctx.globalAlpha=1;
     });
-    for(let i=waves.length-1;i>=0;i--)if(waves[i].a<=0)waves.splice(i,1);
+    for(let i=waves.length-1;i>=0;i--) if(waves[i].a<=0) waves.splice(i,1);
+
+    requestAnimationFrame(draw);
   }
 
-  resize(); // sets W, H and calls initRain()
-  function tick(){
-    drawRain();
-    drawBlobs();
-    drawGrid();
-    drawWaves();
-    requestAnimationFrame(tick);
-  }
-  tick();
+  init();
+  draw();
 })();
 
 "use strict";
