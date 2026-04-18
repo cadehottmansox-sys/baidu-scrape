@@ -138,50 +138,6 @@ function updateStats(results){
   setTimeout(type,300);
 })();
 
-// ── Particle canvas ───────────────────────────────────────────────
-(function(){
-  const canvas=document.getElementById("bg"); // legacy ref
-  if(!canvas) return;
-  const ctx=canvas.getContext("2d");
-  let W,H,dots=[],mouse={x:-999,y:-999},lastX=-999,lastY=-999,mouseSpeed=0;
-  const resize=()=>{W=canvas.width=window.innerWidth;H=canvas.height=window.innerHeight};
-  const mk=()=>({x:Math.random()*W,y:Math.random()*H,r:Math.random()*1.8+.3,vx:(Math.random()-.5)*.25,vy:(Math.random()-.5)*.25,baseVx:0,baseVy:0,hue:Math.random()>.7?200+Math.random()*60:195,a:Math.random()*.45+.07});
-  const init=()=>{resize();dots=Array.from({length:140},mk);dots.forEach(d=>{d.baseVx=d.vx;d.baseVy=d.vy})};
-  const frame=()=>{
-    ctx.clearRect(0,0,W,H);
-    const dx=mouse.x-lastX,dy=mouse.y-lastY;
-    mouseSpeed=Math.min(Math.sqrt(dx*dx+dy*dy),30);
-    lastX=mouse.x;lastY=mouse.y;
-    for(const d of dots){
-      const mdx=d.x-mouse.x,mdy=d.y-mouse.y,dist=Math.sqrt(mdx*mdx+mdy*mdy);
-      const rep=130+mouseSpeed*2;
-      if(dist<rep){const f=((rep-dist)/rep)*(.5+mouseSpeed*.02);d.vx+=(mdx/dist)*f*.8;d.vy+=(mdy/dist)*f*.8}
-      d.vx+=(d.baseVx-d.vx)*.035;d.vy+=(d.baseVy-d.vy)*.035;
-      const spd=Math.sqrt(d.vx*d.vx+d.vy*d.vy);if(spd>4){d.vx=d.vx/spd*4;d.vy=d.vy/spd*4}
-      d.x+=d.vx;d.y+=d.vy;
-      if(d.x<-4)d.x=W+4;else if(d.x>W+4)d.x=-4;
-      if(d.y<-4)d.y=H+4;else if(d.y>H+4)d.y=-4;
-      const prox=Math.max(0,1-dist/200);
-      ctx.beginPath();ctx.arc(d.x,d.y,d.r+prox*1.5,0,Math.PI*2);
-      ctx.fillStyle=`hsla(${d.hue},80%,80%,${Math.min(d.a+prox*.5,.92)})`;ctx.fill();
-    }
-    for(let i=0;i<dots.length;i++)for(let j=i+1;j<dots.length;j++){
-      const a=dots[i],b=dots[j],ddx=a.x-b.x,ddy=a.y-b.y,dist=Math.sqrt(ddx*ddx+ddy*ddy);
-      if(dist<110){
-        const mx=(a.x+b.x)/2,my=(a.y+b.y)/2,md=Math.sqrt((mx-mouse.x)**2+(my-mouse.y)**2);
-        const boost=Math.max(0,1-md/180)*.18;
-        ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);
-        ctx.strokeStyle=`rgba(100,190,255,${(.055+boost)*(1-dist/110)})`;ctx.lineWidth=.5+boost*.8;ctx.stroke();
-      }
-    }
-    requestAnimationFrame(frame);
-  };
-  window.addEventListener("mousemove",e=>{mouse.x=e.clientX;mouse.y=e.clientY});
-  window.addEventListener("mouseleave",()=>{mouse.x=-999;mouse.y=-999});
-  window.addEventListener("resize",resize);
-  init();frame();
-})();
-
 // ── Platform hints ────────────────────────────────────────────────
 const SUPPLIER_INJECT={"baidu":"工厂 厂家 OEM ODM manufacturer","1688":"1688 厂家直销 批发","xianyu":"闲鱼 库存 尾货","xiaohongshu":"小红书 源头厂家","taobao":"淘宝 厂家店","made-in-china":"made-in-china.com OEM","globalsources":"globalsources.com supplier","wechat":"微信 一手货源"};
 const FF_INJECT={"baidu":"货代 freight forwarder FOB","1688":"1688 货代","globalsources":"globalsources freight"};
