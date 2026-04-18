@@ -256,16 +256,20 @@ async function doRequest(){
   const email=document.getElementById('remail').value.trim();
   const discord=document.getElementById('rdiscord').value.trim();
   const why=document.getElementById('rwhy').value.trim();
+  const pw=document.getElementById('rpw').value;
+  const pw2=document.getElementById('rpw2').value;
   const msg=document.getElementById('requestMsg');
   const btn=document.getElementById('requestBtn');
   if(!name||!email||!discord){msg.className='msg err';msg.textContent='Name, email and Discord/WeChat required.';return}
-  btn.disabled=true;btn.textContent='Sending...';msg.className='msg';msg.textContent='';
+  if(!pw||pw.length<6){msg.className='msg err';msg.textContent='Password must be at least 6 characters.';return}
+  if(pw!==pw2){msg.className='msg err';msg.textContent="Passwords don\'t match.";return}
+  btn.disabled=true;btn.textContent='Submitting...';msg.className='msg';msg.textContent='';
   try{
-    const r=await fetch('/request-access',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,email,discord,why})});
+    const r=await fetch('/request-access',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,email,discord,why,password:pw})});
     const d=await r.json();
-    if(d.ok){msg.className='msg ok';msg.textContent='✓ Request sent! We\'ll DM you within 24hrs.';btn.textContent='Sent!'}
-    else{msg.className='msg err';msg.textContent=d.error||'Error.';btn.disabled=false;btn.textContent='Request Access'}
-  }catch{msg.className='msg err';msg.textContent='Network error.';btn.disabled=false;btn.textContent='Request Access'}
+    if(d.ok){msg.className='msg ok';msg.textContent='✓ Request submitted! Once approved you can log in.';btn.textContent='Submitted!'}
+    else{msg.className='msg err';msg.textContent=d.error||'Error.';btn.disabled=false;btn.textContent='Submit Request'}
+  }catch{msg.className='msg err';msg.textContent='Network error.';btn.disabled=false;btn.textContent='Submit Request'}
 }
 
 // Set password (first time)
