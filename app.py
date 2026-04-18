@@ -113,7 +113,7 @@ def create_app() -> Flask:
                 return jsonify({"ok": False, "needs_password": True, "email": email, "error": result.get("error", "")}), 200
             return jsonify({"error": result.get("error", "Invalid credentials.")}), 401
         resp = make_response(jsonify({"ok": True, "status": "ok", "name": result["name"], "is_admin": result.get("is_admin", False)}))
-        resp.set_cookie("sf_token", result["token"], httponly=True, samesite="Strict")
+        resp.set_cookie("sf_token", result["token"], max_age=60*60*24*365, httponly=True, samesite="Lax")
         return resp
 
     @app.post("/set-password")
@@ -126,7 +126,7 @@ def create_app() -> Flask:
         result = auth.set_password(email, password)
         if result.get("ok"):
             resp = make_response(jsonify({"ok": True, "name": result["name"]}))
-            resp.set_cookie("sf_token", result["token"], httponly=True, samesite="Strict")
+            resp.set_cookie("sf_token", result["token"], max_age=60*60*24*365, httponly=True, samesite="Lax")
             return resp
         return jsonify(result), 400
 
@@ -251,7 +251,7 @@ def create_app() -> Flask:
         if not result.get("ok"):
             return jsonify(result), 400
         resp = make_response(jsonify({"ok": True, "name": result["name"], "is_admin": result.get("is_admin", False)}))
-        resp.set_cookie("sf_token", result["token"], httponly=True, samesite="Strict")
+        resp.set_cookie("sf_token", result["token"], max_age=60*60*24*365, httponly=True, samesite="Lax")
         return resp
 
     @app.get("/admin/api/data")
