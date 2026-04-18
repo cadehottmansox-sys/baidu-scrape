@@ -5,59 +5,51 @@
   <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
   <title>SourceFinder</title>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet"/>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=1776476064"/>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=999"/>
 </head>
 <body>
-  
+  <canvas id="bg"></canvas>
   <div class="kb-hint" id="kbHint">Press <kbd class="kb">/</kbd> to search &nbsp;·&nbsp; <kbd class="kb">Esc</kbd> to close</div>
 
-  <canvas id="bg-canvas"></canvas>
   <main class="app">
     <header class="hero">
-      <div class="hero-top">
-        <div class="hero-pill"><span class="hero-pill-dot"></span>PRIVATE ACCESS · BAIDU AI · LIVE</div>
-        <div class="hero-live"><span class="hero-live-dot"></span>ONLINE</div>
-      </div>
-      <h1 class="hero-title">
-        <span class="hero-title-main">SOURCE</span><span class="hero-title-accent">FINDER</span>
-      </h1>
-      <p class="hero-sub">Chinese suppliers · Factory WeChats · Passing goods · Freight forwarders</p>
+      <div class="hero-pill"><span class="hero-pill-dot"></span>PRIVATE ACCESS · BAIDU AI · LIVE</div>
+      <h1 class="hero-title">Source<span class="hero-accent">Finder</span></h1>
+      <p class="hero-sub">Chinese suppliers · Factory WeChats · Passing goods · Freight</p>
       <div class="hero-stats">
-        <div class="hero-stat"><span class="stat-val" id="statSuppliers">—</span><span class="stat-label">Suppliers Found</span></div>
-        <div class="hero-stat"><span class="stat-val" id="statWechats">—</span><span class="stat-label">WeChats Pulled</span></div>
-        <div class="hero-stat"><span class="stat-val" id="statDeep">—</span><span class="stat-label">Deep Scanned</span></div>
-        <div class="hero-stat"><span class="stat-val" id="statSearches">—</span><span class="stat-label">Searches Run</span></div>
+        <div class="hero-stat"><div class="stat-val" id="statSuppliers">—</div><div class="stat-label">Suppliers</div></div>
+        <div class="hero-stat"><div class="stat-val" id="statWechats">—</div><div class="stat-label">WeChats</div></div>
+        <div class="hero-stat"><div class="stat-val" id="statDeep">—</div><div class="stat-label">Deep Scanned</div></div>
+        <div class="hero-stat"><div class="stat-val" id="statSearches">—</div><div class="stat-label">Searches</div></div>
       </div>
     </header>
 
     <nav class="tab-nav">
       <button class="tab-btn active" data-tab="supplier">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><rect x="2" y="8" width="3" height="6" rx="1" fill="currentColor"/><rect x="6.5" y="5" width="3" height="9" rx="1" fill="currentColor"/><rect x="11" y="2" width="3" height="12" rx="1" fill="currentColor"/></svg>
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><rect x="2" y="8" width="3" height="6" rx="1" fill="currentColor"/><rect x="6.5" y="5" width="3" height="9" rx="1" fill="currentColor"/><rect x="11" y="2" width="3" height="12" rx="1" fill="currentColor"/></svg>
         Supplier
       </button>
       <button class="tab-btn" data-tab="ff">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M2 8h8M8 5l3 3-3 3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M13 3v10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M2 8h8M8 5l3 3-3 3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M13 3v10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
         Freight
       </button>
       <button class="tab-btn" data-tab="passing">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><rect x="3" y="3" width="10" height="10" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M6 8h4M8 6v4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-        Passing / NFC
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><rect x="3" y="3" width="10" height="10" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M6 8h4M8 6v4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        Passing
       </button>
       <button class="tab-btn" data-tab="finds">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M8 2l1.5 3 3.5.5-2.5 2.5.5 3.5L8 10l-3 1.5.5-3.5L3 5.5l3.5-.5z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M8 2l1.5 3 3.5.5-2.5 2.5.5 3.5L8 10l-3 1.5.5-3.5L3 5.5l3.5-.5z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
         Finds
       </button>
       <button class="tab-btn" data-tab="admin" id="adminTabBtn" style="display:none">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M8 2a3 3 0 100 6 3 3 0 000-6zM2 13c0-2.8 2.7-5 6-5s6 2.2 6 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="13" cy="5" r="2" fill="currentColor"/></svg>
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M8 2a3 3 0 100 6 3 3 0 000-6zM2 13c0-2.8 2.7-5 6-5s6 2.2 6 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="13" cy="5" r="2" fill="currentColor"/></svg>
         Admin
       </button>
       <button class="tab-btn" data-tab="crm">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="6" cy="5" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M2 13c0-2.2 1.8-4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M11 9v4M9 11h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><circle cx="6" cy="5" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M2 13c0-2.2 1.8-4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M11 9v4M9 11h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
         CRM
       </button>
-
     </nav>
 
     <!-- SUPPLIER -->
@@ -85,10 +77,10 @@
           </div>
           <div class="action-row">
             <button type="submit" class="btn-primary" id="supplierBtn">
-              <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" stroke-width="1.8"/><path d="M10 10L14 14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" stroke-width="1.8"/><path d="M10 10L14 14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
               Search
             </button>
-            <label class="toggle-wrap" title="Visits each page, OCR + QR decode. Max 90s.">
+            <label class="toggle-wrap">
               <input type="checkbox" id="supplierDeepScan" checked/>
               <span class="toggle-track"><span class="toggle-thumb"></span></span>
               <span class="toggle-label">Deep Scan<span class="toggle-sub">OCR + QR · 90s max</span></span>
@@ -120,18 +112,9 @@
           </div>
         </div>
         <div class="toolbar-actions">
-          <button class="tool-btn" id="copyAllWc">
-            <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><rect x="5" y="5" width="9" height="9" rx="1.5" stroke="currentColor" stroke-width="1.5"/><path d="M11 5V3.5A1.5 1.5 0 009.5 2h-6A1.5 1.5 0 002 3.5v6A1.5 1.5 0 003.5 11H5" stroke="currentColor" stroke-width="1.5"/></svg>
-            Copy WeChats
-          </button>
-          <button class="tool-btn" id="exportCsv">
-            <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M4 12l4-4 4 4M8 8V2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 14h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-            Export
-          </button>
-          <button class="tool-btn" id="showHistory">
-            <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"/><path d="M8 5v3l2 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-            History
-          </button>
+          <button class="tool-btn" id="copyAllWc">Copy WeChats</button>
+          <button class="tool-btn" id="exportCsv">Export</button>
+          <button class="tool-btn" id="showHistory">History</button>
         </div>
       </div>
       <div class="query-hint" id="supplierHint"></div>
@@ -144,7 +127,7 @@
         <form id="ffForm" autocomplete="off">
           <div class="field-row">
             <div class="field field--wide"><label for="ffQuery">Route / Cargo / Keywords</label><input type="text" id="ffQuery" placeholder="China to USA electronics, apparel…" required/></div>
-            <div class="field"><label for="ffOrigin">Origin City</label><input type="text" id="ffOrigin" placeholder="Guangzhou, Shenzhen…"/></div>
+            <div class="field"><label for="ffOrigin">Origin City</label><input type="text" id="ffOrigin" placeholder="Guangzhou…"/></div>
           </div>
           <div class="platform-row">
             <label class="row-label">Platform</label>
@@ -155,14 +138,11 @@
             <input type="hidden" id="ffPlatform" value="baidu"/>
           </div>
           <div class="action-row">
-            <button type="submit" class="btn-primary" id="ffBtn">
-              <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" stroke-width="1.8"/><path d="M10 10L14 14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-              Find Forwarders
-            </button>
+            <button type="submit" class="btn-primary" id="ffBtn">Find Forwarders</button>
             <label class="toggle-wrap">
               <input type="checkbox" id="ffDeepScan"/>
               <span class="toggle-track"><span class="toggle-thumb"></span></span>
-              <span class="toggle-label">Deep Scan<span class="toggle-sub">OCR + QR · 90s max</span></span>
+              <span class="toggle-label">Deep Scan<span class="toggle-sub">OCR + QR</span></span>
             </label>
             <div class="status-wrap">
               <span class="status-dot" id="ffDot"></span>
@@ -182,15 +162,12 @@
 
     <!-- PASSING -->
     <section class="tab-panel" id="tab-passing">
-      <div class="passing-banner">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><rect x="3" y="3" width="10" height="10" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M6 8h4M8 6v4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-        Passing / NFC Mode — finds 1:1 suppliers with NFC chips &amp; factory-direct quality
-      </div>
+      <div class="passing-banner">⚡ Passing / NFC Mode — finds 1:1 suppliers with NFC chips &amp; factory-direct quality</div>
       <div class="search-card">
         <form id="passingForm" autocomplete="off">
           <div class="field-row">
-            <div class="field"><label for="passingBrand">Brand</label><input type="text" id="passingBrand" placeholder="Nike, Jordan, LV…"/></div>
-            <div class="field field--wide"><label for="passingQuery">Product</label><input type="text" id="passingQuery" placeholder="Jordan 4, Yeezy 350, AJ1…" required/></div>
+            <div class="field"><label for="passingBrand">Brand</label><input type="text" id="passingBrand" placeholder="Nike, Jordan…"/></div>
+            <div class="field field--wide"><label for="passingQuery">Product</label><input type="text" id="passingQuery" placeholder="Jordan 4, Yeezy 350…" required/></div>
           </div>
           <div class="platform-row">
             <label class="row-label">Platform</label>
@@ -200,14 +177,11 @@
             <input type="hidden" id="passingPlatform" value="baidu"/>
           </div>
           <div class="action-row">
-            <button type="submit" class="btn-primary btn-purple" id="passingBtn">
-              <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" stroke-width="1.8"/><path d="M10 10L14 14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-              Search Passing
-            </button>
+            <button type="submit" class="btn-primary btn-purple" id="passingBtn">Search Passing</button>
             <label class="toggle-wrap">
               <input type="checkbox" id="passingDeepScan" checked/>
               <span class="toggle-track"><span class="toggle-thumb"></span></span>
-              <span class="toggle-label">Deep Scan<span class="toggle-sub">OCR + QR · 90s max</span></span>
+              <span class="toggle-label">Deep Scan<span class="toggle-sub">OCR + QR</span></span>
             </label>
             <label class="toggle-wrap">
               <input type="checkbox" id="passingWcOnly"/>
@@ -226,8 +200,6 @@
         <button class="filter-pill active" data-filter="all">All</button>
         <button class="filter-pill" data-filter="has_wechat">Has WeChat</button>
         <button class="filter-pill" data-filter="verified_wechat">Verified</button>
-        <button class="filter-pill" data-filter="qr_wechat">QR</button>
-        <button class="filter-pill" data-filter="ocr_wechat">OCR</button>
       </div>
       <div class="query-hint" id="passingHint"></div>
       <section class="results" id="passingResults"></section>
@@ -236,87 +208,51 @@
     <!-- FINDS -->
     <section class="tab-panel" id="tab-finds">
       <div class="finds-header">
-        <div>
-          <h2 class="finds-title">Community Finds</h2>
-          <p class="finds-sub">Share supplier leads · WeChat contacts · Sourcing wins</p>
-        </div>
-        <button class="btn-primary" onclick="openFindModal()">
-          <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-          Post Find
-        </button>
+        <div><h2 class="finds-title">Community Finds</h2><p class="finds-sub">Share supplier leads · WeChat contacts · Sourcing wins</p></div>
+        <button class="btn-primary" onclick="openFindModal()">+ Post Find</button>
       </div>
-      <div class="finds-grid" id="findsGrid">
-        <div class="loader"><div class="loader-dots"><span></span><span></span><span></span></div>Loading finds…</div>
-      </div>
+      <div class="finds-grid" id="findsGrid"><div class="loader"><div class="loader-dots"><span></span><span></span><span></span></div>Loading…</div></div>
     </section>
 
-    <!-- ADMIN TAB -->
+    <!-- ADMIN -->
     <section class="tab-panel" id="tab-admin">
       <div class="admin-header">
-        <div>
-          <h2 class="finds-title" style="color:var(--r)">⚡ Admin Panel</h2>
-          <p class="finds-sub">Approve requests · Manage users · Analytics</p>
-        </div>
-        <button class="btn-primary" onclick="loadAdminData()" style="background:var(--r);border-color:rgba(255,68,102,.3)">
-          <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M2 8a6 6 0 1012 0A6 6 0 002 8z" stroke="currentColor" stroke-width="1.5"/><path d="M8 5v3l2 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-          Refresh
-        </button>
+        <div><h2 class="finds-title" style="color:var(--a)">⚡ Admin Panel</h2><p class="finds-sub">Manage access · Approve users · Analytics</p></div>
+        <button class="tool-btn" onclick="loadAdmin()">↻ Refresh</button>
       </div>
-
-      <!-- PENDING REQUESTS -->
+      <div id="adminStats" class="crm-stats"></div>
       <div class="admin-section">
-        <div class="admin-section-title">🔔 Pending Requests</div>
-        <div id="adminRequests"><div class="crm-empty">Loading...</div></div>
+        <div class="admin-section-title"><span class="admin-dot pending-dot"></span>Pending Requests<span id="pendingCount" class="admin-count">0</span></div>
+        <div id="pendingList" class="admin-list"></div>
       </div>
-
-      <!-- ACTIVE USERS -->
       <div class="admin-section">
-        <div class="admin-section-title">👥 Active Users</div>
-        <div id="adminUsers"><div class="crm-empty">Loading...</div></div>
+        <div class="admin-section-title"><span class="admin-dot approved-dot"></span>Approved Users<span id="approvedCount" class="admin-count">0</span></div>
+        <div id="approvedList" class="admin-list"></div>
       </div>
-
-      <!-- ANALYTICS -->
       <div class="admin-section">
-        <div class="admin-section-title">📊 Search Analytics</div>
-        <div id="adminAnalytics"><div class="crm-empty">Loading...</div></div>
+        <div class="admin-section-title"><span class="admin-dot" style="background:var(--c2)"></span>Analytics</div>
+        <div id="analyticsTable" class="crm-table-wrap"></div>
       </div>
     </section>
 
-    <!-- CRM TAB -->
+    <!-- CRM -->
     <section class="tab-panel" id="tab-crm">
       <div class="crm-header">
-        <div>
-          <h2 class="finds-title">Supplier CRM</h2>
-          <p class="finds-sub">Track every supplier · Status · Prices · Notes</p>
-        </div>
-        <button class="btn-primary" onclick="openCrmModal()">
-          <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-          Add Supplier
-        </button>
+        <div><h2 class="finds-title">Supplier CRM</h2><p class="finds-sub">Track every supplier · Status · Prices · Notes</p></div>
+        <button class="btn-primary" onclick="openCrmModal()">+ Add Supplier</button>
       </div>
-
-      <!-- CRM STATS -->
-      <div class="crm-stats" id="crmStats"></div>
-
-      <!-- CRM TABLE -->
+      <div id="crmStats" class="crm-stats"></div>
       <div class="crm-table-wrap">
-        <div class="crm-table-head">
-          <span>Supplier</span><span>WeChat</span><span>Product</span><span>Price</span><span>Status</span><span>Last Contact</span><span></span>
-        </div>
+        <div class="crm-table-head"><span>Supplier</span><span>WeChat</span><span>Product</span><span>Price</span><span>Status</span><span>Date</span><span></span></div>
         <div id="crmRows"></div>
-        <div class="crm-empty" id="crmEmpty" style="display:none">No suppliers tracked yet. Add your first one!</div>
+        <div class="crm-empty" id="crmEmpty" style="display:none">No suppliers yet. Add your first one!</div>
       </div>
-
-      <!-- QR GENERATOR -->
       <div class="qr-section">
-        <div class="qr-title">
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="9" y="2" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="2" y="9" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.5"/><path d="M9 9h2v2H9zM11 11h2v2h-2zM13 9h.01M9 13h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-          WeChat QR Generator
-        </div>
-        <p class="qr-sub">Enter a WeChat ID to generate a QR code you can screenshot to add them directly</p>
+        <div class="qr-title">WeChat QR Generator</div>
+        <p class="qr-sub">Enter a WeChat ID to generate a QR code</p>
         <div style="display:flex;gap:8px;margin-top:10px">
           <input type="text" id="qrInput" placeholder="WeChat ID e.g. ptx351" style="flex:1;height:38px"/>
-          <button class="btn-primary" onclick="genQR()" style="height:38px;padding:0 16px;white-space:nowrap">Generate QR</button>
+          <button class="btn-primary" onclick="genQR()" style="height:38px;padding:0 16px">Generate QR</button>
         </div>
         <div id="qrOutput" style="margin-top:12px;text-align:center"></div>
       </div>
@@ -324,86 +260,12 @@
 
   </main>
 
-    <!-- ADMIN TAB -->
-    <section class="tab-panel" id="tab-admin">
-      <div class="admin-header">
-        <div>
-          <h2 class="finds-title" style="color:var(--a)">⚡ Admin Panel</h2>
-          <p class="finds-sub">Manage access requests · Approve users · Grant admin · Analytics</p>
-        </div>
-        <div style="display:flex;gap:8px">
-          <button class="tool-btn" onclick="loadAdmin()">
-            <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M2 8a6 6 0 1 1 12 0" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M2 8l2-2M2 8l2 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-            Refresh
-          </button>
-        </div>
-      </div>
-
-      <!-- STATS -->
-      <div id="adminStats" class="crm-stats"></div>
-
-      <!-- PENDING REQUESTS -->
-      <div class="admin-section">
-        <div class="admin-section-title">
-          <span class="admin-dot pending-dot"></span>
-          Pending Requests
-          <span id="pendingCount" class="admin-count">0</span>
-        </div>
-        <div id="pendingList" class="admin-list"></div>
-      </div>
-
-      <!-- APPROVED USERS -->
-      <div class="admin-section">
-        <div class="admin-section-title">
-          <span class="admin-dot approved-dot"></span>
-          Approved Users
-          <span id="approvedCount" class="admin-count">0</span>
-        </div>
-        <div id="approvedList" class="admin-list"></div>
-      </div>
-
-      <!-- ANALYTICS -->
-      <div class="admin-section">
-        <div class="admin-section-title">
-          <span class="admin-dot" style="background:var(--c2)"></span>
-          Search Analytics
-        </div>
-        <div id="analyticsTable" class="crm-table-wrap"></div>
-      </div>
-    </section>
-
-  <!-- CRM MODAL -->
-  <div class="modal-overlay" id="crmModal" style="display:none" onclick="if(event.target===this)closeCrmModal()">
-    <div class="modal-card">
-      <h3 class="modal-title">Add Supplier</h3>
-      <label>Supplier Name *</label><input type="text" id="crmName" placeholder="Factory name or nickname"/>
-      <label>WeChat ID</label><input type="text" id="crmWechat" placeholder="e.g. ptx351"/>
-      <label>Product</label><input type="text" id="crmProduct" placeholder="e.g. Jordan 4, Tech Fleece"/>
-      <label>Price</label><input type="text" id="crmPrice" placeholder="e.g. ¥180/pair, MOQ 10"/>
-      <label>Status</label>
-      <select id="crmStatus" style="height:40px;padding:0 12px;background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.07);border-radius:8px;color:#f1f5f9;font-family:Inter,sans-serif;margin-bottom:10px;width:100%;outline:none">
-        <option value="new">🆕 New Lead</option>
-        <option value="contacted">📨 Contacted</option>
-        <option value="replied">💬 Replied</option>
-        <option value="sampling">📦 Sampling</option>
-        <option value="ordered">✅ Ordered</option>
-        <option value="passed">❌ Passed</option>
-      </select>
-      <label>Notes</label><textarea id="crmNotes" placeholder="Quality, communication, anything useful…"></textarea>
-      <div class="modal-btns">
-        <button class="btn-primary" onclick="saveCrmEntry()">Save Supplier</button>
-        <button class="tool-btn" onclick="closeCrmModal()">Cancel</button>
-      </div>
-      <p class="msg" id="crmMsg"></p>
-    </div>
-  </div>
-
-  <!-- POST FIND MODAL -->
+  <!-- MODALS -->
   <div class="modal-overlay" id="findModal" style="display:none" onclick="if(event.target===this)closeFindModal()">
     <div class="modal-card">
       <h3 class="modal-title">Post a Find</h3>
       <label>Title *</label><input type="text" id="findTitle" placeholder="e.g. Putian Jordan 4 NFC factory"/>
-      <label>Product / Category</label><input type="text" id="findProduct" placeholder="Sneakers, Bags, Electronics"/>
+      <label>Product</label><input type="text" id="findProduct" placeholder="Sneakers, Bags…"/>
       <label>WeChat ID</label><input type="text" id="findWechat" placeholder="supplier WeChat ID"/>
       <label>Price Range</label><input type="text" id="findPrice" placeholder="¥120–180, MOQ 10"/>
       <label>Description</label><textarea id="findDesc" placeholder="Quality, communication, turnaround…"></textarea>
@@ -415,7 +277,6 @@
     </div>
   </div>
 
-  <!-- HISTORY MODAL -->
   <div class="modal-overlay" id="historyModal" style="display:none" onclick="if(event.target===this)closeHistory()">
     <div class="modal-card">
       <h3 class="modal-title">Search History</h3>
@@ -424,6 +285,31 @@
     </div>
   </div>
 
-  <script src="{{ url_for('static', filename='script.js') }}?v=1776476064"></script>
+  <div class="modal-overlay" id="crmModal" style="display:none" onclick="if(event.target===this)closeCrmModal()">
+    <div class="modal-card">
+      <h3 class="modal-title">Add Supplier</h3>
+      <label>Name *</label><input type="text" id="crmName" placeholder="Factory name"/>
+      <label>WeChat ID</label><input type="text" id="crmWechat" placeholder="e.g. ptx351"/>
+      <label>Product</label><input type="text" id="crmProduct" placeholder="Jordan 4, Tech Fleece…"/>
+      <label>Price</label><input type="text" id="crmPrice" placeholder="¥180/pair, MOQ 10"/>
+      <label>Status</label>
+      <select id="crmStatus" style="width:100%;height:40px;padding:0 12px;background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.07);border-radius:8px;color:#f1f5f9;font-family:inherit;margin-bottom:10px;outline:none">
+        <option value="new">🆕 New Lead</option>
+        <option value="contacted">📨 Contacted</option>
+        <option value="replied">💬 Replied</option>
+        <option value="sampling">📦 Sampling</option>
+        <option value="ordered">✅ Ordered</option>
+        <option value="passed">❌ Passed</option>
+      </select>
+      <label>Notes</label><textarea id="crmNotes" placeholder="Quality, MOQ, notes…"></textarea>
+      <div class="modal-btns">
+        <button class="btn-primary" onclick="saveCrmEntry()">Save</button>
+        <button class="tool-btn" onclick="closeCrmModal()">Cancel</button>
+      </div>
+      <p class="msg" id="crmMsg"></p>
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='script.js') }}?v=999"></script>
 </body>
 </html>
