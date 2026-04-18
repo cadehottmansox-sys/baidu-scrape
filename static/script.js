@@ -361,7 +361,7 @@ function buildCard(item,index){
     const chips = document.createElement("div");
     chips.className = "card-contacts";
     wechats.slice(0,6).forEach(w=>chips.appendChild(wcChip(w)));
-    (item.phones||[]).forEach(p=>{
+    (item.phones||[]).slice(0,2).forEach(p=>{
       const e=document.createElement("div");e.className="contact-chip contact-phone";
       e.innerHTML=`📞 ${p}`;e.title="Click to copy";
       e.addEventListener("click",()=>copyText(p,p));chips.appendChild(e);
