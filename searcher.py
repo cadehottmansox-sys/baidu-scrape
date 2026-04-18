@@ -57,11 +57,27 @@ CONTACT_TERMS  = ["wechat","weixin","vx","微信","whatsapp","phone","tel","emai
 FF_TERMS       = ["freight","forwarder","logistics","shipping","customs","货代","物流","运输","清关","报关","fob","cif","dhl","fedex"]
 PASSING_TERMS  = ["passing","nfc","芯片","过货","验货","防伪","莆田","1:1","高仿","复刻"]
 
-REP_INJECT   = "复刻 高仿 1:1 莆田 代工 原单 余单 工厂货 rep replica fashionreps"
-# Q1: rep/factory supplier pages with WeChat contacts
-ALL_Q1_INJECT = f"莆田 一手货源 工厂 微信号 联系方式 {REP_INJECT} 批发 代理"
-# Q2: platform-specific searches 
-ALL_Q2_INJECT = f"yupoo 1688 微店 weidian 厂家直销 微信 源头工厂 {REP_INJECT}"
+REP_INJECT = "复刻 高仿 1:1 莆田 代工 原单 余单 工厂货 rep replica fashionreps"
+FACTORY_INJECT = "厂家直销 源头工厂 一手货源 微信号 联系方式 批发 代理 工厂"
+ALL_Q2_INJECT_BASE = "yupoo 1688 微店 weidian 厂家直销 微信 源头工厂"
+REP_KEYWORDS = {
+    "jordan","nike","aj","yeezy","dunk","air force","travis","off white","sacai",
+    "new balance","nb","asics","samba","adidas","puma","reebok","vans","converse",
+    "supreme","bape","palace","kith","fear of god","fog","essentials",
+    "stone island","cp company","gallery dept","rhude","amiri","chrome hearts",
+    "louis vuitton","lv","gucci","prada","dior","balenciaga","burberry","versace",
+    "moncler","canada goose","rep","replica","1:1","passing","nfc","putian","莆田",
+    "sneaker","shoe","kicks","hoodie","tee","jacket","coat","down","puffer",
+}
+def build_inject(base_query):
+    q = base_query.lower()
+    is_rep = any(kw in q for kw in REP_KEYWORDS)
+    if is_rep:
+        return (f"{FACTORY_INJECT} {REP_INJECT}", f"{ALL_Q2_INJECT_BASE} {REP_INJECT}")
+    return (f"{FACTORY_INJECT}", f"{ALL_Q2_INJECT_BASE} 联系方式")
+ALL_Q1_INJECT = FACTORY_INJECT
+ALL_Q2_INJECT = ALL_Q2_INJECT_BASE
+
 
 BLOCKED_DOMAINS = {
     # Official brand sites
@@ -697,8 +713,9 @@ async def search_platform(
         try:
             if platform=="all":
                 seen_all=set(seen_links)
-                q1=f"{base} {ALL_Q1_INJECT}"
-                q2=f"{base} {ALL_Q2_INJECT}"
+                _inj1, _inj2 = build_inject(base)
+                q1=f"{base} {_inj1}"
+                q2=f"{base} {_inj2}"
                 r1=await _baidu_search(page,q1,max_r,timeout,delay,seen_all,"All-in-One",mode)
                 for r in r1: seen_all.add(r["link"])
                 results.extend(r1)
@@ -710,16 +727,18 @@ async def search_platform(
                 if platform in PLAT:
                     # For direct platform chips, still search via Baidu with platform keyword
                     injects = {
-                        "1688": f"1688 厂家直销 批发 微信 联系方式 {REP_INJECT}",
-                        "taobao": f"淘宝 厂家店 工厂 微信 {REP_INJECT}",
-                        "xianyu": f"闲鱼 库存 尾货 微信 {REP_INJECT}",
-                        "weidian": f"微店 weidian 厂家 微信 {REP_INJECT}",
+                        "1688": f"1688 厂家直销 批发 微信 联系方式",
+                        "taobao": f"淘宝 厂家店 工厂 微信",
+                        "xianyu": f"闲鱼 库存 尾货 微信",
+                        "weidian": f"微店 weidian 厂家 微信",
                     }
-                    inject = injects.get(platform, ALL_Q1_INJECT)
+                    _pi1, _ = build_inject(base)
+                    inject = injects.get(platform, _pi1)
                     full_q = f"{base} {inject}"
                     results = await _baidu_search(page,full_q,max_r,timeout,delay,seen_links,platform.title(),mode,page_num)
                 else:
-                    full_q=f"{base} {ALL_Q1_INJECT}"
+                    _bi1, _ = build_inject(base)
+                    full_q=f"{base} {_bi1}"
                     results=await _baidu_search(page,full_q,max_r,timeout,delay,seen_links,"Baidu",mode,page_num)
 
             results.sort(key=lambda r:r["factory_score"]*2+r["wechat_quality"],reverse=True)
