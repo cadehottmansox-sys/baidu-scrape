@@ -369,8 +369,8 @@ kbd.kb{font-size:9px;font-family:var(--mono);background:rgba(0,245,255,.08);bord
 }
 .tower-waves{
   position:absolute;
-  top:50%;left:50%;
-  transform:translate(-50%,-52%);
+  top:0;left:50%;
+  transform:translate(-50%,-30%);
   width:2em;height:2em;
   pointer-events:none;
   overflow:visible;
@@ -383,9 +383,9 @@ kbd.kb{font-size:9px;font-family:var(--mono);background:rgba(0,245,255,.08);bord
   opacity:0;
   transform-origin:30px 30px;
 }
-.w1{ animation: towerPing 3s ease-out infinite; }
-.w2{ animation: towerPing 3s ease-out infinite .6s; }
-.w3{ animation: towerPing 3s ease-out infinite 1.2s; }
+.w1{ animation: towerPing 4s ease-out infinite; }
+.w2{ animation: none; opacity:0; }
+.w3{ animation: none; opacity:0; }
 
 @keyframes towerPing{
   0%  { r:4;  opacity:.9; stroke-width:2; }
