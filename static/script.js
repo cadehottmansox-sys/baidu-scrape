@@ -33,79 +33,94 @@ function updateStats(results){
   const cv = document.getElementById('bg');
   if(!cv) return;
   const ctx = cv.getContext('2d');
-  let W, H, t = 0;
+  let W, H;
   const mouse = {x:-9999, y:-9999};
-  const SIZE = 38; // hex size
+  const COLORS = ['0,245,255','124,58,237','0,255,136','244,114,182'];
 
-  function resize(){
-    W = cv.width  = window.innerWidth;
-    H = cv.height = window.innerHeight;
-  }
+  function resize(){ W=cv.width=innerWidth; H=cv.height=innerHeight; }
   window.addEventListener('resize', resize);
   window.addEventListener('mousemove', e=>{ mouse.x=e.clientX; mouse.y=e.clientY; });
 
-  // click ripples
-  const ripples = [];
-  window.addEventListener('click', e=>{ ripples.push({x:e.clientX,y:e.clientY,r:0,a:0.7}); });
+  // Dots
+  const N = 70;
+  const dots = Array.from({length:N}, ()=>({
+    x: Math.random()*W||Math.random()*1400,
+    y: Math.random()*H||Math.random()*900,
+    vx: (Math.random()-.5)*0.22,
+    vy: (Math.random()-.5)*0.22,
+    r: Math.random()*1.5+0.8,
+    c: COLORS[Math.random()*COLORS.length|0],
+    pulse: Math.random()*Math.PI*2,
+  }));
 
-  function hexPath(cx, cy, r){
-    ctx.beginPath();
-    for(let k=0;k<6;k++){
-      const a = Math.PI/180*(60*k - 30);
-      k===0 ? ctx.moveTo(cx+r*Math.cos(a), cy+r*Math.sin(a))
-             : ctx.lineTo(cx+r*Math.cos(a), cy+r*Math.sin(a));
-    }
-    ctx.closePath();
-  }
+  // Click ripples
+  const ripples = [];
+  window.addEventListener('click', e=>{ ripples.push({x:e.clientX,y:e.clientY,r:0,a:0.8}); });
 
   function draw(){
     ctx.clearRect(0,0,W,H);
-    t += 0.008;
 
-    const cols = Math.ceil(W / (SIZE*1.75)) + 2;
-    const rows = Math.ceil(H / (SIZE*1.5))  + 2;
+    // Update + draw connections
+    dots.forEach((d,i)=>{
+      d.pulse += 0.02;
+      d.x += d.vx; d.y += d.vy;
+      if(d.x<0)d.x=W; if(d.x>W)d.x=0;
+      if(d.y<0)d.y=H; if(d.y>H)d.y=0;
 
-    for(let row=0; row<rows; row++){
-      for(let col=0; col<cols; col++){
-        const offset = row%2===0 ? 0 : SIZE*0.875;
-        const cx = col * SIZE*1.75 - SIZE + offset;
-        const cy = row * SIZE*1.5  - SIZE;
+      // Mouse repel
+      const mdx=mouse.x-d.x, mdy=mouse.y-d.y;
+      const md=Math.hypot(mdx,mdy);
+      if(md<120){ d.vx-=mdx/md*0.012; d.vy-=mdy/md*0.012; }
+      d.vx*=0.998; d.vy*=0.998;
 
-        const dist  = Math.hypot(mouse.x - cx, mouse.y - cy);
-        const prox  = Math.max(0, 1 - dist/220);
-        const wave  = Math.sin(t + col*0.4 + row*0.3) * 0.5 + 0.5;
-        const alpha = 0.04 + prox*0.18 + wave*0.03;
-        const r     = SIZE - 2 - prox*2;
-
-        hexPath(cx, cy, r);
-        ctx.strokeStyle = prox > 0.1
-          ? `rgba(0,245,255,${alpha})`
-          : `rgba(255,255,255,${alpha * 0.4})`;
-        ctx.lineWidth = 0.5 + prox*1.2;
-        ctx.stroke();
-
-        // Fill hex near mouse
-        if(prox > 0.3){
-          hexPath(cx, cy, r);
-          ctx.fillStyle = `rgba(0,245,255,${prox*0.04})`;
-          ctx.fill();
+      // Lines to nearby dots
+      for(let j=i+1;j<dots.length;j++){
+        const b=dots[j];
+        const dx=d.x-b.x, dy=d.y-b.y;
+        const dist=Math.hypot(dx,dy);
+        if(dist<130){
+          const alpha=(1-dist/130)*0.18;
+          ctx.beginPath();
+          ctx.moveTo(d.x,d.y);
+          ctx.lineTo(b.x,b.y);
+          ctx.strokeStyle=`rgba(0,245,255,${alpha})`;
+          ctx.lineWidth=0.6;
+          ctx.stroke();
         }
       }
-    }
+    });
+
+    // Draw dots on top
+    dots.forEach(d=>{
+      const md=Math.hypot(mouse.x-d.x,mouse.y-d.y);
+      const glow=Math.max(0,1-md/160);
+      const pr=d.r*(1+Math.sin(d.pulse)*0.3+glow*1.5);
+
+      // Glow halo
+      if(glow>0.1){
+        const grad=ctx.createRadialGradient(d.x,d.y,0,d.x,d.y,pr*6);
+        grad.addColorStop(0,`rgba(${d.c},${glow*0.15})`);
+        grad.addColorStop(1,`rgba(${d.c},0)`);
+        ctx.fillStyle=grad;
+        ctx.beginPath();
+        ctx.arc(d.x,d.y,pr*6,0,Math.PI*2);
+        ctx.fill();
+      }
+
+      // Core dot
+      ctx.beginPath();
+      ctx.arc(d.x,d.y,pr,0,Math.PI*2);
+      ctx.fillStyle=`rgba(${d.c},${0.5+glow*0.5})`;
+      ctx.fill();
+    });
 
     // Ripples
     ripples.forEach(rp=>{
-      rp.r += 3.5; rp.a -= 0.016;
-      ctx.beginPath();
-      ctx.arc(rp.x, rp.y, rp.r, 0, Math.PI*2);
-      ctx.strokeStyle = `rgba(0,245,255,${rp.a})`;
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.arc(rp.x, rp.y, rp.r*0.55, 0, Math.PI*2);
-      ctx.strokeStyle = `rgba(124,58,237,${rp.a*0.6})`;
-      ctx.lineWidth = 1;
-      ctx.stroke();
+      rp.r+=3.5; rp.a-=0.015;
+      ctx.beginPath(); ctx.arc(rp.x,rp.y,rp.r,0,Math.PI*2);
+      ctx.strokeStyle=`rgba(0,245,255,${rp.a})`; ctx.lineWidth=1.5; ctx.stroke();
+      ctx.beginPath(); ctx.arc(rp.x,rp.y,rp.r*.5,0,Math.PI*2);
+      ctx.strokeStyle=`rgba(124,58,237,${rp.a*.7})`; ctx.lineWidth=1; ctx.stroke();
     });
     for(let i=ripples.length-1;i>=0;i--) if(ripples[i].a<=0) ripples.splice(i,1);
 
