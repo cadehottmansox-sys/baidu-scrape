@@ -160,9 +160,27 @@ function updateStats(results){
   setTimeout(type,300);
 })();
 
+
+
+"use strict";
+
+// ── Typing hero ───────────────────────────────────────────────────
+(function(){
+  const el=document.getElementById("heroTitle");
+  if(!el) return;
+  const text="SourceFinder";
+  let i=0;
+  el.innerHTML='<span class="cursor"></span>';
+  const type=()=>{
+    if(i<text.length){el.innerHTML=text.slice(0,++i)+'<span class="cursor"></span>';setTimeout(type,80+Math.random()*60)}
+    else setTimeout(()=>el.querySelector(".cursor")?.remove(),1200);
+  };
+  setTimeout(type,300);
+})();
+
 // ── Particle canvas ───────────────────────────────────────────────
 (function(){
-  const canvas=document.getElementById("bg-canvas");
+  const canvas=document.getElementById("bg"); // legacy ref
   if(!canvas) return;
   const ctx=canvas.getContext("2d");
   let W,H,dots=[],mouse={x:-999,y:-999},lastX=-999,lastY=-999,mouseSpeed=0;
