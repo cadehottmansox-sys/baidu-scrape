@@ -28,79 +28,91 @@ function updateStats(results){
   if(sr) sr.textContent = fmt(sessionStats.searches);
 }
 
-// ── MATRIX RAIN ──────────────────────────────────────────────────
+// ── BACKGROUND ───────────────────────────────────────────────────
 (function(){
   const cv = document.getElementById('bg');
   if(!cv) return;
   const ctx = cv.getContext('2d');
-  let W, H, cols, drops;
-  const FONT = 14;
-  const CHARS = '源头工厂微信联系莆田复刻代工货源批发直销供应商ABCDEF0123456789';
-  const mouse = {x:-9999,y:-9999};
+  let W, H, t = 0;
+  const mouse = {x:-9999, y:-9999};
+  const SIZE = 38; // hex size
 
-  function init(){
+  function resize(){
     W = cv.width  = window.innerWidth;
     H = cv.height = window.innerHeight;
-    cols  = Math.ceil(W / FONT);
-    drops = Array.from({length:cols}, ()=> -(Math.random()*H/FONT)|0 );
   }
-
-  window.addEventListener('resize', init);
+  window.addEventListener('resize', resize);
   window.addEventListener('mousemove', e=>{ mouse.x=e.clientX; mouse.y=e.clientY; });
 
-  const waves=[];
-  window.addEventListener('click', e=>{ waves.push({x:e.clientX,y:e.clientY,r:0,a:1}); });
+  // click ripples
+  const ripples = [];
+  window.addEventListener('click', e=>{ ripples.push({x:e.clientX,y:e.clientY,r:0,a:0.7}); });
+
+  function hexPath(cx, cy, r){
+    ctx.beginPath();
+    for(let k=0;k<6;k++){
+      const a = Math.PI/180*(60*k - 30);
+      k===0 ? ctx.moveTo(cx+r*Math.cos(a), cy+r*Math.sin(a))
+             : ctx.lineTo(cx+r*Math.cos(a), cy+r*Math.sin(a));
+    }
+    ctx.closePath();
+  }
 
   function draw(){
-    // Fade trail
-    ctx.fillStyle = 'rgba(4,6,15,0.15)';
-    ctx.fillRect(0,0,W,H);
+    ctx.clearRect(0,0,W,H);
+    t += 0.008;
 
-    ctx.font = 'bold '+FONT+'px monospace';
+    const cols = Math.ceil(W / (SIZE*1.75)) + 2;
+    const rows = Math.ceil(H / (SIZE*1.5))  + 2;
 
-    for(let i=0;i<cols;i++){
-      const x = i*FONT;
-      const y = drops[i]*FONT;
+    for(let row=0; row<rows; row++){
+      for(let col=0; col<cols; col++){
+        const offset = row%2===0 ? 0 : SIZE*0.875;
+        const cx = col * SIZE*1.75 - SIZE + offset;
+        const cy = row * SIZE*1.5  - SIZE;
 
-      // Mouse glow
-      const md = Math.hypot(mouse.x-x, mouse.y-y);
-      const glow = Math.max(0, 1-md/180);
+        const dist  = Math.hypot(mouse.x - cx, mouse.y - cy);
+        const prox  = Math.max(0, 1 - dist/220);
+        const wave  = Math.sin(t + col*0.4 + row*0.3) * 0.5 + 0.5;
+        const alpha = 0.04 + prox*0.18 + wave*0.03;
+        const r     = SIZE - 2 - prox*2;
 
-      // Bright lead char
-      const r=Math.round(0  + glow*0);
-      const g=Math.round(220 + glow*35);
-      const b=Math.round(180 + glow*75);
-      ctx.fillStyle = `rgba(${r},${g},${b},${0.85+glow*0.15})`;
-      ctx.fillText(CHARS[Math.random()*CHARS.length|0], x, y);
+        hexPath(cx, cy, r);
+        ctx.strokeStyle = prox > 0.1
+          ? `rgba(0,245,255,${alpha})`
+          : `rgba(255,255,255,${alpha * 0.4})`;
+        ctx.lineWidth = 0.5 + prox*1.2;
+        ctx.stroke();
 
-      // Dim trail
-      ctx.fillStyle = `rgba(0,${Math.round(150+glow*70)},${Math.round(120+glow*80)},${0.25+glow*0.3})`;
-      for(let t=1;t<8;t++){
-        ctx.globalAlpha = Math.max(0,(8-t)/8) * (0.3+glow*0.4);
-        ctx.fillText(CHARS[Math.random()*CHARS.length|0], x, y - t*FONT);
+        // Fill hex near mouse
+        if(prox > 0.3){
+          hexPath(cx, cy, r);
+          ctx.fillStyle = `rgba(0,245,255,${prox*0.04})`;
+          ctx.fill();
+        }
       }
-      ctx.globalAlpha = 1;
-
-      if(y>H && Math.random()>0.975) drops[i] = -(Math.random()*20|0);
-      else drops[i] += 0.5;
     }
 
-    // Shockwaves on click
-    waves.forEach(w=>{
-      w.r+=4; w.a-=0.018;
-      ctx.globalAlpha=w.a;
-      ctx.strokeStyle='#00f5ff'; ctx.lineWidth=2;
-      ctx.beginPath(); ctx.arc(w.x,w.y,w.r,0,Math.PI*2); ctx.stroke();
-      ctx.strokeStyle='#7c3aed'; ctx.lineWidth=1;
-      ctx.beginPath(); ctx.arc(w.x,w.y,w.r*0.5,0,Math.PI*2); ctx.stroke();
-      ctx.globalAlpha=1;
+    // Ripples
+    ripples.forEach(rp=>{
+      rp.r += 3.5; rp.a -= 0.016;
+      ctx.beginPath();
+      ctx.arc(rp.x, rp.y, rp.r, 0, Math.PI*2);
+      ctx.strokeStyle = `rgba(0,245,255,${rp.a})`;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(rp.x, rp.y, rp.r*0.55, 0, Math.PI*2);
+      ctx.strokeStyle = `rgba(124,58,237,${rp.a*0.6})`;
+      ctx.lineWidth = 1;
+      ctx.stroke();
     });
-    for(let i=waves.length-1;i>=0;i--) if(waves[i].a<=0) waves.splice(i,1);
+    for(let i=ripples.length-1;i>=0;i--) if(ripples[i].a<=0) ripples.splice(i,1);
 
     requestAnimationFrame(draw);
   }
 
-  init();
+  resize();
   draw();
 })();
 
