@@ -28,163 +28,117 @@ function updateStats(results){
   if(sr) sr.textContent = fmt(sessionStats.searches);
 }
 
-// ── SICK INTERACTIVE BACKGROUND ──────────────────────────────────
+// ── MATRIX RAIN + NEON GRID BACKGROUND ───────────────────────────
 (function(){
   const cv = document.getElementById('bg-canvas');
   if(!cv) return;
   const ctx = cv.getContext('2d');
-  let W, H, frame = 0;
-  const mouse = {x: -9999, y: -9999, vx: 0, vy: 0, px: -9999, py: -9999};
+  let W, H;
+  const mouse = {x:-999,y:-999};
 
-  function resize(){ W = cv.width = innerWidth; H = cv.height = innerHeight; }
-  addEventListener('resize', resize); resize();
-  addEventListener('mousemove', e=>{
-    mouse.vx = e.clientX - mouse.px;
-    mouse.vy = e.clientY - mouse.py;
-    mouse.px = mouse.x; mouse.py = mouse.y;
-    mouse.x = e.clientX; mouse.y = e.clientY;
-  });
+  function resize(){ W=cv.width=innerWidth; H=cv.height=innerHeight; initRain(); }
+  addEventListener('resize',resize);
+  addEventListener('mousemove',e=>{mouse.x=e.clientX;mouse.y=e.clientY;});
 
-  // ── Web of nodes ──────────────────────────────────────────────────
-  const NODES = 55;
-  const nodes = Array.from({length: NODES}, ()=>({
-    x: Math.random()*1.2-.1,
-    y: Math.random()*1.2-.1,
-    vx: (Math.random()-.5)*.0004,
-    vy: (Math.random()-.5)*.0004,
-    r: Math.random()*2+1,
-    color: ['#00f5ff','#7c3aed','#00ff88','#f472b6'][Math.floor(Math.random()*4)],
-    pulse: Math.random()*Math.PI*2,
-    ps: Math.random()*.03+.01,
-  }));
+  // ── Matrix rain ───────────────────────────────────────────────────
+  const FONT_SIZE = 13;
+  const CHARS = '源头工厂微信联系莆田复刻代工01ABCDEF货源批发直销123456789供应商';
+  let drops = [];
 
-  function drawWeb(){
-    const CONN = 180; // px connection distance
-    for(let i=0;i<nodes.length;i++){
-      const a = nodes[i];
-      const ax = a.x*W, ay = a.y*H;
-      // Mouse interaction
-      const mdx = mouse.x-ax, mdy = mouse.y-ay;
-      const md = Math.sqrt(mdx*mdx+mdy*mdy);
-      if(md < 200){
-        const f = (200-md)/200 * .0015;
-        a.vx -= mdx*f; a.vy -= mdy*f;
-      }
-      a.vx *= .995; a.vy *= .995;
-      a.x += a.vx; a.y += a.vy;
-      if(a.x<-.1)a.x=1.1; if(a.x>1.1)a.x=-.1;
-      if(a.y<-.1)a.y=1.1; if(a.y>1.1)a.y=-.1;
-      a.pulse += a.ps;
+  function initRain(){
+    const cols = Math.floor(W/FONT_SIZE);
+    drops = Array.from({length:cols},()=>Math.random()*-100);
+  }
 
-      for(let j=i+1;j<nodes.length;j++){
-        const b = nodes[j];
-        const dx=(a.x-b.x)*W, dy=(a.y-b.y)*H;
-        const d=Math.sqrt(dx*dx+dy*dy);
-        if(d<CONN){
-          const alpha = (1-d/CONN)*.25;
-          const grd = ctx.createLinearGradient(ax,ay,b.x*W,b.y*H);
-          grd.addColorStop(0, a.color.replace(')',`,${alpha})`).replace('#','rgba(').replace(/([0-9a-f]{2})/gi,m=>parseInt(m,16)+',').replace(/,$/,''));
-          // simpler:
-          ctx.beginPath();
-          ctx.moveTo(ax,ay);
-          ctx.lineTo(b.x*W,b.y*H);
-          ctx.strokeStyle=`rgba(0,245,255,${alpha})`;
-          ctx.lineWidth=.6;
-          ctx.stroke();
-        }
+  function drawRain(){
+    ctx.fillStyle='rgba(8,11,18,.18)';
+    ctx.fillRect(0,0,W,H);
+
+    ctx.font = FONT_SIZE+'px monospace';
+    drops.forEach((y,i)=>{
+      const x = i*FONT_SIZE;
+      const ch = CHARS[Math.floor(Math.random()*CHARS.length)];
+
+      // Mouse proximity — chars near mouse glow brighter
+      const dx=mouse.x-x, dy=mouse.y-y*FONT_SIZE;
+      const dist=Math.sqrt(dx*dx+dy*dy);
+      const prox=Math.max(0,1-dist/200);
+
+      // Lead char — bright
+      ctx.fillStyle=`rgba(${Math.round(150+105*prox)},${Math.round(245+10*prox)},${Math.round(255)},${0.9+prox*.1})`;
+      ctx.fillText(ch, x, y*FONT_SIZE);
+
+      // Trail chars — fade to dark cyan
+      for(let t=1;t<6;t++){
+        const alpha=Math.max(0,(6-t)/6)*(.15+prox*.3);
+        ctx.fillStyle=`rgba(0,${Math.round(180+40*prox)},${Math.round(200+55*prox)},${alpha})`;
+        ctx.fillText(CHARS[Math.floor(Math.random()*CHARS.length)], x, (y-t)*FONT_SIZE);
       }
 
-      // Draw node
-      const pr = 1+Math.sin(a.pulse)*.4;
-      ctx.beginPath();
-      ctx.arc(ax,ay,a.r*pr,0,Math.PI*2);
-      ctx.fillStyle=a.color;
-      ctx.shadowColor=a.color;
-      ctx.shadowBlur=8;
-      ctx.fill();
-      ctx.shadowBlur=0;
+      // Reset drop
+      if(y*FONT_SIZE>H && Math.random()>.97) drops[i]=0;
+      else drops[i]+=.4+Math.random()*.3;
+    });
+  }
+
+  // ── Neon grid overlay ─────────────────────────────────────────────
+  function drawGrid(){
+    const SZ=60;
+    ctx.lineWidth=.4;
+    for(let x=0;x<W;x+=SZ){
+      const dx=mouse.x-x;
+      const prox=Math.max(0,1-Math.abs(dx)/300);
+      ctx.strokeStyle=`rgba(0,245,255,${0.04+prox*.12})`;
+      ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();
+    }
+    for(let y=0;y<H;y+=SZ){
+      const dy=mouse.y-y;
+      const prox=Math.max(0,1-Math.abs(dy)/300);
+      ctx.strokeStyle=`rgba(0,245,255,${0.04+prox*.12})`;
+      ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();
     }
   }
 
-  // ── Mouse ripple ───────────────────────────────────────────────────
-  const ripples=[];
-  addEventListener('click',e=>{ripples.push({x:e.clientX,y:e.clientY,r:0,a:1})});
-
-  function drawRipples(){
-    ripples.forEach((r,i)=>{
-      r.r+=4; r.a-=.025;
-      ctx.beginPath();
-      ctx.arc(r.x,r.y,r.r,0,Math.PI*2);
-      ctx.strokeStyle=`rgba(0,245,255,${r.a})`;
-      ctx.lineWidth=1.5;
-      ctx.stroke();
-      // Second ring
-      ctx.beginPath();
-      ctx.arc(r.x,r.y,r.r*.6,0,Math.PI*2);
-      ctx.strokeStyle=`rgba(124,58,237,${r.a*.7})`;
-      ctx.lineWidth=1;
-      ctx.stroke();
-    });
-    for(let i=ripples.length-1;i>=0;i--) if(ripples[i].a<=0) ripples.splice(i,1);
-  }
-
-  // ── Mouse trail ────────────────────────────────────────────────────
-  const trail=[];
-  function drawTrail(){
-    if(mouse.x<0) return;
-    trail.push({x:mouse.x,y:mouse.y,a:.4});
-    if(trail.length>20) trail.shift();
-    trail.forEach((t,i)=>{
-      t.a-=.02;
-      if(t.a<=0) return;
-      ctx.beginPath();
-      ctx.arc(t.x,t.y,2*(i/trail.length),0,Math.PI*2);
-      ctx.fillStyle=`rgba(0,245,255,${t.a*.5})`;
-      ctx.fill();
-    });
-  }
-
-  // ── Ambient glow blobs ─────────────────────────────────────────────
-  const globs=[
-    {x:.1, y:.05, tx:.2, ty:.15, c:'rgba(0,245,255,', a:.07, s:.008},
-    {x:.85,y:.9,  tx:.75,ty:.8,  c:'rgba(124,58,237,',a:.08, s:.006},
-    {x:.5, y:.5,  tx:.4, ty:.6,  c:'rgba(0,255,136,', a:.04, s:.005},
-    {x:.8, y:.1,  tx:.7, ty:.2,  c:'rgba(236,72,153,',a:.04, s:.007},
+  // ── Glow blobs ────────────────────────────────────────────────────
+  const blobs=[
+    {x:.08,y:.06,tx:.2,ty:.18,c:[0,245,255],a:.08,s:.003},
+    {x:.88,y:.88,tx:.75,ty:.75,c:[124,58,237],a:.09,s:.004},
+    {x:.5,y:.5,tx:.35,ty:.65,c:[0,255,136],a:.04,s:.002},
   ];
-  function drawGlobs(){
-    globs.forEach(g=>{
-      g.x+=(g.tx-g.x)*g.s; g.y+=(g.ty-g.y)*g.s;
-      if(Math.abs(g.x-g.tx)<.01){g.tx=Math.random();g.ty=Math.random();}
-      const rad=Math.max(W,H)*.5;
-      const grd=ctx.createRadialGradient(g.x*W,g.y*H,0,g.x*W,g.y*H,rad);
-      grd.addColorStop(0,g.c+g.a+')');
-      grd.addColorStop(.5,g.c+(g.a*.2)+')');
-      grd.addColorStop(1,g.c+'0)');
-      ctx.fillStyle=grd;
-      ctx.fillRect(0,0,W,H);
+  function drawBlobs(){
+    blobs.forEach(b=>{
+      b.x+=(b.tx-b.x)*b.s; b.y+=(b.ty-b.y)*b.s;
+      if(Math.hypot(b.x-b.tx,b.y-b.ty)<.005){b.tx=Math.random();b.ty=Math.random();}
+      const g=ctx.createRadialGradient(b.x*W,b.y*H,0,b.x*W,b.y*H,Math.max(W,H)*.45);
+      g.addColorStop(0,`rgba(${b.c},${b.a})`);
+      g.addColorStop(.6,`rgba(${b.c},${b.a*.15})`);
+      g.addColorStop(1,`rgba(${b.c},0)`);
+      ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
     });
   }
 
-  // ── Scan line ─────────────────────────────────────────────────────
-  let scanY=0;
-  function drawScan(){
-    scanY=(scanY+.8)%H;
-    const g=ctx.createLinearGradient(0,scanY-30,0,scanY+30);
-    g.addColorStop(0,'rgba(0,245,255,0)');
-    g.addColorStop(.5,'rgba(0,245,255,.03)');
-    g.addColorStop(1,'rgba(0,245,255,0)');
-    ctx.fillStyle=g;
-    ctx.fillRect(0,scanY-30,W,60);
+  // ── Mouse shockwave on click ───────────────────────────────────────
+  const waves=[];
+  addEventListener('click',e=>{waves.push({x:e.clientX,y:e.clientY,r:0,a:.8});});
+  function drawWaves(){
+    waves.forEach(w=>{
+      w.r+=5; w.a-=.015;
+      ctx.beginPath();ctx.arc(w.x,w.y,w.r,0,Math.PI*2);
+      ctx.strokeStyle=`rgba(0,245,255,${w.a})`;
+      ctx.lineWidth=2;ctx.stroke();
+      ctx.beginPath();ctx.arc(w.x,w.y,w.r*.5,0,Math.PI*2);
+      ctx.strokeStyle=`rgba(124,58,237,${w.a*.6})`;
+      ctx.lineWidth=1;ctx.stroke();
+    });
+    for(let i=waves.length-1;i>=0;i--)if(waves[i].a<=0)waves.splice(i,1);
   }
 
+  initRain();
   function tick(){
-    ctx.clearRect(0,0,W,H);
-    drawGlobs();
-    drawWeb();
-    drawTrail();
-    drawRipples();
-    drawScan();
-    frame++;
+    drawRain();
+    drawBlobs();
+    drawGrid();
+    drawWaves();
     requestAnimationFrame(tick);
   }
   tick();
