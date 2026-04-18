@@ -33,56 +33,85 @@ function updateStats(results){
   const cv = document.getElementById('bg');
   if(!cv) return;
   const ctx = cv.getContext('2d');
-  let W, H, t = 0;
+  let W, H;
   const mouse = {x:-9999, y:-9999};
-  const GAP = 44;
 
   function resize(){ W=cv.width=innerWidth; H=cv.height=innerHeight; }
   window.addEventListener('resize', resize);
   window.addEventListener('mousemove', e=>{ mouse.x=e.clientX; mouse.y=e.clientY; });
 
+  const N = 65;
+  const dots = [];
+  function initDots(){
+    dots.length = 0;
+    for(let i=0;i<N;i++) dots.push({
+      x: Math.random()*W, y: Math.random()*H,
+      vx:(Math.random()-.5)*0.3, vy:(Math.random()-.5)*0.3,
+      r: Math.random()*1.8+0.6,
+      pulse: Math.random()*Math.PI*2,
+    });
+  }
+
+  const ripples = [];
+  window.addEventListener('click', e=>{ ripples.push({x:e.clientX,y:e.clientY,r:0,a:0.7}); });
+
   function draw(){
     ctx.clearRect(0,0,W,H);
-    t += 0.004;
 
-    // Ambient glow blobs — slow drift
-    const blobs = [
-      {x:0.15+Math.sin(t*0.7)*0.08, y:0.12+Math.cos(t*0.5)*0.06, c:'0,245,255', a:0.07},
-      {x:0.85+Math.sin(t*0.6)*0.07, y:0.88+Math.cos(t*0.8)*0.05, c:'124,58,237', a:0.08},
-      {x:0.5 +Math.sin(t*0.4)*0.1,  y:0.5 +Math.cos(t*0.6)*0.08, c:'0,255,136', a:0.03},
-    ];
-    blobs.forEach(b=>{
-      const grd = ctx.createRadialGradient(b.x*W,b.y*H,0,b.x*W,b.y*H,Math.max(W,H)*0.4);
-      grd.addColorStop(0,`rgba(${b.c},${b.a})`);
-      grd.addColorStop(1,`rgba(${b.c},0)`);
-      ctx.fillStyle=grd; ctx.fillRect(0,0,W,H);
+    // Subtle ambient blobs
+    [[0.12,0.1,'0,200,255',0.06],[0.88,0.9,'100,50,220',0.07],[0.5,0.5,'0,200,180',0.03]]
+    .forEach(([bx,by,c,a])=>{
+      const g=ctx.createRadialGradient(bx*W,by*H,0,bx*W,by*H,Math.max(W,H)*0.42);
+      g.addColorStop(0,`rgba(${c},${a})`); g.addColorStop(1,`rgba(${c},0)`);
+      ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
     });
 
-    // Dot grid — reacts to mouse
-    const cols = Math.ceil(W/GAP)+1;
-    const rows = Math.ceil(H/GAP)+1;
-    for(let i=0;i<cols;i++){
-      for(let j=0;j<rows;j++){
-        const x=i*GAP, y=j*GAP;
-        const dist=Math.hypot(mouse.x-x, mouse.y-y);
-        const prox=Math.max(0,1-dist/160);
-        const breathe=Math.sin(t+i*0.5+j*0.5)*0.5+0.5;
-        const alpha=0.12+prox*0.55+breathe*0.04;
-        const r=1+prox*2.5;
-        ctx.beginPath();
-        ctx.arc(x,y,r,0,Math.PI*2);
-        ctx.fillStyle=prox>0.15
-          ? `rgba(0,245,255,${alpha})`
-          : `rgba(255,255,255,${alpha*0.4})`;
-        ctx.fill();
+    dots.forEach((d,i)=>{
+      d.pulse+=0.018;
+      d.x+=d.vx; d.y+=d.vy;
+      if(d.x<0)d.x=W; if(d.x>W)d.x=0;
+      if(d.y<0)d.y=H; if(d.y>H)d.y=0;
+
+      // Gentle mouse repel
+      const mdx=mouse.x-d.x, mdy=mouse.y-d.y, md=Math.hypot(mdx,mdy);
+      if(md<100){ d.vx-=mdx/md*0.008; d.vy-=mdy/md*0.008; }
+      d.vx*=0.997; d.vy*=0.997;
+
+      // Connect nearby dots
+      for(let j=i+1;j<dots.length;j++){
+        const b=dots[j], dist=Math.hypot(d.x-b.x,d.y-b.y);
+        if(dist<110){
+          ctx.beginPath(); ctx.moveTo(d.x,d.y); ctx.lineTo(b.x,b.y);
+          ctx.strokeStyle=`rgba(100,210,255,${(1-dist/110)*0.12})`;
+          ctx.lineWidth=0.5; ctx.stroke();
+        }
       }
-    }
+
+      // Dot glow near mouse
+      const glow = Math.max(0,1-md/150);
+      const pr = d.r*(1+Math.sin(d.pulse)*0.25+glow);
+      if(glow>0.05){
+        const gr=ctx.createRadialGradient(d.x,d.y,0,d.x,d.y,pr*5);
+        gr.addColorStop(0,`rgba(0,220,255,${glow*0.12})`);
+        gr.addColorStop(1,`rgba(0,220,255,0)`);
+        ctx.fillStyle=gr; ctx.beginPath(); ctx.arc(d.x,d.y,pr*5,0,Math.PI*2); ctx.fill();
+      }
+      ctx.beginPath(); ctx.arc(d.x,d.y,pr,0,Math.PI*2);
+      ctx.fillStyle=`rgba(140,220,255,${0.35+glow*0.5})`; ctx.fill();
+    });
+
+    // Click ripples
+    ripples.forEach(rp=>{
+      rp.r+=3; rp.a-=0.014;
+      ctx.beginPath(); ctx.arc(rp.x,rp.y,rp.r,0,Math.PI*2);
+      ctx.strokeStyle=`rgba(0,220,255,${rp.a})`; ctx.lineWidth=1.2; ctx.stroke();
+    });
+    for(let i=ripples.length-1;i>=0;i--) if(ripples[i].a<=0) ripples.splice(i,1);
 
     requestAnimationFrame(draw);
   }
 
-  resize();
-  draw();
+  resize(); initDots(); draw();
 })();
 
 "use strict";
