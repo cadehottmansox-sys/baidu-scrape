@@ -24,10 +24,10 @@
   --rad:12px;
 }
 
-html,body{min-height:100%;font-family:var(--font);background:var(--bg);color:var(--text);font-size:14px;line-height:1.6;overflow-x:hidden}
+html,body{min-height:100%;font-family:var(--font);background:#030508;color:var(--text);font-size:14px;line-height:1.6;overflow-x:hidden}
 
 /* ── BG ── */
-#bg-canvas{position:fixed;inset:0;z-index:0;pointer-events:none}
+#bg-canvas{position:fixed;inset:0;z-index:0;pointer-events:none;display:block!important;opacity:1!important}
 .noise{display:none}
 
 /* === SICK BACKGROUND === */
@@ -202,9 +202,10 @@ body::after{
 
 /* ── SEARCH CARD ── */
 .search-card{
-  background:var(--card);border:1px solid var(--b);
+  background:rgba(10,14,22,.82);border:1px solid var(--b);
   border-radius:var(--rad);padding:22px;
   margin-bottom:14px;position:relative;overflow:hidden;
+  backdrop-filter:blur(8px);
 }
 .search-card::before{display:none}
 
@@ -310,8 +311,8 @@ input.err{border-color:rgba(255,68,102,.5)!important}
 
 /* ── RESULT CARD ── */
 .result-card{
-  background:var(--card);border:1px solid var(--b);
-  border-radius:var(--rad);padding:16px 18px;
+  background:rgba(10,14,22,.8);border:1px solid var(--b);
+  border-radius:var(--rad);backdrop-filter:blur(6px);padding:16px 18px;
   transition:all .18s;
   animation:fadeUp .2s ease both;
   position:relative;overflow:hidden;
@@ -593,8 +594,8 @@ kbd.kb{font-size:9px;font-family:var(--mono);background:rgba(0,245,255,.08);bord
 
 /* ── REDESIGNED RESULT CARDS ── */
 .result-card{
-  background:var(--card);border:1px solid var(--b);
-  border-radius:var(--rad);
+  background:rgba(10,14,22,.8);border:1px solid var(--b);
+  border-radius:var(--rad);backdrop-filter:blur(6px);
   transition:all .18s;animation:fadeUp .2s ease both;
   position:relative;overflow:hidden;
 }
