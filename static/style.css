@@ -343,18 +343,80 @@ kbd.kb{font-size:9px;font-family:var(--mono);background:rgba(0,245,255,.08);bord
 .setpw-card input:focus{border-color:rgba(0,255,136,.4)}
 
 /* responsive */
-@media(max-width:640px){
-  .field-row{flex-direction:column}
-  .hero-title{font-size:48px;letter-spacing:-2px}
+@media(max-width:768px){
+  /* Layout */
+  .app{padding:16px 12px 100px}
+  .hero{margin-bottom:18px}
+  .hero-title{font-size:40px;letter-spacing:-1.5px}
+  .hero-accent{font-size:40px}
   .hero-stats{display:none}
-  .search-card{padding:14px 13px}
-  .app{padding:24px 12px 80px}
+  .hero-sub{font-size:11px}
+  .hero-pill{font-size:8px;padding:3px 10px}
+
+  /* Tabs — horizontal scroll */
+  .tab-nav{overflow-x:auto;overflow-y:hidden;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;scrollbar-width:none;border-radius:10px}
+  .tab-nav::-webkit-scrollbar{display:none}
+  .tab-btn{min-width:76px;font-size:10px;padding:0 8px;height:40px;flex-shrink:0;gap:4px}
+  .tab-btn svg{display:none}
+
+  /* Search card */
+  .search-card{padding:14px 12px}
+  .field-row{flex-direction:column;gap:8px;margin-bottom:10px}
+  .field input{height:46px;font-size:15px}
+  .chips{gap:4px}
+  .chip{font-size:9px;padding:3px 9px}
+  .platform-row{margin-bottom:10px}
+
+  /* Action row — stack search btn full width, toggles below */
+  .action-row{flex-wrap:wrap;gap:8px}
+  .btn-primary{height:46px;font-size:14px;width:100%;justify-content:center;order:-1}
+  .toggle-wrap{font-size:10px}
+  .status-wrap{margin-left:auto}
+
+  /* Result cards */
+  .card-body{grid-template-columns:1fr;gap:0}
+  .card-left{border-right:none;padding-right:0;border-bottom:1px solid var(--b);padding-bottom:10px}
+  .card-right{padding-left:0;flex-direction:row;gap:24px;padding-top:10px}
+  .card-top{padding:11px 12px 8px}
+  .card-body{padding:10px 12px}
+  .card-contact-section{padding:8px 12px}
+  .card-action-row{padding:8px 12px;gap:5px}
+  .card-action-btn{font-size:9px;padding:4px 8px}
+  .card-title-link{font-size:11px}
+
+  /* Toolbar */
+  .toolbar{flex-direction:column;align-items:stretch;gap:6px}
+  .filters-bar{width:100%;overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:4px}
+  .filters-bar::-webkit-scrollbar{display:none}
+  .filter-pill{flex-shrink:0}
+  .toolbar-actions{display:flex;justify-content:flex-end;gap:5px}
+
+  /* Finds */
   .finds-grid{grid-template-columns:1fr}
-  .card-body{grid-template-columns:1fr}
-  .card-left{border-right:none;border-bottom:1px solid var(--b);padding-bottom:10px}
-  .card-right{padding-left:0;flex-direction:row;gap:20px}
-  .crm-table-head,.crm-row{grid-template-columns:1fr 1fr auto}
-  .admin-user{grid-template-columns:1fr auto}
+  .finds-header{flex-direction:column;gap:10px}
+  .finds-header .btn-primary{width:100%;justify-content:center}
+
+  /* Modals */
+  .modal-card{padding:20px 16px;margin:0 4px}
+  .modal-title{font-size:18px}
+
+  /* CRM */
+  .crm-table-head{display:none}
+  .crm-row{grid-template-columns:1fr auto auto;gap:8px;padding:10px 12px}
+  .crm-row-product,.crm-row-price,.crm-row-date{display:none}
+  .crm-stats{gap:6px}
+  .crm-stat{min-width:60px;padding:10px 10px}
+  .crm-stat-val{font-size:18px}
+  .qr-section{padding:14px}
+
+  /* Admin */
+  .admin-req{grid-template-columns:1fr auto auto;gap:8px;padding:10px 12px}
+  .admin-req-time{display:none}
+  .admin-user{grid-template-columns:1fr auto;gap:8px;padding:10px 12px}
+  .admin-user-searches,.admin-user-last{display:none}
+
+  /* Hero tower */
+  .tower-waves{width:1.6em;height:1.6em}
 }
 
 /* ── CELL TOWER I ── */
