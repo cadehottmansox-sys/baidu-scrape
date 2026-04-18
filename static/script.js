@@ -133,7 +133,7 @@ function updateStats(results){
     for(let i=waves.length-1;i>=0;i--)if(waves[i].a<=0)waves.splice(i,1);
   }
 
-  initRain();
+  resize(); // sets W, H and calls initRain()
   function tick(){
     drawRain();
     drawBlobs();
