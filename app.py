@@ -223,6 +223,43 @@ def create_app() -> Flask:
         result = auth.set_admin(data.get("email",""), data.get("is_admin", True))
         return jsonify(result)
 
+    @app.get("/api/saved")
+    @require_auth
+    def get_saved():
+        user = get_user()
+        data = auth.get_admin_data()
+        u = next((u for u in data["approved"] if u["email"]==user["email"]), None)
+        return jsonify({"saved": u.get("saved_results", []) if u else []})
+
+    @app.post("/api/saved")
+    @require_auth
+    def save_result():
+        user = get_user()
+        item = request.get_json(silent=True) or {}
+        data = auth.get_admin_data()
+        u = next((u for u in data["approved"] if u["email"]==user["email"]), None)
+        if not u: return jsonify({"ok": False}), 404
+        saved = u.get("saved_results", [])
+        # Dedupe by link
+        if not any(s.get("link")==item.get("link") for s in saved):
+            saved.insert(0, item)
+            saved = saved[:100]  # max 100 saved
+        u["saved_results"] = saved
+        auth._save(data)
+        return jsonify({"ok": True, "count": len(saved)})
+
+    @app.delete("/api/saved")
+    @require_auth
+    def unsave_result():
+        user = get_user()
+        link = (request.get_json(silent=True) or {}).get("link","")
+        data = auth.get_admin_data()
+        u = next((u for u in data["approved"] if u["email"]==user["email"]), None)
+        if not u: return jsonify({"ok": False}), 404
+        u["saved_results"] = [s for s in u.get("saved_results",[]) if s.get("link")!=link]
+        auth._save(data)
+        return jsonify({"ok": True})
+
     @app.get("/api/me")
     def api_me():
         """Return current user info."""
