@@ -163,13 +163,21 @@ function saveHistory(){localStorage.setItem("sf_history",JSON.stringify(history)
 function saveLiked(){localStorage.setItem("sf_liked",JSON.stringify(likedFinds))}
 
 // ── Tabs ──────────────────────────────────────────────────────────
-document.querySelectorAll(".tab-btn").forEach(btn=>btn.addEventListener("click",()=>{
+function switchTab(name){
   document.querySelectorAll(".tab-btn").forEach(b=>b.classList.remove("active"));
   document.querySelectorAll(".tab-panel").forEach(p=>p.classList.remove("active"));
-  btn.classList.add("active");
-  const tab=btn.dataset.tab;
-  document.getElementById(`tab-${tab}`).classList.add("active");
-  if(tab==="finds") loadFinds();
+  const btn = document.querySelector(`[data-tab="${name}"]`);
+  if(btn) btn.classList.add("active");
+  const panel = document.getElementById(`tab-${name}`);
+  if(panel) panel.classList.add("active");
+  if(name==="finds") loadFinds();
+  if(name==="saved") renderSavedTab();
+  if(name==="crm") renderCrm();
+  if(name==="admin") loadAdmin();
+}
+
+document.querySelectorAll(".tab-btn").forEach(btn=>btn.addEventListener("click",()=>{
+  switchTab(btn.dataset.tab);
 }));
 
 // ── Chips ─────────────────────────────────────────────────────────
@@ -327,7 +335,7 @@ function buildCard(item,index){
 
     <div class="card-body">
       <div class="card-left">
-        <div class="card-snippet-text">${(item.snippet||"No description available.").slice(0,180)}${(item.snippet||"").length>180?"…":""}</div>
+        <div class="card-snippet-text" id="snip-${index}">${(item.snippet||"No description available.").slice(0,180)}${(item.snippet||"").length>180?`… <button class="continue-btn" onclick="expandSnippet(this,'${(item.link||'').replace(/'/g,'')}')" data-full="${encodeURIComponent(item.snippet||'')}">see more →</button>`:"" }</div>
       </div>
 
       <div class="card-right">
@@ -387,6 +395,36 @@ function buildCard(item,index){
   crmBtn.addEventListener("click",()=>addToCrm(item));
   actions.appendChild(crmBtn);
 
+  // Copy all WeChats button
+  if(wechats.length > 0){
+    const copyAllBtn = document.createElement('button');
+    copyAllBtn.className="card-action-btn";
+    copyAllBtn.textContent=`📋 Copy ${wechats.length} WeChat${wechats.length>1?'s':''}`;
+    copyAllBtn.style.cssText="color:var(--g);border-color:rgba(0,255,136,.2);background:rgba(0,255,136,.05)";
+    copyAllBtn.addEventListener("click",()=>{
+      const ids = wechats.map(w=>w.id).join(", ");
+      navigator.clipboard.writeText(ids).then(()=>showToast(`✓ Copied ${wechats.length} WeChat IDs`));
+    });
+    actions.appendChild(copyAllBtn);
+  }
+
+  // Middleman / Factory flag
+  const flagBtn = document.createElement('button');
+  let flagged = localStorage.getItem('flag_'+item.link);
+  flagBtn.className = flagged==='middleman' ? 'middleman-flag' : flagged==='factory' ? 'middleman-flag factory-flag' : 'card-action-btn';
+  flagBtn.textContent = flagged==='middleman' ? '⚠ Middleman' : flagged==='factory' ? '✓ Factory' : '🏭 Flag';
+  flagBtn.title = "Flag as middleman or verified factory";
+  flagBtn.addEventListener("click",()=>{
+    const cur = localStorage.getItem('flag_'+item.link);
+    const next = cur==='middleman' ? 'factory' : cur==='factory' ? null : 'middleman';
+    if(next){ localStorage.setItem('flag_'+item.link, next); }
+    else { localStorage.removeItem('flag_'+item.link); }
+    flagBtn.className = next==='middleman' ? 'middleman-flag' : next==='factory' ? 'middleman-flag factory-flag' : 'card-action-btn';
+    flagBtn.textContent = next==='middleman' ? '⚠ Middleman' : next==='factory' ? '✓ Factory' : '🏭 Flag';
+    showToast(next ? `Flagged as ${next}` : 'Flag removed');
+  });
+  actions.appendChild(flagBtn);
+
   // Scan button
   if(!item.deep_scanned){
     const scanBtn=document.createElement("button");
@@ -431,16 +469,29 @@ function buildCard(item,index){
   noteEl.addEventListener("input",()=>{notes[item.link]=noteEl.value;saveNotes()});
   card.appendChild(noteEl);
 
-  // Save logic
-  card.querySelector("[data-save]")?.addEventListener("click",()=>{
-    const link=item.link;
-    if(savedResults[link]){delete savedResults[link];card.classList.remove("saved")}
-    else{savedResults[link]=item;card.classList.add("saved")}
-    saveSaved();
-    const btn=card.querySelector("[data-save]");
-    btn?.classList.toggle("saved");
-    btn?.querySelector("path")?.setAttribute("fill",savedResults[link]?"currentColor":"none");
-    showToast(savedResults[link]?"Saved!":"Removed");
+  // Save logic — syncs to server
+  card.querySelector("[data-save]")?.addEventListener("click", async ()=>{
+    const link = item.link;
+    const btn = card.querySelector("[data-save]");
+    const isSaved = !!savedResults[link];
+    if(isSaved){
+      delete savedResults[link];
+      card.classList.remove("saved");
+      btn?.classList.remove("saved");
+      btn?.querySelector("path")?.setAttribute("fill","none");
+      saveSaved();
+      showToast("Removed from saved");
+      await fetch("/api/saved",{method:"DELETE",headers:{"Content-Type":"application/json"},body:JSON.stringify({link})}).catch(()=>{});
+    } else {
+      savedResults[link] = item;
+      card.classList.add("saved");
+      btn?.classList.add("saved");
+      btn?.querySelector("path")?.setAttribute("fill","currentColor");
+      saveSaved();
+      showToast("⭐ Saved!");
+      await fetch("/api/saved",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(item)}).catch(()=>{});
+    }
+    renderSavedTab();
   });
 
   return card;
@@ -803,6 +854,79 @@ async function submitFind(){
 // ── Access page floating reviews (if on access page) ──────────────
 // handled in access.html
 
+// ── EXPAND SNIPPET ───────────────────────────────────────────────
+async function expandSnippet(btn, url){
+  const snipEl = btn.parentElement;
+  const full = decodeURIComponent(btn.dataset.full||"");
+  if(full){ snipEl.textContent = full; return; }
+  // Try to fetch more from the page
+  btn.textContent = "Loading...";
+  try{
+    const r = await fetch("/scan-page",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({url,snippet_only:true})});
+    const d = await r.json();
+    if(d.snippet) snipEl.textContent = d.snippet;
+    else snipEl.textContent = full || "No additional content found.";
+  } catch{ snipEl.textContent = full || "Could not load."; }
+}
+
+// ── ADD TO FINDS ──────────────────────────────────────────────────
+function addToFinds(item){
+  // Switch to finds tab and pre-fill modal
+  switchTab("finds");
+  setTimeout(()=>{
+    openFindModal();
+    // Pre-fill fields
+    const titleEl = document.getElementById("findTitle");
+    const productEl = document.getElementById("findProduct");
+    const wechatEl = document.getElementById("findWechat");
+    const descEl = document.getElementById("findDesc");
+    if(titleEl) titleEl.value = (item.title||"").slice(0,60);
+    if(productEl) productEl.value = item.platform||"";
+    if(wechatEl) wechatEl.value = (item.wechat_ids||[])[0]?.id||"";
+    if(descEl) descEl.value = (item.snippet||"").slice(0,200);
+  }, 150);
+}
+
+// ── SAVED TAB ────────────────────────────────────────────────────
+async function loadSavedFromServer(){
+  try{
+    const r = await fetch('/api/saved');
+    if(!r.ok) return;
+    const d = await r.json();
+    (d.saved||[]).forEach(item=>{
+      if(item.link) savedResults[item.link] = item;
+    });
+    saveSaved();
+    renderSavedTab();
+  } catch(e){}
+}
+
+function renderSavedTab(){
+  const grid = document.getElementById('savedGrid');
+  const empty = document.getElementById('savedEmpty');
+  if(!grid) return;
+  const items = Object.values(savedResults);
+  if(!items.length){
+    grid.innerHTML='';
+    if(empty) empty.style.display='block';
+    return;
+  }
+  if(empty) empty.style.display='none';
+  grid.innerHTML='';
+  items.forEach((item,i)=>{ grid.appendChild(buildCard(item,i)); });
+}
+
+function clearAllSaved(){
+  if(!Object.keys(savedResults).length) return;
+  Object.keys(savedResults).forEach(link=>{
+    fetch('/api/saved',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({link})}).catch(()=>{});
+  });
+  savedResults = {};
+  saveSaved();
+  renderSavedTab();
+  showToast('Cleared all saved results');
+}
+
 // ── CRM ──────────────────────────────────────────────────────────
 let crmData = JSON.parse(localStorage.getItem('sf_crm') || '[]');
 
@@ -1097,6 +1221,7 @@ async function initUser(){
   } catch(e){ console.log('Could not load user info') }
 }
 initUser();
+loadSavedFromServer();
 
 function shakeScreen(){
   document.body.style.transition = 'transform .08s ease';
@@ -1334,6 +1459,7 @@ document.addEventListener('click', e=>{
   const btn = e.target.closest('.tab-btn');
   if(btn && btn.dataset.tab==='admin') setTimeout(loadAdmin, 100);
   if(btn && btn.dataset.tab==='crm') setTimeout(renderCrm, 100);
+  if(btn && btn.dataset.tab==='saved') renderSavedTab();
 });
 
 // Handle needs_password on login — intercept the fetch in access.html
