@@ -454,3 +454,29 @@ kbd.kb{font-size:9px;font-family:var(--mono);background:rgba(0,245,255,.08);bord
   60% { r:28; opacity:.15; stroke-width:.8; }
   100%{ r:34; opacity:0;  stroke-width:.3; }
 }
+
+/* ── SAVED TAB ── */
+.tab-btn[data-tab="saved"].active{color:var(--a);background:rgba(255,170,0,.04)}
+.tab-btn[data-tab="saved"].active::after{background:var(--a)}
+
+/* ── CONTINUE BTN ── */
+.continue-btn{
+  font-size:10px;font-weight:700;font-family:var(--mono);
+  color:var(--c);background:none;border:none;
+  cursor:pointer;padding:0 4px;letter-spacing:.3px;
+  text-decoration:underline;transition:color .13s;
+}
+.continue-btn:hover{color:var(--g)}
+
+/* ── MIDDLEMAN FLAG ── */
+.middleman-flag{
+  display:inline-flex;align-items:center;gap:4px;
+  font-size:8px;font-weight:700;font-family:var(--mono);
+  color:var(--r);background:rgba(255,68,102,.07);
+  border:1px solid rgba(255,68,102,.2);border-radius:4px;
+  padding:2px 7px;letter-spacing:.8px;text-transform:uppercase;cursor:pointer;
+}
+.factory-flag{
+  color:var(--g);background:rgba(0,255,136,.07);
+  border-color:rgba(0,255,136,.2);
+}
