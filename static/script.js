@@ -53,7 +53,6 @@ function updateStats(results){
   }
 
   const ripples = [];
-  window.addEventListener('click', e=>{ ripples.push({x:e.clientX,y:e.clientY,r:0,a:0.7}); });
 
   function draw(){
     ctx.clearRect(0,0,W,H);
@@ -100,13 +99,7 @@ function updateStats(results){
       ctx.fillStyle=`rgba(140,220,255,${0.35+glow*0.5})`; ctx.fill();
     });
 
-    // Click ripples
-    ripples.forEach(rp=>{
-      rp.r+=3; rp.a-=0.014;
-      ctx.beginPath(); ctx.arc(rp.x,rp.y,rp.r,0,Math.PI*2);
-      ctx.strokeStyle=`rgba(0,220,255,${rp.a})`; ctx.lineWidth=1.2; ctx.stroke();
-    });
-    for(let i=ripples.length-1;i>=0;i--) if(ripples[i].a<=0) ripples.splice(i,1);
+
 
     requestAnimationFrame(draw);
   }
@@ -1317,15 +1310,13 @@ async function adminApprove(reqId, email){
 }
 
 async function adminDeny(reqId){
-  if(!confirm('Deny this request?')) return;
   const r = await fetch('/api/admin/deny', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({req_id:reqId})});
   const d = await r.json();
-  showToast(d.status==='denied' ? 'Request denied' : 'Error');
+  showToast(d.status==='denied' ? '✓ Request denied' : 'Error');
   loadAdmin();
 }
 
 async function adminRevoke(email, revoke){
-  if(revoke && !confirm(`Revoke access for ${email}?`)) return;
   const r = await fetch('/api/admin/revoke', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({email})});
   showToast(revoke ? `Access revoked for ${email}` : `Access restored for ${email}`);
   loadAdmin();
