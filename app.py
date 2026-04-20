@@ -650,6 +650,16 @@ FILE SIZE: {len(html)} chars
     def admin_deny(req_id):
         return jsonify(auth.deny_request(req_id))
 
+    @app.post("/admin/set-expiry")
+    @require_admin
+    def admin_set_expiry():
+        body = request.get_json(silent=True) or {}
+        email = body.get("email")
+        expires_at = body.get("expires_at")
+        if not email:
+            return jsonify({"error": "email required"}), 400
+        return jsonify(auth.set_expiry(email, expires_at))
+
     @app.post("/admin/revoke")
     @require_admin
     def admin_revoke():
