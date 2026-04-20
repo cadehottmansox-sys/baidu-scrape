@@ -1822,34 +1822,41 @@ async function runSearch({query, brand='', platform='all', mode='supplier', deep
   const results = document.getElementById(resultsId);
   const hint = document.getElementById(hintId);
   if(!query){ showToast('Enter a search query'); return; }
-  if(btn){ btn.disabled=true; btn._orig=btn.innerHTML; btn.innerHTML='Searching…'; }
+  if(btn){ btn.disabled=true; btn._orig=btn.innerHTML||btn.textContent; btn.textContent='Searching…'; }
   if(dot) dot.className='status-dot active';
   if(status) status.textContent='Searching…';
   if(results) results.innerHTML='<div class="loader"><div class="loader-dots"><span></span><span></span><span></span></div>Searching…</div>';
   if(hint && hintText){ hint.style.display='block'; hint.textContent=hintText; }
+
+  // 3 minute timeout
+  const controller = new AbortController();
+  const timer = setTimeout(()=>controller.abort(), 180000);
+
   try{
     const r = await fetch('/search',{method:'POST',headers:{'Content-Type':'application/json'},
+      signal:controller.signal,
       body:JSON.stringify({query,brand,platform,mode,deep_scan:deepScan,wechat_only:wcOnly})});
+    clearTimeout(timer);
     const d = await r.json();
     const res = d.results||[];
     if(dot) dot.className='status-dot';
     if(status) status.textContent=`${res.length} found`;
     if(results){
       results.innerHTML='';
-      if(!res.length) results.innerHTML='<div class="empty">No results found — try different keywords</div>';
+      if(!res.length) results.innerHTML='<div class="empty">No results — try different keywords or disable Deep Scan</div>';
       else res.forEach((item,i)=>results.appendChild(buildCard(item,i)));
     }
     updateStats(res);
-    // Save to history
     history.unshift({query,brand,platform,mode,ts:Date.now()});
     if(history.length>50) history.length=50;
     saveHistory();
   } catch(e){
+    clearTimeout(timer);
     if(dot) dot.className='status-dot error';
-    if(status) status.textContent='Error';
-    if(results) results.innerHTML='<div class="empty">Search failed — please try again</div>';
+    if(status) status.textContent=e.name==='AbortError'?'Timed out':'Error';
+    if(results) results.innerHTML=`<div class="empty">${e.name==='AbortError'?'Search timed out — try disabling Deep Scan':'Search failed — please try again'}</div>`;
   } finally {
-    if(btn){ btn.disabled=false; btn.innerHTML=btn._orig||'Search'; }
+    if(btn){ btn.disabled=false; if(btn._orig) btn.innerHTML=btn._orig; }
   }
 }
 
@@ -1881,18 +1888,7 @@ document.getElementById('ffForm')?.addEventListener('submit', e=>{
     hintText:`${ffMode==='rep'?'Private agent search':'Standard freight search'}: ${fullQuery}`});
 });
 
-// Passing form
-document.getElementById('passingForm')?.addEventListener('submit', e=>{
-  e.preventDefault();
-  const brand = document.getElementById('passingBrand')?.value.trim()||'';
-  const query = document.getElementById('passingQuery')?.value.trim()||'';
-  const deepScan = document.getElementById('passingDeepScan')?.checked||false;
-  const wcOnly = document.getElementById('passingWcOnly')?.checked||false;
-  runSearch({query,brand,platform:'baidu',mode:'passing',deepScan,wcOnly,
-    btnId:'passingBtn',dotId:'passingDot',statusId:'passingStatus',
-    resultsId:'passingResults',hintId:'passingHint',
-    hintText:`Passing/NFC search: ${brand} ${query}`.trim()});
-});
+// Passing form handled by passingForm listener below
 
 // ── PASSING / NFC TAB ─────────────────────────────────────────────
 
@@ -2034,3 +2030,108 @@ document.getElementById('passingForm')?.addEventListener('submit', async e=>{
     if(btn){ btn.disabled=false; btn.innerHTML=btn._orig||'Search'; }
   }
 });
+
+// ── FINDS TAB ────────────────────────────────────────────────────
+function openFindModal(){
+  document.getElementById('findTitle').value='';
+  document.getElementById('findProduct').value='';
+  document.getElementById('findWechat').value='';
+  document.getElementById('findPrice').value='';
+  document.getElementById('findDesc').value='';
+  document.getElementById('findMsg').textContent='';
+  document.getElementById('findModal').style.display='flex';
+}
+function closeFindModal(){ document.getElementById('findModal').style.display='none'; }
+
+async function submitFind(){
+  const title   = document.getElementById('findTitle')?.value.trim();
+  const product = document.getElementById('findProduct')?.value.trim();
+  const wechat  = document.getElementById('findWechat')?.value.trim();
+  const price   = document.getElementById('findPrice')?.value.trim();
+  const desc    = document.getElementById('findDesc')?.value.trim();
+  const msg     = document.getElementById('findMsg');
+  if(!title){ msg.className='msg error'; msg.textContent='Title required'; return; }
+  msg.className='msg'; msg.textContent='Posting…';
+  try{
+    const r = await fetch('/finds',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({title,product,wechat,price,desc})});
+    const d = await r.json();
+    if(d.id !== undefined || d.title){ msg.className='msg success'; msg.textContent='✓ Posted!'; setTimeout(()=>{closeFindModal();loadFinds();},800); }
+    else if(d.error){ msg.className='msg error'; msg.textContent=d.error; }
+    else { msg.className='msg success'; msg.textContent='✓ Posted!'; setTimeout(()=>{closeFindModal();loadFinds();},800); }
+  } catch{ msg.className='msg error'; msg.textContent='Network error'; }
+}
+
+async function loadFinds(){
+  const grid = document.getElementById('findsGrid');
+  if(!grid) return;
+  grid.innerHTML='<div class="loader"><div class="loader-dots"><span></span><span></span><span></span></div>Loading finds…</div>';
+  try{
+    const r = await fetch('/finds');
+    const d = await r.json();
+    const finds = Array.isArray(d) ? d : (d.finds||[]);
+    if(!finds.length){ grid.innerHTML='<div class="empty">No finds yet — be the first to post!</div>'; return; }
+    grid.innerHTML='';
+    finds.forEach(f=>grid.appendChild(buildFindCard(f)));
+  } catch{ grid.innerHTML='<div class="empty">Could not load finds</div>'; }
+}
+
+function buildFindCard(f){
+  const card = document.createElement('div');
+  card.className='find-card';
+  const initials = (f.author||'?').slice(0,2).toUpperCase();
+  const liked = likedFinds[f.id];
+  card.innerHTML=`
+    <div class="find-meta">
+      <div class="find-avatar">${initials}</div>
+      <span class="find-author">${f.author||'Anonymous'}</span>
+      <span class="find-time">${timeAgo((f.timestamp||f.ts||0)*1000||Date.now())}</span>
+    </div>
+    <div class="find-title">${f.title||''}</div>
+    ${f.product?`<div class="find-product">${f.product}</div>`:''}
+    ${f.desc?`<div class="find-desc">${f.desc}</div>`:''}
+    ${f.wechat?`<div class="find-wechat" onclick="navigator.clipboard.writeText('${f.wechat}').then(()=>showToast('WeChat copied!'))">💬 ${f.wechat}</div>`:''}
+    ${f.price?`<div class="find-price">💰 ${f.price}</div>`:''}
+    <div class="find-footer">
+      <button class="like-btn ${liked?'liked':''}" onclick="likeFindCard('${f.id}',this)">
+        ${liked?'❤':'🤍'} ${(f.likes||0)+(liked?1:0)}
+      </button>
+    </div>
+  `;
+  return card;
+}
+
+async function likeFindCard(id, btn){
+  likedFinds[id] = !likedFinds[id];
+  saveLiked();
+  const liked = likedFinds[id];
+  const countStr = btn.textContent.match(/\d+/)?.[0]||'0';
+  const count = parseInt(countStr) + (liked?1:-1);
+  btn.className='like-btn '+(liked?'liked':'');
+  btn.textContent=`${liked?'❤':'🤍'} ${count}`;
+  await fetch(`/finds/${id}/like`,{method:'POST',headers:{'Content-Type':'application/json'}}).catch(()=>{});
+}
+
+function timeAgo(ts){
+  const diff = Date.now()-ts;
+  const m=Math.floor(diff/60000), h=Math.floor(diff/3600000), d=Math.floor(diff/86400000);
+  if(m<1) return 'just now';
+  if(m<60) return `${m}m ago`;
+  if(h<24) return `${h}h ago`;
+  return `${d}d ago`;
+}
+
+function addToFinds(item){
+  switchTab('finds');
+  setTimeout(()=>{
+    openFindModal();
+    const t=document.getElementById('findTitle');
+    const w=document.getElementById('findWechat');
+    const d=document.getElementById('findDesc');
+    const p=document.getElementById('findProduct');
+    if(t) t.value=(item.title||'').slice(0,60);
+    if(w) w.value=(item.wechat_ids||[])[0]?.id||'';
+    if(d) d.value=(item.snippet||'').slice(0,200);
+    if(p) p.value=item.platform||'';
+  },150);
+}
