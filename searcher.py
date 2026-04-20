@@ -442,7 +442,13 @@ async def _baidu_search(page, full_q, max_r, timeout, delay, seen_links, platfor
             logger.info("Baidu AI API: %d results", len(results))
             if results:
                 return results
-        logger.warning("Baidu AI API returned nothing, falling back to Playwright")
+        logger.warning("Baidu AI API returned nothing, trying ScrapingDog then Playwright")
+        # Try ScrapingDog API as middle tier
+        sd_results = await _scrapingdog_search(full_q, max_r)
+        if sd_results:
+            logger.info("ScrapingDog: got %d results", len(sd_results))
+            return sd_results
+        logger.warning("ScrapingDog returned nothing, falling back to Playwright")
 
     try:
         await page.goto(url, wait_until="domcontentloaded", timeout=timeout)
