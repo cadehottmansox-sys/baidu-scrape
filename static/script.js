@@ -701,7 +701,7 @@ async function loadAdminRequests(){
   const el = document.getElementById('adminRequests');
   if(!el) return;
   try{
-    const r = await fetch('/admin/api/data?secret=secretcode');
+    const r = await fetch('/admin/api/data');
     const d = await r.json();
     const pending = (d.requests||[]).filter(r=>r.status==='pending');
     if(!pending.length){ el.innerHTML='<div class="crm-empty">No pending requests 🎉</div>'; return; }
@@ -730,7 +730,7 @@ async function loadAdminRequests(){
 
 async function adminDeny(id){
   if(!confirm('Deny this request?')) return;
-  await fetch(`/admin/api/deny/${id}?secret=secretcode`);
+  await fetch(`/admin/api/deny/${id}`);
   document.getElementById(`req-${id}`)?.remove();
   showToast('Request denied');
 }
@@ -739,7 +739,7 @@ async function loadAdminUsers(){
   const el = document.getElementById('adminUsers');
   if(!el) return;
   try{
-    const r = await fetch('/admin/api/data?secret=secretcode');
+    const r = await fetch('/admin/api/data');
     const d = await r.json();
     const users = (d.approved||[]);
     if(!users.length){ el.innerHTML='<div class="crm-empty">No users yet</div>'; return; }
@@ -793,7 +793,7 @@ async function loadAdminAnalytics(){
   const el = document.getElementById('adminAnalytics');
   if(!el) return;
   try{
-    const r = await fetch('/admin/api/analytics?secret=secretcode');
+    const r = await fetch('/admin/api/analytics');
     const d = await r.json();
     if(!d.length){ el.innerHTML='<div class="crm-empty">No data yet</div>'; return; }
     el.innerHTML = `
@@ -1047,6 +1047,19 @@ function renderAnalytics(users){
       </div>
     `).join('')}
   `;
+}
+
+function showToast(msg, type){
+  // Fallback toast if global showToast not available
+  if(window._globalShowToast) return window._globalShowToast(msg, type);
+  let t = document.getElementById('sf-toast');
+  if(!t){ t = document.createElement('div'); t.id='sf-toast';
+    t.style.cssText='position:fixed;bottom:24px;right:24px;background:#1e293b;color:#e2e8f0;padding:12px 20px;border-radius:8px;font-size:13px;z-index:9999;transition:opacity .3s;border:1px solid rgba(255,255,255,.1)';
+    document.body.appendChild(t); }
+  t.textContent = msg;
+  t.style.opacity='1';
+  clearTimeout(t._t);
+  t._t = setTimeout(()=>t.style.opacity='0', 2500);
 }
 
 async function adminApprove(reqId, email){
