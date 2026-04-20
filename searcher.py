@@ -54,6 +54,25 @@ PHONE_RE = re.compile(r"(?:\+?86[-\s]?)?(1[3-9]\d{9}|\d{3,4}[-\s]?\d{7,8})")
 SUPPLIER_TERMS = ["factory","manufacturer","oem","odm","supplier","wholesale","工厂","厂家","制造商","供应商","批发","定制","一件代发","源头","直销","货源","复刻","高仿","1:1","余单","原单","rep","replica","莆田","代工"]
 CONTACT_TERMS  = ["wechat","weixin","vx","微信","whatsapp","phone","tel","email","邮箱","加v","加微","联系方式","微信号"]
 FF_TERMS       = ["freight","forwarder","logistics","shipping","customs","货代","物流","运输","清关","报关","fob","cif","dhl","fedex"]
+
+# Rep / private agent freight keywords
+FF_REP_INJECT  = (
+    "私人货代 私人代理 private agent 货代 微信 转运 "
+    "敏感货 仿牌 特货 莆田 私包 隐藏包装 包税 包清关 "
+    "不查验 专线 特货专线 美国专线 欧洲专线 "
+    "莆田发货 私人转运 低调包装 联系方式"
+)
+FF_SAFE_INJECT = "货代 物流 微信 转运 清关 国际快递 包税 联系方式 跨境"
+
+# Additional search queries specifically for private agents
+FF_PRIVATE_AGENT_QUERIES = [
+    "莆田 私人货代 微信 美国 包税 不查验",
+    "私人代理 敏感货 国际转运 微信联系 仿牌",
+    "特货专线 微信 莆田发货 私包 低调",
+    "private agent 货代 微信 fashionreps 转运",
+    "仿牌货代 私人转运 包清关 微信号",
+    "敏感货专线 私人货代 微信 报价",
+]
 PASSING_TERMS  = ["passing","nfc","芯片","过货","验货","防伪","莆田","1:1","高仿","复刻"]
 
 REP_INJECT = "复刻 高仿 1:1 莆田 代工 原单 余单 工厂货 rep replica fashionreps"
@@ -775,8 +794,17 @@ async def search_platform(
                     full_q = f"{base} {inject}"
                     results = await _baidu_search(page,full_q,max_r,timeout,delay,seen_links,platform.title(),mode,page_num)
                 else:
-                    _bi1, _ = build_inject(base)
-                    full_q=f"{base} {_bi1}"
+                    if mode == "ff":
+                        q_lower = query.lower()
+                        is_rep_ff = any(kw in q_lower for kw in [
+                            "rep","putian","sensitive","private","莆田","仿","counterfeit",
+                            "shoes","bag","sneaker","luxury","fake","1:1"
+                        ])
+                        ff_inject = FF_REP_INJECT if is_rep_ff else FF_SAFE_INJECT
+                        full_q = f"{base} {ff_inject}"
+                    else:
+                        _bi1, _ = build_inject(base)
+                        full_q = f"{base} {_bi1}"
                     results=await _baidu_search(page,full_q,max_r,timeout,delay,seen_links,"Baidu",mode,page_num)
 
             results.sort(key=lambda r:r["factory_score"]*2+r["wechat_quality"],reverse=True)
