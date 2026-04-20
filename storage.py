@@ -7,7 +7,9 @@ _tables_created = False
 
 def _get_conn():
     import psycopg2
-    return psycopg2.connect(DB_URL, sslmode="require")
+    if DB_URL:
+        return psycopg2.connect(DB_URL)
+    raise Exception("No DATABASE_URL set")
 
 def _ensure_tables():
     try:
@@ -20,6 +22,7 @@ def _ensure_tables():
         )""")
         conn.commit()
         cur.close(); conn.close()
+        logger.info("DB tables ready")
     except Exception as e:
         logger.warning("DB table create failed: %s", e)
 
@@ -39,6 +42,7 @@ def read(key, default=None):
         except Exception as e:
             logger.warning("DB read failed (%s): %s", key, e)
             return default
+    logger.warning("No DATABASE_URL — using local file for %s", key)
     path = Path(__file__).parent / "data" / f"{key}.json"
     path.parent.mkdir(exist_ok=True)
     if not path.exists():
@@ -68,6 +72,7 @@ def write(key, value):
         except Exception as e:
             logger.warning("DB write failed (%s): %s", key, e)
             return False
+    logger.warning("No DATABASE_URL — using local file for %s", key)
     path = Path(__file__).parent / "data" / f"{key}.json"
     path.parent.mkdir(exist_ok=True)
     path.write_text(json.dumps(value, indent=2))
