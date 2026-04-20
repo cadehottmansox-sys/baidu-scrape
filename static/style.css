@@ -684,3 +684,15 @@ kbd.kb{font-size:9px;font-family:var(--mono);background:rgba(0,245,255,.08);bord
   .ship-row{grid-template-columns:1fr 1fr;gap:4px}
   .ship-row-note{grid-column:1/-1;padding-top:4px;border-top:1px solid var(--b);margin-top:4px}
 }
+
+/* ── PASSING TAB ── */
+.qc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:6px}
+.qc-item{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:rgba(0,0,0,.2);border:1px solid var(--b);border-radius:var(--rad);cursor:pointer;transition:all .15s}
+.qc-item:hover{border-color:rgba(0,245,255,.2)}
+.qc-item.qc-done{background:rgba(0,255,136,.05);border-color:rgba(0,255,136,.25)}
+.qc-item.qc-done .qc-check{color:var(--g)}
+.qc-item.qc-done .qc-label{text-decoration:line-through;opacity:.5}
+.qc-check{font-size:16px;font-family:var(--mono);color:var(--text3);flex-shrink:0;margin-top:1px;transition:color .15s}
+.qc-label{font-size:12px;font-weight:700;color:var(--text);margin-bottom:2px}
+.qc-sub{font-size:10px;color:var(--text3);line-height:1.4;font-family:var(--mono)}
+.verdict-mark{background:rgba(0,255,136,.15);color:var(--g);border-radius:3px;padding:0 3px;font-weight:700}
