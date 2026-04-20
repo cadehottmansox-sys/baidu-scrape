@@ -1,0 +1,132 @@
+"""
+GitHub Gist backup — persists data across Railway deploys.
+Set GITHUB_BACKUP_TOKEN and GITHUB_GIST_ID in Railway env vars.
+
+Setup (one time):
+1. Go to github.com/settings/tokens → generate token with 'gist' scope
+2. Set GITHUB_BACKUP_TOKEN=<token> in Railway Variables
+3. On first run, a Gist is auto-created and GITHUB_GIST_ID is printed in logs
+   → Add that ID as GITHUB_GIST_ID in Railway Variables
+"""
+
+import os, json, urllib.request, urllib.error, logging
+from pathlib import Path
+
+logger = logging.getLogger(__name__)
+
+GITHUB_TOKEN = os.getenv("GITHUB_BACKUP_TOKEN", "")
+GIST_ID      = os.getenv("GITHUB_GIST_ID", "")
+API_BASE     = "https://api.github.com"
+
+def _headers():
+    return {
+        "Authorization": f"token {GITHUB_TOKEN}",
+        "Content-Type": "application/json",
+        "Accept": "application/vnd.github.v3+json",
+        "User-Agent": "SourceFinder-Backup/1.0",
+    }
+
+def _req(method, url, data=None):
+    body = json.dumps(data).encode() if data else None
+    req  = urllib.request.Request(url, data=body, headers=_headers(), method=method)
+    try:
+        with urllib.request.urlopen(req, timeout=10) as r:
+            return json.loads(r.read())
+    except urllib.error.HTTPError as e:
+        logger.warning("GitHub backup HTTP error %s: %s", e.code, e.read()[:200])
+        return None
+    except Exception as e:
+        logger.warning("GitHub backup error: %s", e)
+        return None
+
+def create_gist(users_data, finds_data):
+    """Create a new private Gist and return its ID."""
+    data = {
+        "description": "SourceFinder backup — do not delete",
+        "public": False,
+        "files": {
+            "sf_users.json":  {"content": json.dumps(users_data, indent=2)},
+            "sf_finds.json":  {"content": json.dumps(finds_data, indent=2)},
+        }
+    }
+    result = _req("POST", f"{API_BASE}/gists", data)
+    if result and result.get("id"):
+        logger.info("Created backup Gist: %s — set GITHUB_GIST_ID=%s in Railway", result["id"], result["id"])
+        return result["id"]
+    return None
+
+def push_backup(filename, content_dict):
+    """Push updated data to existing Gist."""
+    global GIST_ID
+    if not GITHUB_TOKEN:
+        return  # no token set, skip silently
+    
+    files = {filename: {"content": json.dumps(content_dict, indent=2)}}
+    
+    if not GIST_ID:
+        # Auto-create gist on first push
+        data = {
+            "description": "SourceFinder backup — do not delete",
+            "public": False,
+            "files": files,
+        }
+        result = _req("POST", f"{API_BASE}/gists", data)
+        if result and result.get("id"):
+            GIST_ID = result["id"]
+            logger.info("AUTO-CREATED GIST: %s — ADD THIS TO RAILWAY VARS: GITHUB_GIST_ID=%s", GIST_ID, GIST_ID)
+        return
+
+    result = _req("PATCH", f"{API_BASE}/gists/{GIST_ID}", {"files": files})
+    if result:
+        logger.debug("Backup pushed: %s", filename)
+    else:
+        logger.warning("Backup push failed for %s", filename)
+
+def pull_backup(filename):
+    """Pull data from Gist. Returns parsed JSON or None."""
+    if not GITHUB_TOKEN or not GIST_ID:
+        return None
+    result = _req("GET", f"{API_BASE}/gists/{GIST_ID}")
+    if not result:
+        return None
+    files = result.get("files", {})
+    if filename not in files:
+        return None
+    raw_url = files[filename].get("raw_url")
+    if not raw_url:
+        content = files[filename].get("content")
+        return json.loads(content) if content else None
+    # Fetch raw content
+    try:
+        req = urllib.request.Request(raw_url, headers={"User-Agent": "SourceFinder/1.0"})
+        with urllib.request.urlopen(req, timeout=10) as r:
+            return json.loads(r.read())
+    except Exception as e:
+        logger.warning("Failed to fetch gist raw content: %s", e)
+        return None
+
+def restore_if_empty(local_path: Path, gist_filename: str, default):
+    """If local file is missing/empty/default, restore from Gist."""
+    needs_restore = False
+    if not local_path.exists():
+        needs_restore = True
+    else:
+        try:
+            current = json.loads(local_path.read_text())
+            # Consider "empty" if it matches the default structure
+            if current == default:
+                needs_restore = True
+        except:
+            needs_restore = True
+
+    if needs_restore and GITHUB_TOKEN and GIST_ID:
+        logger.info("Local data empty — restoring %s from Gist...", gist_filename)
+        data = pull_backup(gist_filename)
+        if data:
+            local_path.parent.mkdir(exist_ok=True, parents=True)
+            local_path.write_text(json.dumps(data, indent=2))
+            logger.info("Restored %s from Gist backup (%d bytes)", gist_filename, len(json.dumps(data)))
+            return True
+        else:
+            logger.warning("Could not restore %s from Gist", gist_filename)
+    return False
