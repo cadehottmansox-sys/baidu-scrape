@@ -20,14 +20,29 @@ ADMIN_SECRET = os.getenv("ADMIN_SECRET", "changeme-set-in-env")
 FINDS_FILE   = Path(__file__).parent / "data" / "finds.json"
 
 
+_finds_backup_checked = False
 def _load_finds():
+    global _finds_backup_checked
     FINDS_FILE.parent.mkdir(exist_ok=True)
+    if not _finds_backup_checked:
+        _finds_backup_checked = True
+        try:
+            from backup import restore_if_empty
+            restore_if_empty(FINDS_FILE, "sf_finds.json", [])
+        except Exception:
+            pass
     if not FINDS_FILE.exists():
         FINDS_FILE.write_text(json.dumps([]))
     return json.loads(FINDS_FILE.read_text())
 
 def _save_finds(finds):
+    FINDS_FILE.parent.mkdir(exist_ok=True)
     FINDS_FILE.write_text(json.dumps(finds, indent=2))
+    try:
+        from backup import push_backup
+        push_backup("sf_finds.json", finds)
+    except Exception:
+        pass
 
 
 def create_app() -> Flask:
