@@ -857,12 +857,13 @@ async def search_platform(
 
             # Deep scan — follow every link and scrape the actual page
             if deep_scan:
-                TOTAL_TO=int(os.getenv("DEEP_SCAN_TOTAL_TIMEOUT","120"))
+                TOTAL_TO=int(os.getenv("DEEP_SCAN_TOTAL_TIMEOUT","60"))
+                MAX_PAGES=5  # only scan top 5 results
                 start=asyncio.get_event_loop().time()
-                for item in results:
+                for item in results[:MAX_PAGES]:
                     if asyncio.get_event_loop().time()-start>TOTAL_TO: break
                     try:
-                        extra=await _deep_scan_page(page,item["link"],nav_timeout=22000)
+                        extra=await _deep_scan_page(page,item["link"],nav_timeout=12000)
                         merged=_merge({"wechat_ids":item["wechat_ids"],"emails":item["emails"],"phones":item["phones"]},extra)
                         best_wq=max((w["quality"] for w in merged["wechat_ids"]),default=0)
                         item.update({"wechat_ids":merged["wechat_ids"],"emails":merged["emails"],"phones":merged["phones"],
