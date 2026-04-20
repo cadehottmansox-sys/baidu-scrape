@@ -1659,11 +1659,19 @@ const FF_DIRECTORY = [
     type: "agent",
   },
   {
-    name: "Search Baidu for Rep FF",
-    tags: ["REP","SENSITIVE","PUTIAN"],
-    desc: "Real rep freight forwarders don't advertise publicly. Use the search above — they're found via WeChat referrals and Chinese forums.",
+    name: "Private Agents (私人货代)",
+    tags: ["REP","PRIVATE","PUTIAN"],
+    desc: "Private agents specialize in sensitive/rep goods. They use custom packaging, no-inspection channels, and private shipping lines. Found via WeChat referrals — use the search above with 私人货代 to find them.",
     wechat: "",
-    price: "~$3-8/kg depending on route and method",
+    price: "~$3-8/kg — negotiate directly via WeChat",
+    type: "rep",
+  },
+  {
+    name: "How to find Private Agents",
+    tags: ["GUIDE","REP","PRIVATE"],
+    desc: "1) Ask your supplier — they often have a trusted private agent. 2) Search 私人货代 + your route on Weibo/XHS. 3) Ask in rep Discord servers. 4) Check fashionreps wiki. Never use agents you can't verify via WeChat.",
+    wechat: "",
+    price: "Always negotiate before sending goods",
     type: "rep",
   },
   {
@@ -1718,26 +1726,29 @@ function setFFMode(mode, btn){
   btn.classList.add('active');
   document.getElementById('ffMode').value = mode;
 
-  // Show/hide banners
   const repBanner = document.getElementById('ffRepBanner');
   const agentBanner = document.getElementById('ffAgentBanner');
-  const dir = document.getElementById('ffDirectory');
   if(repBanner) repBanner.style.display = mode==='rep' ? '' : 'none';
   if(agentBanner) agentBanner.style.display = mode==='agent' ? '' : 'none';
 
-  // Update search placeholder
   const q = document.getElementById('ffQuery');
   if(q){
-    q.placeholder = mode==='rep'
-      ? 'e.g. shoes bags Putian to USA, rep apparel China to UK…'
-      : mode==='agent'
-      ? 'e.g. consolidation, QC photos, warehousing…'
-      : 'e.g. electronics China to USA, apparel Guangzhou to UK…';
+    if(mode==='rep') q.placeholder = '私人货代 private agent — e.g. Putian shoes to USA, rep bags China to UK…';
+    else if(mode==='agent') q.placeholder = 'consolidation, QC photos, warehousing — e.g. Pandabuy alternatives…';
+    else q.placeholder = 'standard freight — e.g. electronics China to USA…';
   }
 
-  // Update button
   const btn2 = document.getElementById('ffBtn');
-  if(btn2) btn2.textContent = mode==='rep' ? '🔒 Find Rep Forwarders' : mode==='agent' ? '🏢 Find Agents' : '📦 Find Forwarders';
+  if(btn2) btn2.innerHTML = mode==='rep'
+    ? '🔒 Find Private Agents'
+    : mode==='agent'
+    ? '🏢 Find Agents'
+    : '📦 Find Forwarders';
+
+  // Pre-fill with private agent terms for rep mode
+  if(mode==='rep' && q && !q.value){
+    q.value = '私人货代 private agent rep goods';
+  }
 
   renderFFDirectory(mode);
 }
@@ -2098,3 +2109,68 @@ document.addEventListener('keydown', e=>{
   if(e.altKey && e.key==='t') switchTab('tools');
   if(e.altKey && e.key==='c') switchTab('crm');
 });
+
+// ── PRIVATE AGENT DEEP SEARCH ─────────────────────────────────────
+async function runPrivateAgentSearch(){
+  const dest = document.getElementById('ffPrivateDest')?.value || '美国';
+  const results = document.getElementById('ffPrivateResults');
+  const hint = document.getElementById('ffPrivateHint');
+  if(!results) return;
+
+  // These are the actual coded terms private agents use on Chinese platforms
+  const queries = [
+    `私人货代 ${dest} 微信 包税 不查验`,
+    `私人代理 敏感货 ${dest} 专线 微信联系`,
+    `特货专线 ${dest} 莆田发货 微信 私包`,
+    `仿牌货代 ${dest} 私人转运 包清关 联系`,
+    `莆田 私人货代 ${dest} 低调包装 微信`,
+    `敏感货 私人代理 ${dest} 专线 微信号`,
+  ];
+
+  results.innerHTML = '<div class="loader"><div class="loader-dots"><span></span><span></span><span></span></div>Running ' + queries.length + ' private agent queries...</div>';
+  if(hint){ hint.style.display='block'; hint.textContent='Searching: ' + queries.join(' | ').slice(0,120) + '...'; }
+
+  const seen = new Set();
+  const allResults = [];
+
+  for(let i=0; i<queries.length; i++){
+    try{
+      const r = await fetch('/search', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          query: queries[i],
+          brand: '',
+          platform: 'baidu',
+          mode: 'ff',
+          deep_scan: false,
+          wechat_only: false,
+          max_results: 5
+        })
+      });
+      const d = await r.json();
+      (d.results||[]).forEach(item=>{
+        if(!seen.has(item.link)){
+          seen.add(item.link);
+          allResults.push(item);
+        }
+      });
+      // Update count as we go
+      results.innerHTML = `<div style="padding:12px;font-family:var(--mono);font-size:11px;color:var(--text2)">Found ${allResults.length} results so far (query ${i+1}/${queries.length})...</div>`;
+    } catch(e){ console.log('Query failed:', queries[i]); }
+  }
+
+  // Render all results
+  results.innerHTML = '';
+  if(!allResults.length){
+    results.innerHTML = '<div class="empty">No private agents found — they use very private channels. Try asking your supplier directly or checking rep Discord servers.</div>';
+    return;
+  }
+
+  // Sort by WeChat presence first
+  allResults.sort((a,b)=> (b.wechat_ids?.length||0) - (a.wechat_ids?.length||0));
+  allResults.forEach((item,i)=> results.appendChild(buildCard(item,i)));
+
+  if(hint){ hint.textContent = `Found ${allResults.length} results across ${queries.length} private agent queries`; }
+  showToast(`Found ${allResults.length} potential private agents`);
+}
