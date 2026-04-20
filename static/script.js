@@ -239,37 +239,39 @@ function copyText(text,label=""){
 
 // ── WeChat chip ───────────────────────────────────────────────────
 function wcChip(w){
-  const isQR=w.source==="qr",isOCR=w.source==="ocr";
+  const isQR=w.source==="qr", isOCR=w.source==="ocr";
   const cls=isQR?"wc-qr":isOCR?"wc-ocr":w.quality>=3?"wc-verified":w.quality===2?"wc-okay":"wc-weak";
   const lbl=isQR?"QR":isOCR?"OCR":w.quality>=3?"✓":w.quality===2?"~":"?";
-  const conf=w.confidence||0;
-  const d=document.createElement("div");
-  d.className=`contact-chip ${cls}`;
-  d.title=`${isQR?"QR scan":isOCR?"Image OCR":w.quality>=3?"Looks legit":w.quality===2?"Possibly valid":"Unverified"} · ${Math.round(conf*100)}% confidence · Click to copy`;
-  d.innerHTML=`${lbl} ${w.id}<div class="confidence-bar" style="width:${Math.round(conf*100)}%"></div>`;
-  d.addEventListener("click",()=>copyText(w.id,w.id));
 
-  // Verify button
+  const wrap = document.createElement("div");
+  wrap.className = "wc-chip-wrap";
+
+  const d = document.createElement("div");
+  d.className = `contact-chip ${cls}`;
+  d.title = "Click to copy";
+  d.textContent = `${lbl} ${w.id}`;
+  d.addEventListener("click", ()=>copyText(w.id, w.id));
+  wrap.appendChild(d);
+
+  // Verify button - clean pill style
   const vbtn = document.createElement("button");
-  vbtn.className="scan-btn";vbtn.style.marginLeft="4px";vbtn.style.fontSize="9px";vbtn.textContent="verify";
+  vbtn.className = "verify-btn";
+  vbtn.textContent = "VERIFY";
   vbtn.addEventListener("click", async(e)=>{
     e.stopPropagation();
-    vbtn.textContent="...";vbtn.disabled=true;
+    vbtn.textContent="..."; vbtn.disabled=true;
     try{
-      const r=await fetch("/verify-wechat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({wechat:w.id})});
-      const data=await r.json();
-      const s=data.status;
-      const score=data.score||0;
-      const srcs=(data.sources||[]).length;
-      if(s==="verified"){vbtn.textContent=`✓ verified (${score})`;vbtn.style.color="#4ade80";vbtn.title=`Found on ${srcs} sources`}
-      else if(s==="likely"){vbtn.textContent=`~ likely (${score})`;vbtn.style.color="#7dd3fc";vbtn.title=`Found on ${srcs} source(s)`}
-      else if(s==="weak"){vbtn.textContent=`? weak (${score})`;vbtn.style.color="#fbbf24"}
-      else if(s==="not_found"){vbtn.textContent="✗ not found";vbtn.style.color="#f87171"}
-      else{vbtn.textContent="?";vbtn.disabled=false}
-    }catch{vbtn.textContent="err";vbtn.disabled=false}
+      const r = await fetch("/verify-wechat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({wechat:w.id})});
+      const data = await r.json();
+      const s = data.status, score = data.score||0;
+      if(s==="verified"){ vbtn.textContent=`✓ ${score}pts`; vbtn.className="verify-btn verified"; }
+      else if(s==="likely"){ vbtn.textContent=`~ ${score}pts`; vbtn.className="verify-btn likely"; }
+      else if(s==="weak"){ vbtn.textContent=`? weak`; vbtn.className="verify-btn weak"; }
+      else { vbtn.textContent="✗ none"; vbtn.className="verify-btn notfound"; }
+    } catch { vbtn.textContent="err"; vbtn.disabled=false; }
   });
-  d.appendChild(vbtn);
-  return d;
+  wrap.appendChild(vbtn);
+  return wrap;
 }
 
 // ── Card builder ──────────────────────────────────────────────────
@@ -1464,3 +1466,166 @@ document.addEventListener('click', e=>{
 
 // Handle needs_password on login — intercept the fetch in access.html
 // The access.html already handles this but we also need it if session expires
+
+// ── RESEARCH TAB ──────────────────────────────────────────────────
+
+// Chinese Query Translator
+async function translateQuery(){
+  const input = document.getElementById('translateQueryInput');
+  const result = document.getElementById('translateQueryResult');
+  const q = input?.value.trim();
+  if(!q){ showToast('Enter a product name first'); return; }
+  result.innerHTML = '<div class="loader"><div class="loader-dots"><span></span><span></span><span></span></div>Translating...</div>';
+  try{
+    const r = await fetch('/translate', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({text:q, target:'zh', source:'en'})});
+    const d = await r.json();
+    const zh = d.translated || q;
+    const factoryTerm = zh + ' 工厂';
+    const wholesaleTerm = zh + ' 批发商';
+    result.innerHTML = `
+      <div class="translate-result">
+        <div class="tr-row">
+          <span class="tr-label">Chinese</span>
+          <span class="tr-val">${zh}</span>
+          <button class="tool-btn" onclick="navigator.clipboard.writeText('${zh}').then(()=>showToast('Copied!'))">Copy</button>
+        </div>
+        <div class="tr-row">
+          <span class="tr-label">Factory Search</span>
+          <span class="tr-val">${factoryTerm}</span>
+          <button class="tool-btn" onclick="navigator.clipboard.writeText('${factoryTerm}').then(()=>showToast('Copied!'))">Copy</button>
+        </div>
+        <div class="tr-row">
+          <span class="tr-label">Wholesale Search</span>
+          <span class="tr-val">${wholesaleTerm}</span>
+          <button class="tool-btn" onclick="navigator.clipboard.writeText('${wholesaleTerm}').then(()=>showToast('Copied!'))">Copy</button>
+        </div>
+        <div style="margin-top:12px;display:flex;gap:6px;flex-wrap:wrap">
+          <button class="btn-primary" style="height:36px;font-size:11px;padding:0 12px" onclick="autoSearchChinese('${zh}')">⚡ Search SourceFinder with this</button>
+          <button class="quick-btn" onclick="quickOpenWith('1688','${factoryTerm}')">Open on 1688</button>
+          <button class="quick-btn" onclick="quickOpenWith('taobao','${zh}')">Open on Taobao</button>
+        </div>
+      </div>
+    `;
+  } catch(e){ result.innerHTML = '<p style="color:var(--r);font-family:var(--mono);font-size:11px">Translation failed</p>'; }
+}
+
+// Auto-search with Chinese query on supplier tab
+function autoSearchChinese(zhQuery){
+  switchTab('supplier');
+  const qInput = document.getElementById('queryInput');
+  if(qInput){ qInput.value = zhQuery; }
+  document.getElementById('supplierForm')?.dispatchEvent(new Event('submit'));
+}
+
+// Factory Validator
+async function validateFactory(){
+  const url = document.getElementById('validateUrl')?.value.trim();
+  const result = document.getElementById('validateResult');
+  if(!url){ showToast('Enter a factory URL first'); return; }
+  if(!result) return;
+  result.innerHTML = '<div class="loader"><div class="loader-dots"><span></span><span></span><span></span></div>Scanning factory page...</div>';
+  try{
+    const r = await fetch('/scan-page', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({url})});
+    const d = await r.json();
+    const wc = d.wechat_ids||[];
+    const score = Math.min(100, (wc.length * 15) + (d.has_contact ? 20 : 0) + (d.factory_score||0)*3);
+    const scoreCol = score>=60?'var(--g)':score>=30?'var(--a)':'var(--r)';
+    const scoreLbl = score>=60?'✓ LOOKS LEGIT':score>=30?'~ UNCERTAIN':'⚠ SKETCHY';
+    result.innerHTML = `
+      <div class="validate-card">
+        <div class="validate-score" style="color:${scoreCol}">${scoreLbl} · ${score}/100</div>
+        <div class="validate-bar-wrap"><div class="validate-bar" style="width:${score}%;background:${scoreCol}"></div></div>
+        <div class="validate-grid">
+          <div class="validate-item">
+            <div class="validate-item-val" style="color:${wc.length>0?'var(--g)':'var(--r)'}">${wc.length}</div>
+            <div class="validate-item-lbl">WeChats Found</div>
+          </div>
+          <div class="validate-item">
+            <div class="validate-item-val" style="color:${d.has_contact?'var(--g)':'var(--text3)'}">${d.has_contact?'YES':'NO'}</div>
+            <div class="validate-item-lbl">Has Contact</div>
+          </div>
+          <div class="validate-item">
+            <div class="validate-item-val" style="color:var(--c)">${d.factory_score||0}/12</div>
+            <div class="validate-item-lbl">Factory Score</div>
+          </div>
+          <div class="validate-item">
+            <div class="validate-item-val" style="color:${d.is_factory_like?'var(--g)':'var(--r)'}">${d.is_factory_like?'YES':'NO'}</div>
+            <div class="validate-item-lbl">Factory-Like</div>
+          </div>
+        </div>
+        ${wc.length>0?`
+        <div class="validate-wechats">
+          <div class="card-contact-label">WECHATS FOUND</div>
+          <div class="card-contacts">${wc.map(w=>`<div class="contact-chip wc-verified" onclick="navigator.clipboard.writeText('${w.id}').then(()=>showToast('Copied!'))" title="Click to copy">✓ ${w.id}</div>`).join('')}</div>
+        </div>`:''}
+        <div style="margin-top:12px;display:flex;gap:6px;flex-wrap:wrap">
+          <button class="btn-primary" style="height:36px;font-size:11px;padding:0 12px" onclick="window.open('${url}','_blank')">Open Factory Page</button>
+          ${wc.length>0?`<button class="tool-btn" onclick="navigator.clipboard.writeText('${wc.map(w=>w.id).join(', ')}').then(()=>showToast('Copied all WeChats!'))">Copy All WeChats</button>`:''}
+        </div>
+      </div>
+    `;
+  } catch(e){ result.innerHTML = '<p style="color:var(--r);font-family:var(--mono);font-size:11px">Validation failed — check the URL</p>'; }
+}
+
+// Trend Checker — searches Taobao + XHS for demand signals
+async function checkTrend(){
+  const input = document.getElementById('trendInput');
+  const result = document.getElementById('trendResult');
+  const q = input?.value.trim();
+  if(!q){ showToast('Enter a product name'); return; }
+  result.innerHTML = '<div class="loader"><div class="loader-dots"><span></span><span></span><span></span></div>Checking trends...</div>';
+  try{
+    const r = await fetch('/search', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({query:q, brand:'', platform:'xiaohongshu', mode:'trend', deep_scan:false, wechat_only:false, max_results:6})});
+    const d = await r.json();
+    const results = d.results||[];
+    if(!results.length){ result.innerHTML = '<div class="empty">No trend data found</div>'; return; }
+    result.innerHTML = '';
+    results.forEach((item,i)=>{ result.appendChild(buildCard(item,i)); });
+    // Add quick action to source this product
+    const actionDiv = document.createElement('div');
+    actionDiv.style.cssText='margin-top:12px;padding:12px;background:var(--card);border:1px solid var(--b);border-radius:var(--rad)';
+    actionDiv.innerHTML=`<span style="font-family:var(--mono);font-size:10px;color:var(--text2)">Looks promising? </span>
+      <button class="btn-primary" style="height:32px;font-size:11px;padding:0 12px;margin-left:8px" onclick="switchTab('supplier');document.getElementById('queryInput').value='${q}';document.getElementById('supplierForm').dispatchEvent(new Event('submit'))">⚡ Find Suppliers for "${q}"</button>`;
+    result.appendChild(actionDiv);
+  } catch(e){ result.innerHTML = '<div class="empty">Trend check failed</div>'; }
+}
+
+// Batch Comparator
+async function compareBatches(){
+  const input = document.getElementById('batchInput');
+  const result = document.getElementById('batchResult');
+  const q = input?.value.trim();
+  if(!q){ showToast('Enter a product name'); return; }
+  result.innerHTML = '<div class="loader"><div class="loader-dots"><span></span><span></span><span></span></div>Comparing batches on Weidian...</div>';
+  try{
+    const r = await fetch('/search', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({query:q+' 批次 质量对比', brand:'', platform:'weidian', mode:'supplier', deep_scan:false, wechat_only:false, max_results:8})});
+    const d = await r.json();
+    const results = d.results||[];
+    if(!results.length){ result.innerHTML = '<div class="empty">No batches found — try a more specific product name</div>'; return; }
+    result.innerHTML='';
+    results.forEach((item,i)=>{ result.appendChild(buildCard(item,i)); });
+  } catch(e){ result.innerHTML = '<div class="empty">Batch comparison failed</div>'; }
+}
+
+// Quick Open platform with query
+const PLATFORM_URLS = {
+  '1688': q=>`https://s.1688.com/selloffer/offerlist.htm?keywords=${encodeURIComponent(q)}`,
+  'taobao': q=>`https://s.taobao.com/search?q=${encodeURIComponent(q)}`,
+  'weidian': q=>`https://weidian.com/search.html?keyword=${encodeURIComponent(q)}`,
+  'xianyu': q=>`https://www.goofish.com/search?keyword=${encodeURIComponent(q)}`,
+  'xiaohongshu': q=>`https://www.xiaohongshu.com/search_result?keyword=${encodeURIComponent(q)}`,
+  'weibo': q=>`https://s.weibo.com/weibo?q=${encodeURIComponent(q)}`,
+  'zhihu': q=>`https://www.zhihu.com/search?q=${encodeURIComponent(q)}&type=content`,
+  'jadeship': q=>`https://www.jadeship.com/search?q=${encodeURIComponent(q)}`,
+};
+
+function quickOpen(platform){
+  const q = document.getElementById('quickInput')?.value.trim() || '';
+  const urlFn = PLATFORM_URLS[platform];
+  if(urlFn) window.open(urlFn(q), '_blank');
+}
+
+function quickOpenWith(platform, query){
+  const urlFn = PLATFORM_URLS[platform];
+  if(urlFn) window.open(urlFn(query), '_blank');
+}
