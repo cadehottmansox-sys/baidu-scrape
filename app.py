@@ -243,6 +243,32 @@ def create_app() -> Flask:
         except Exception as e:
             return jsonify({"translated": text, "error": str(e)})
 
+    @app.post("/api/notes")
+    @require_auth
+    def save_note():
+        user = get_user()
+        data = request.get_json(silent=True) or {}
+        link = (data.get("link") or "").strip()
+        note = (data.get("note") or "").strip()
+        if not link: return jsonify({"ok": False})
+        db = auth.get_admin_data()
+        u = next((u for u in db["approved"] if u["email"]==user["email"]), None)
+        if not u: return jsonify({"ok": False})
+        notes = u.get("notes", {})
+        if note: notes[link] = note
+        elif link in notes: del notes[link]
+        u["notes"] = notes
+        auth._save(db)
+        return jsonify({"ok": True})
+
+    @app.get("/api/notes")
+    @require_auth
+    def get_notes():
+        user = get_user()
+        db = auth.get_admin_data()
+        u = next((u for u in db["approved"] if u["email"]==user["email"]), None)
+        return jsonify({"notes": u.get("notes", {}) if u else {}})
+
     @app.get("/api/saved")
     @require_auth
     def get_saved():
