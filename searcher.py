@@ -5,6 +5,26 @@ We save raw HTML to debug and parse properly.
 """
 
 import asyncio
+
+def _do_scrapingdog(query, max_results=10):
+    import os, requests as _req
+    api_key = os.getenv("SCRAPINGDOG_API_KEY", "")
+    if not api_key: return None
+    try:
+        r = _req.get("https://api.scrapingdog.com/baidu",
+            params={"api_key": api_key, "query": query, "results": min(max_results*2,20), "country":"cn"},
+            timeout=15)
+        if r.status_code != 200: return None
+        data = r.json()
+        organic = data.get("organic_data") or data.get("organic_results") or []
+        out = []
+        for item in organic[:max_results]:
+            t = item.get("title",""); l = item.get("link","") or item.get("url",""); s = item.get("snippet","") or item.get("description","")
+            if t: out.append({"title":t,"url":l,"snippet":s})
+        return out if out else None
+    except Exception as e:
+        return None
+
 import io
 import json
 import logging
@@ -444,7 +464,7 @@ async def _baidu_search(page, full_q, max_r, timeout, delay, seen_links, platfor
                 return results
         logger.warning("Baidu AI API returned nothing, trying ScrapingDog...")
         # Middle tier: ScrapingDog structured API
-        sd_refs = await asyncio.get_event_loop().run_in_executor(None, lambda: _scrapingdog_baidu_sync(full_q, max_r))
+        sd_refs = await asyncio.get_event_loop().run_in_executor(None, _do_scrapingdog, full_q, max_r)
         if sd_refs:
             logger.info("ScrapingDog: processing %d refs into results", len(sd_refs))
             for ref in sd_refs[:max_r]:
