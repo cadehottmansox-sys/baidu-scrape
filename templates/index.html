@@ -259,22 +259,33 @@
 
     <!-- PASSING -->
     <section class="tab-panel" id="tab-passing">
-      <div class="passing-banner">⚡ Passing / NFC Mode — finds 1:1 suppliers with NFC chips &amp; factory-direct quality</div>
+      <div class="passing-banner">⚡ Passing / NFC — find 1:1 suppliers with NFC chips, same factory materials, and verified passing quality</div>
+
+      <!-- SEARCH MODES -->
+      <div class="ff-mode-wrap" style="margin-bottom:12px">
+        <button class="ff-mode-btn active" onclick="setPassingMode('supplier',this)">
+          <span class="ff-mode-icon">🏭</span>
+          <div><div class="ff-mode-title">Find Supplier</div><div class="ff-mode-sub">Factory WeChats for passing goods</div></div>
+        </button>
+        <button class="ff-mode-btn" onclick="setPassingMode('batch',this)">
+          <span class="ff-mode-icon">📦</span>
+          <div><div class="ff-mode-title">Batch Intel</div><div class="ff-mode-sub">Which batch passes best — Weidian + XHS reviews</div></div>
+        </button>
+        <button class="ff-mode-btn" onclick="setPassingMode('nfc',this)">
+          <span class="ff-mode-icon">📱</span>
+          <div><div class="ff-mode-title">NFC Finder</div><div class="ff-mode-sub">Factories advertising NFC chips specifically</div></div>
+        </button>
+      </div>
+
       <div class="search-card">
         <form id="passingForm" autocomplete="off">
+          <input type="hidden" id="passingMode" value="supplier"/>
           <div class="field-row">
-            <div class="field"><label for="passingBrand">Brand</label><input type="text" id="passingBrand" placeholder="Nike, Jordan…"/></div>
-            <div class="field field--wide"><label for="passingQuery">Product</label><input type="text" id="passingQuery" placeholder="Jordan 4, Yeezy 350…" required/></div>
-          </div>
-          <div class="platform-row">
-            <label class="row-label">Platform</label>
-            <div class="chips" id="passingChips">
-              <button type="button" class="chip active" data-platform="baidu">Baidu</button>
-            </div>
-            <input type="hidden" id="passingPlatform" value="baidu"/>
+            <div class="field"><label for="passingBrand">Brand</label><input type="text" id="passingBrand" placeholder="Nike, Jordan, Dior…"/></div>
+            <div class="field field--wide"><label for="passingQuery">Product</label><input type="text" id="passingQuery" placeholder="Jordan 4 bred, Yeezy 350 zebra…" required/></div>
           </div>
           <div class="action-row">
-            <button type="submit" class="btn-primary btn-purple" id="passingBtn">Search Passing</button>
+            <button type="submit" class="btn-primary btn-purple" id="passingBtn">🔍 Search Passing</button>
             <label class="toggle-wrap">
               <input type="checkbox" id="passingDeepScan" checked/>
               <span class="toggle-track"><span class="toggle-thumb"></span></span>
@@ -292,12 +303,40 @@
           </div>
         </form>
       </div>
-      <div class="filters-bar" id="passingFilters" style="display:none">
-        <span class="filters-label">Filter</span>
-        <button class="filter-pill active" data-filter="all">All</button>
-        <button class="filter-pill" data-filter="has_wechat">Has WeChat</button>
-        <button class="filter-pill" data-filter="verified_wechat">Verified</button>
+
+      <!-- QC CHECKLIST -->
+      <div class="research-section" style="margin-top:12px">
+        <div class="research-header">
+          <div class="research-icon">✅</div>
+          <div>
+            <div class="research-title">Pre-Buy QC Checklist</div>
+            <div class="research-desc">What to verify before committing to a batch — ask your supplier for these</div>
+          </div>
+        </div>
+        <div class="qc-grid">
+          <div class="qc-item" onclick="this.classList.toggle('qc-done')"><span class="qc-check">□</span><div><div class="qc-label">NFC Chip Scan</div><div class="qc-sub">Scan chip with phone — should open brand auth page</div></div></div>
+          <div class="qc-item" onclick="this.classList.toggle('qc-done')"><span class="qc-check">□</span><div><div class="qc-label">Sole Flex Test</div><div class="qc-sub">Ask for video of sole bending — should match retail</div></div></div>
+          <div class="qc-item" onclick="this.classList.toggle('qc-done')"><span class="qc-check">□</span><div><div class="qc-label">Box &amp; Tag Accuracy</div><div class="qc-sub">Font, spacing, barcode, colorway label must match</div></div></div>
+          <div class="qc-item" onclick="this.classList.toggle('qc-done')"><span class="qc-check">□</span><div><div class="qc-label">Material Match</div><div class="qc-sub">Same leather/mesh/foam as retail — ask for close-up pics</div></div></div>
+          <div class="qc-item" onclick="this.classList.toggle('qc-done')"><span class="qc-check">□</span><div><div class="qc-label">Stitching Quality</div><div class="qc-sub">No loose threads — consistent spacing — especially on logos</div></div></div>
+          <div class="qc-item" onclick="this.classList.toggle('qc-done')"><span class="qc-check">□</span><div><div class="qc-label">Weight Check</div><div class="qc-sub">Ask for weight — should match retail spec within 5g</div></div></div>
+          <div class="qc-item" onclick="this.classList.toggle('qc-done')"><span class="qc-check">□</span><div><div class="qc-label">Same Factory Claim</div><div class="qc-sub">Ask: 同厂 (same factory) or 纯原 (pure original materials)?</div></div></div>
+          <div class="qc-item" onclick="this.classList.toggle('qc-done')"><span class="qc-check">□</span><div><div class="qc-label">Batch Sample Video</div><div class="qc-sub">Request unboxing video of the exact batch you're buying</div></div></div>
+        </div>
       </div>
+
+      <!-- BATCH INTEL (hidden by default) -->
+      <div id="passingBatchSection" style="display:none" class="research-section" style="margin-top:12px">
+        <div class="research-header">
+          <div class="research-icon">📦</div>
+          <div>
+            <div class="research-title">Batch Intelligence</div>
+            <div class="research-desc">Searching Weidian + Xiaohongshu for batch reviews and passing verdicts</div>
+          </div>
+        </div>
+        <div id="batchIntelResults" class="results"></div>
+      </div>
+
       <div class="query-hint" id="passingHint"></div>
       <section class="results" id="passingResults"></section>
     </section>
