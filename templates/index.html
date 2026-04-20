@@ -42,6 +42,10 @@
         <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M8 2l1.5 3 3.5.5-2.5 2.5.5 3.5L8 10l-3 1.5.5-3.5L3 5.5l3.5-.5z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
         Finds
       </button>
+      <button class="tab-btn" data-tab="tools">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M9.5 1.5L14.5 6.5L6 15H1V10L9.5 1.5Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M11 4L12 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        Tools
+      </button>
       <button class="tab-btn" data-tab="research">
         <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><circle cx="6" cy="6" r="4" stroke="currentColor" stroke-width="1.5"/><path d="M10 10l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M6 4v4M4 6h4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
         Research
@@ -131,22 +135,66 @@
 
     <!-- FREIGHT -->
     <section class="tab-panel" id="tab-ff">
-      <div class="search-card">
+
+      <!-- MODE SELECTOR -->
+      <div class="ff-mode-wrap">
+        <button class="ff-mode-btn active" id="ffModeRep" onclick="setFFMode('rep',this)">
+          <span class="ff-mode-icon">🔒</span>
+          <div>
+            <div class="ff-mode-title">Rep Forwarders</div>
+            <div class="ff-mode-sub">Specialize in sensitive / counterfeit goods</div>
+          </div>
+        </button>
+        <button class="ff-mode-btn" id="ffModeSafe" onclick="setFFMode('safe',this)">
+          <span class="ff-mode-icon">📦</span>
+          <div>
+            <div class="ff-mode-title">Standard Forwarders</div>
+            <div class="ff-mode-sub">Regular freight — electronics, apparel, general goods</div>
+          </div>
+        </button>
+        <button class="ff-mode-btn" id="ffModeAgent" onclick="setFFMode('agent',this)">
+          <span class="ff-mode-icon">🏢</span>
+          <div>
+            <div class="ff-mode-title">Agents</div>
+            <div class="ff-mode-sub">QC photos, warehousing, consolidation — NOT for shipping</div>
+          </div>
+        </button>
+      </div>
+
+      <!-- REP MODE BANNER -->
+      <div class="ff-rep-banner" id="ffRepBanner">
+        🔒 Rep Mode — searching for forwarders that specialize in 仿牌/敏感货 (sensitive goods). These use private channels, custom packaging, and no-inspection options.
+      </div>
+      <div class="ff-agent-banner" id="ffAgentBanner" style="display:none">
+        🏢 Agent Mode — use agents for QC photos, returns, and consolidation only. <strong>Never use agent shipping rates</strong> — always use your own freight forwarder for international.
+      </div>
+
+      <!-- QUICK ROUTES -->
+      <div class="ff-routes">
+        <span class="filters-label">Quick Routes</span>
+        <button class="quick-btn" onclick="setFFRoute('China','USA')">🇺🇸 China→USA</button>
+        <button class="quick-btn" onclick="setFFRoute('China','UK')">🇬🇧 China→UK</button>
+        <button class="quick-btn" onclick="setFFRoute('China','Australia')">🇦🇺 China→AUS</button>
+        <button class="quick-btn" onclick="setFFRoute('China','Canada')">🇨🇦 China→CAN</button>
+        <button class="quick-btn" onclick="setFFRoute('Putian','USA')">👟 Putian→USA</button>
+        <button class="quick-btn" onclick="setFFRoute('Guangzhou','Europe')">🇪🇺 GZ→EU</button>
+      </div>
+
+      <div class="search-card" style="margin-top:12px">
         <form id="ffForm" autocomplete="off">
           <div class="field-row">
-            <div class="field field--wide"><label for="ffQuery">Route / Cargo / Keywords</label><input type="text" id="ffQuery" placeholder="China to USA electronics, apparel…" required/></div>
-            <div class="field"><label for="ffOrigin">Origin City</label><input type="text" id="ffOrigin" placeholder="Guangzhou…"/></div>
-          </div>
-          <div class="platform-row">
-            <label class="row-label">Platform</label>
-            <div class="chips" id="ffChips">
-              <button type="button" class="chip active" data-platform="baidu">Baidu</button>
-              <button type="button" class="chip" data-platform="1688">1688</button>
+            <div class="field field--wide">
+              <label for="ffQuery">Route / Cargo / Keywords</label>
+              <input type="text" id="ffQuery" placeholder="e.g. shoes bags Putian to USA, electronics China to UK…" required/>
             </div>
-            <input type="hidden" id="ffPlatform" value="baidu"/>
+            <div class="field">
+              <label for="ffOrigin">Origin City</label>
+              <input type="text" id="ffOrigin" placeholder="Putian, Guangzhou…"/>
+            </div>
           </div>
+          <input type="hidden" id="ffMode" value="rep"/>
           <div class="action-row">
-            <button type="submit" class="btn-primary" id="ffBtn">Find Forwarders</button>
+            <button type="submit" class="btn-primary" id="ffBtn">🔍 Find Forwarders</button>
             <label class="toggle-wrap">
               <input type="checkbox" id="ffDeepScan"/>
               <span class="toggle-track"><span class="toggle-thumb"></span></span>
@@ -159,7 +207,48 @@
           </div>
         </form>
       </div>
-      <div class="filters-bar" id="ffFilters" style="display:none">
+
+      <!-- KNOWN REP FORWARDERS DIRECTORY -->
+      <div class="ff-directory" id="ffDirectory">
+        <div class="research-header" style="margin-bottom:12px">
+          <div class="research-icon">📋</div>
+          <div>
+            <div class="research-title">Known Rep-Friendly Forwarders</div>
+            <div class="research-desc">Community-verified — always confirm current rates via WeChat</div>
+          </div>
+        </div>
+        <div class="ff-dir-grid" id="ffDirGrid"></div>
+      </div>
+
+      <!-- PRIVATE AGENT MULTI-SEARCH -->
+      <div id="ffPrivateAgentTools" class="research-section" style="margin-top:14px">
+        <div class="research-header">
+          <div class="research-icon">🕵️</div>
+          <div>
+            <div class="research-title">Private Agent Deep Search</div>
+            <div class="research-desc">Runs 6 different queries simultaneously using coded Chinese terms that private agents actually use — 私人货代, 特货专线, 敏感货</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+          <div class="field" style="flex:1;min-width:140px">
+            <label>Destination</label>
+            <select id="ffPrivateDest" style="height:42px;padding:0 10px;background:rgba(0,0,0,.4);border:1px solid var(--b);border-radius:var(--rad);color:var(--text);font-family:var(--font);outline:none;width:100%">
+              <option value="美国">🇺🇸 USA (美国)</option>
+              <option value="英国">🇬🇧 UK (英国)</option>
+              <option value="欧洲">🇪🇺 Europe (欧洲)</option>
+              <option value="澳大利亚">🇦🇺 Australia</option>
+              <option value="加拿大">🇨🇦 Canada</option>
+            </select>
+          </div>
+          <button class="btn-primary" onclick="runPrivateAgentSearch()" style="height:42px;padding:0 20px;background:var(--r)">
+            🕵️ Deep Search Private Agents
+          </button>
+        </div>
+        <div class="query-hint" id="ffPrivateHint" style="display:none"></div>
+        <section class="results" id="ffPrivateResults"></section>
+      </div>
+
+      <div class="filters-bar" id="ffFilters" style="display:none;margin-top:8px">
         <span class="filters-label">Filter</span>
         <button class="filter-pill active" data-filter="all">All</button>
         <button class="filter-pill" data-filter="has_wechat">Has WeChat</button>
@@ -241,6 +330,121 @@
         <div class="admin-section-title"><span class="admin-dot" style="background:var(--c2)"></span>Analytics</div>
         <div id="analyticsTable" class="crm-table-wrap"></div>
       </div>
+    </section>
+
+    <!-- TOOLS TAB -->
+    <section class="tab-panel" id="tab-tools">
+
+      <!-- MARGIN CALCULATOR -->
+      <div class="research-section">
+        <div class="research-header">
+          <div class="research-icon">💰</div>
+          <div>
+            <div class="research-title">Profit Margin Calculator</div>
+            <div class="research-desc">Enter retail price → get estimated factory cost, margin, and profit at scale</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+          <div class="field" style="flex:1;min-width:120px">
+            <label>Retail Price</label>
+            <input type="number" id="marginRetail" placeholder="e.g. 180" style="height:42px"/>
+          </div>
+          <div class="field" style="width:100px">
+            <label>Currency</label>
+            <select id="marginCurrency" style="height:42px;padding:0 10px;background:rgba(0,0,0,.4);border:1px solid var(--b);border-radius:var(--rad);color:var(--text);font-family:var(--font);outline:none;width:100%">
+              <option>USD</option><option>EUR</option><option>GBP</option><option>AUD</option><option>CAD</option>
+            </select>
+          </div>
+          <div class="field" style="width:100px">
+            <label>Qty</label>
+            <input type="number" id="marginQty" value="10" style="height:42px"/>
+          </div>
+          <button class="btn-primary" onclick="calcMargin()" style="height:42px;padding:0 16px;margin-bottom:0">Calculate</button>
+        </div>
+        <div id="marginResult" style="margin-top:12px"></div>
+      </div>
+
+      <!-- KEYWORD BUILDER -->
+      <div class="research-section">
+        <div class="research-header">
+          <div class="research-icon">🔑</div>
+          <div>
+            <div class="research-title">Chinese Keyword Builder</div>
+            <div class="research-desc">Generate optimized Chinese search strings for different sourcing strategies</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:10px">
+          <input type="text" id="kwProduct" placeholder="Product name (English or Chinese)..." style="flex:1;height:42px"/>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">
+          ${Object.keys(KEYWORD_TEMPLATES||{}).map ? '' : ''}
+          <button class="quick-btn" onclick="buildKeyword('Factory Direct')">🏭 Factory Direct</button>
+          <button class="quick-btn" onclick="buildKeyword('Rep/1:1')">⚡ Rep / 1:1</button>
+          <button class="quick-btn" onclick="buildKeyword('Wholesale')">📦 Wholesale</button>
+          <button class="quick-btn" onclick="buildKeyword('Xianyu Overrun')">🏷️ Xianyu Overrun</button>
+          <button class="quick-btn" onclick="buildKeyword('WeChat Only')">💬 WeChat Only</button>
+          <button class="quick-btn" onclick="buildKeyword('Passing/NFC')">✅ Passing/NFC</button>
+          <button class="quick-btn" onclick="buildKeyword('Weidian Batch')">🔍 Weidian Batch</button>
+          <button class="quick-btn" onclick="buildKeyword('Zhihu Expert')">🧠 Zhihu Expert</button>
+        </div>
+        <div id="kwResult"></div>
+      </div>
+
+      <!-- WECHAT MANAGER -->
+      <div class="research-section">
+        <div class="research-header">
+          <div class="research-icon">💬</div>
+          <div>
+            <div class="research-title">WeChat Contact Manager</div>
+            <div class="research-desc">All WeChats you've copied — track status, export list</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+          <span style="font-family:var(--mono);font-size:11px;color:var(--text2)"><span id="wcManagerCount">0</span> contacts</span>
+          <button class="tool-btn" onclick="exportWCList()">📋 Export All</button>
+          <button class="tool-btn" onclick="wcContacts=[];saveWCContacts();renderWCManager()" style="color:var(--r)">Clear</button>
+          <div style="display:flex;gap:6px;margin-left:auto">
+            <input type="text" id="wcAddInput" placeholder="Add WeChat ID manually..." style="height:32px;width:180px"/>
+            <button class="tool-btn" onclick="addWCContact(document.getElementById('wcAddInput').value.trim(),'manual','');document.getElementById('wcAddInput').value=''">Add</button>
+          </div>
+        </div>
+        <div class="wc-manager-header"><span>WeChat ID</span><span>Source</span><span>Product</span><span>Status</span><span></span></div>
+        <div id="wcManagerList"></div>
+      </div>
+
+      <!-- SEARCH ANALYTICS -->
+      <div class="research-section">
+        <div class="research-header">
+          <div class="research-icon">📊</div>
+          <div>
+            <div class="research-title">Your Search History</div>
+            <div class="research-desc">Most searched terms — click any to re-run instantly</div>
+          </div>
+        </div>
+        <div id="searchStatsContent"></div>
+      </div>
+
+      <!-- SHIPPING CALC -->
+      <div class="research-section">
+        <div class="research-header">
+          <div class="research-icon">✈️</div>
+          <div>
+            <div class="research-title">Shipping Cost Estimator</div>
+            <div class="research-desc">Rough estimate — always confirm with your forwarder</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+          <div class="field" style="flex:1;min-width:100px"><label>Weight (kg)</label><input type="number" id="shipWeight" placeholder="0.8" style="height:42px"/></div>
+          <div class="field" style="flex:1;min-width:120px"><label>Destination</label>
+            <select id="shipDest" style="height:42px;padding:0 10px;background:rgba(0,0,0,.4);border:1px solid var(--b);border-radius:var(--rad);color:var(--text);font-family:var(--font);outline:none;width:100%">
+              <option value="usa">USA</option><option value="uk">UK</option><option value="eu">Europe</option><option value="au">Australia</option><option value="ca">Canada</option>
+            </select>
+          </div>
+          <button class="btn-primary" onclick="calcShipping()" style="height:42px;padding:0 16px">Estimate</button>
+        </div>
+        <div id="shipResult" style="margin-top:12px"></div>
+      </div>
+
     </section>
 
     <!-- RESEARCH TAB -->
