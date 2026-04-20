@@ -113,6 +113,33 @@
     load();
   }
 
+  async function setExpiry(email, currentExpiry){
+    const options=[
+      {label:"1 week",days:7},{label:"1 month",days:30},
+      {label:"3 months",days:90},{label:"6 months",days:180},
+      {label:"1 year",days:365},{label:"Remove expiry (permanent)",days:null},
+      {label:"Custom date...",days:"custom"}
+    ];
+    const hint=currentExpiry?`\n\nCurrent expiry: ${new Date(currentExpiry*1000).toLocaleDateString()}`:"";
+    const menu=options.map((o,i)=>`${i+1}. ${o.label}`).join("\n");
+    const choice=prompt(`Set expiry for ${email}:${hint}\n\n${menu}\n\nEnter number:`);
+    if(!choice)return;
+    const idx=parseInt(choice)-1;
+    if(isNaN(idx)||idx<0||idx>=options.length)return alert("Invalid choice");
+    const opt=options[idx];
+    let expires_at=null;
+    if(opt.days==="custom"){
+      const d=prompt("Enter date (YYYY-MM-DD):");
+      if(!d)return;
+      expires_at=Math.floor(new Date(d).getTime()/1000);
+      if(isNaN(expires_at))return alert("Invalid date");
+    } else if(opt.days!==null){
+      expires_at=Math.floor(Date.now()/1000)+opt.days*86400;
+    }
+    await fetch(`/admin/set-expiry?secret=${secret}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email,expires_at})});
+    load();
+  }
+
   async function updatePw(email){
     const pw = prompt(`New password for ${email}:`);
     if(!pw)return;
@@ -156,6 +183,7 @@
         <td style="white-space:nowrap;color:#2e5870;font-size:12px">${fmt(u.last_login)}</td>
         <td style="display:flex;gap:6px">
           <button class="btn-sm btn-approve" onclick="updatePw('${u.email}')">Change pw</button>
+          <button class="btn-sm" style="color:#fbbf24;border-color:rgba(251,191,36,.3);background:rgba(251,191,36,.06)" onclick="setExpiry('${u.email}',${u.expires_at||null})">${u.expires_at?(Date.now()/1000>u.expires_at?'⚠️ EXPIRED':'⏳ '+new Date(u.expires_at*1000).toLocaleDateString()):'Set Expiry'}</button>
           <button class="btn-sm btn-revoke" onclick="revoke('${u.email}')">Revoke</button>
         </td>
       </tr>`).join(""):`<tr><td colspan="6" class="empty">No approved users.</td></tr>`;
