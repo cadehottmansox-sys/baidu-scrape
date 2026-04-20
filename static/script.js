@@ -701,7 +701,7 @@ async function loadAdminRequests(){
   const el = document.getElementById('adminRequests');
   if(!el) return;
   try{
-    const r = await fetch('/admin/api/data');
+    const r = await fetch('/admin/api/data?secret=secretcode');
     const d = await r.json();
     const pending = (d.requests||[]).filter(r=>r.status==='pending');
     if(!pending.length){ el.innerHTML='<div class="crm-empty">No pending requests 🎉</div>'; return; }
@@ -730,7 +730,7 @@ async function loadAdminRequests(){
 
 async function adminDeny(id){
   if(!confirm('Deny this request?')) return;
-  await fetch(`/admin/api/deny/${id}`);
+  await fetch(`/admin/api/deny/${id}?secret=secretcode`);
   document.getElementById(`req-${id}`)?.remove();
   showToast('Request denied');
 }
@@ -739,7 +739,7 @@ async function loadAdminUsers(){
   const el = document.getElementById('adminUsers');
   if(!el) return;
   try{
-    const r = await fetch('/admin/api/data');
+    const r = await fetch('/admin/api/data?secret=secretcode');
     const d = await r.json();
     const users = (d.approved||[]);
     if(!users.length){ el.innerHTML='<div class="crm-empty">No users yet</div>'; return; }
@@ -793,7 +793,7 @@ async function loadAdminAnalytics(){
   const el = document.getElementById('adminAnalytics');
   if(!el) return;
   try{
-    const r = await fetch('/admin/api/analytics');
+    const r = await fetch('/admin/api/analytics?secret=secretcode');
     const d = await r.json();
     if(!d.length){ el.innerHTML='<div class="crm-empty">No data yet</div>'; return; }
     el.innerHTML = `
