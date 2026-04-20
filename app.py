@@ -33,6 +33,21 @@ def create_app() -> Flask:
     app = Flask(__name__)
     logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s")
 
+    # Clear all session tokens on startup — forces re-login every deploy
+    try:
+        import storage
+        data = storage.read("sf_users", {"requests": [], "approved": []})
+        changed = False
+        for u in data.get("approved", []):
+            if u.get("session_token"):
+                u["session_token"] = None
+                changed = True
+        if changed:
+            storage.write("sf_users", data)
+            logging.getLogger(__name__).info("Cleared all session tokens on startup")
+    except Exception as e:
+        logging.getLogger(__name__).warning("Could not clear sessions on startup: %s", e)
+
     def get_ip():
         return request.headers.get("X-Forwarded-For", request.remote_addr or "unknown").split(",")[0].strip()
 
@@ -112,7 +127,7 @@ def create_app() -> Flask:
                 return jsonify({"ok": False, "needs_password": True, "email": email, "error": result.get("error", "")}), 200
             return jsonify({"error": result.get("error", "Invalid credentials.")}), 401
         resp = make_response(jsonify({"ok": True, "status": "ok", "name": result["name"], "is_admin": result.get("is_admin", False)}))
-        resp.set_cookie("sf_token", result["token"], httponly=True, samesite="Lax")
+        resp.set_cookie("sf_token", result["token"], max_age=60*60*24*365, httponly=True, samesite="Lax")
         return resp
 
     @app.post("/set-password")
@@ -125,7 +140,7 @@ def create_app() -> Flask:
         result = auth.set_password(email, password)
         if result.get("ok"):
             resp = make_response(jsonify({"ok": True, "name": result["name"]}))
-            resp.set_cookie("sf_token", result["token"], httponly=True, samesite="Lax")
+            resp.set_cookie("sf_token", result["token"], max_age=60*60*24*365, httponly=True, samesite="Lax")
             return resp
         return jsonify(result), 400
 
@@ -358,7 +373,7 @@ def create_app() -> Flask:
         if not result.get("ok"):
             return jsonify(result), 400
         resp = make_response(jsonify({"ok": True, "name": result["name"], "is_admin": result.get("is_admin", False)}))
-        resp.set_cookie("sf_token", result["token"], httponly=True, samesite="Lax")
+        resp.set_cookie("sf_token", result["token"], max_age=60*60*24*365, httponly=True, samesite="Lax")
         return resp
 
     @app.get("/admin/api/data")
