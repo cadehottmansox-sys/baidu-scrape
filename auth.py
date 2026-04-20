@@ -86,6 +86,7 @@ def login_user(email, password, ip):
     if user["password"] != _hash(password): return {"valid": False, "error": "Wrong password."}
     token = secrets.token_urlsafe(32)
     _SESSIONS[token] = email
+    user["session_token"] = token
     user["last_login"] = time.time()
     if ip not in user.get("ip_history", []):
         user.setdefault("ip_history", []).append(ip)
@@ -107,10 +108,19 @@ def _ensure_owner():
         user["is_admin"] = True; user["revoked"] = False; _save(data)
 
 def validate_token(token, ip):
-    if not token or token not in _SESSIONS:
+    if not token:
         return {"valid": False}
-    email = _SESSIONS[token]
+    # Check memory first (fast), fall back to DB (survives deploys)
+    email = _SESSIONS.get(token)
     data = _load()
+    if not email:
+        # Try DB lookup
+        user = next((u for u in data["approved"] if u.get("session_token") == token), None)
+        if user:
+            email = user["email"]
+            _SESSIONS[token] = email  # Restore to memory
+    if not email:
+        return {"valid": False}
     user = next((u for u in data["approved"] if u["email"] == email), None)
     if not user or user.get("revoked"): return {"valid": False}
     expires_at = user.get("expires_at")
