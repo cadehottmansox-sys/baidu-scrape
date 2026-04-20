@@ -1838,6 +1838,13 @@ async function runSearch({query, brand='', platform='all', mode='supplier', deep
       body:JSON.stringify({query,brand,platform,mode,deep_scan:deepScan,wechat_only:wcOnly})});
     clearTimeout(timer);
     const d = await r.json();
+    if(!r.ok || d.error){
+      if(dot) dot.className='status-dot error';
+      if(status) status.textContent='Error';
+      if(results) results.innerHTML=`<div class="empty">Error: ${d.error||'Search failed'}</div>`;
+      if(btn){ btn.disabled=false; if(btn._orig) btn.innerHTML=btn._orig; }
+      return;
+    }
     const res = d.results||[];
     if(dot) dot.className='status-dot';
     if(status) status.textContent=`${res.length} found`;
