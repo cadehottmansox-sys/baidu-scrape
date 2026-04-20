@@ -431,28 +431,31 @@ kbd.kb{font-size:9px;font-family:var(--mono);background:rgba(0,245,255,.08);bord
 }
 .tower-waves{
   position:absolute;
-  top:0;left:50%;
-  transform:translate(-50%,-30%);
-  width:2em;height:2em;
+  /* dot of lowercase i sits ~12% from top of em box */
+  top:0.08em;
+  left:50%;
+  transform:translateX(-50%);
+  width:0;height:0;
   pointer-events:none;
   overflow:visible;
-  z-index:1;
+  z-index:3;
 }
 .wave{
   fill:none;
   stroke:#00f5ff;
   stroke-width:1.5;
   opacity:0;
-  transform-origin:30px 30px;
+  /* expand from 0,0 which is exactly the dot position */
+  transform-origin:0px 0px;
 }
 .w1{ animation: towerPing 4s ease-out infinite; }
 .w2{ animation: none; opacity:0; }
 .w3{ animation: none; opacity:0; }
 
 @keyframes towerPing{
-  0%  { r:4;  opacity:.9; stroke-width:2; }
-  60% { r:28; opacity:.15; stroke-width:.8; }
-  100%{ r:34; opacity:0;  stroke-width:.3; }
+  0%  { r:2;  opacity:1;   stroke-width:2.5; }
+  50% { r:22; opacity:.25; stroke-width:1; }
+  100%{ r:32; opacity:0;   stroke-width:.3; }
 }
 
 /* ── SAVED TAB ── */
