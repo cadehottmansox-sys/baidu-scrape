@@ -32,22 +32,21 @@ except ImportError:
     OCR_AVAILABLE = False
 
 # ── WeChat patterns ───────────────────────────────────────────────
-WECHAT_VALID   = re.compile(r"^[a-zA-Z][a-zA-Z0-9_-]{5,19}$")
-WECHAT_GARBAGE = re.compile(r"(1234|aaaa|test|demo|fake|xxxx|0000|abcd)", re.I)
+# WeChat validation — letter OR digit start, 5-20 chars (pure number IDs valid)
+WECHAT_VALID   = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_]{4,19}$")
+WECHAT_GARBAGE = re.compile(
+    r"(1234567|test|demo|fake|xxxx|0000|abcd|admin|null|none|"
+    r"com|net|org|www|http|html|shop|store|tmall|taobao|jd|alibaba|"
+    r"photo|image|video|thumb|click|search|token|order|price|color|size)", re.I)
 WECHAT_PATTERNS = [
-    # Standard WeChat patterns
-    re.compile(r"(?:wechat|weixin|微信|wx号|vx|加v|加微|v信|微信号|扫码加|联系微信|wx)[\s:：#\-「」【】]*([a-zA-Z0-9_-]{5,20})", re.I),
-    re.compile(r"加[Vv][\s:：「」【】]*([a-zA-Z0-9_-]{5,20})"),
-    re.compile(r"微信[：:号码id ID]*[\s]*([a-zA-Z0-9_-]{5,20})"),
-    re.compile(r"(?:wx|VX|WX)[\s:：#]*([a-zA-Z0-9_-]{5,20})"),
-    re.compile(r"联系方式[\s:：]*([a-zA-Z0-9_-]{5,20})"),
-    # Rep seller specific patterns
-    re.compile(r"(?:v信|威信|围脖|巍新)[\s:：]*([a-zA-Z0-9_-]{5,20})", re.I),
-    re.compile(r"(?:加我|扫我|联系我|找我|私信)[\s:：]*([a-zA-Z0-9_-]{5,20})", re.I),
-    re.compile(r"微信[：:\s]*([a-zA-Z][a-zA-Z0-9_-]{5,19})"),
-    re.compile(r"([a-zA-Z][a-zA-Z0-9_-]{5,19})\s*(?:微信|vx|wx)", re.I),
-    # Common rep seller WeChat format: letters+numbers like ptx351, nkt858
-    re.compile(r"(?:微信号|wx号|vx号)[：:\s]*([a-z]{2,4}\d{3,6})", re.I),
+    re.compile(r"(?:wechat\s*id|微信号?|weixin|wx\s*id)[\s:：#\-「」【】]{0,4}([a-zA-Z0-9][a-zA-Z0-9_]{4,19})", re.I),
+    re.compile(r"加[Vv微][\s:：「」【】]{0,3}([a-zA-Z0-9][a-zA-Z0-9_]{4,19})"),
+    re.compile(r"(?:vx|wx)[号:：\s]{1,4}([a-zA-Z0-9][a-zA-Z0-9_]{4,19})(?!\.)"),
+    re.compile(r"(?:加微信|微信联系|微信咨询|扫码加)[\s:：]{0,3}([a-zA-Z0-9][a-zA-Z0-9_]{4,19})"),
+    re.compile(r"[【(（]\s*(?:wechat\s*id|微信|wx)?\s*([a-zA-Z0-9][a-zA-Z0-9_]{4,19})\s*[】)）]", re.I),
+    re.compile(r"(?:recommended|推荐|contact)[\s:：]+(?:wechat|微信)?[\s:：]*([a-zA-Z0-9][a-zA-Z0-9_]{4,19})", re.I),
+    re.compile(r"微信[\s:：]+([a-zA-Z0-9][a-zA-Z0-9_]{4,19})"),
+    re.compile(r"(?:微信号|wx号|vx号)[：:\s]{0,3}([a-z]{2,4}\d{3,6})", re.I),
 ]
 EMAIL_RE = re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b")
 PHONE_RE = re.compile(r"(?:\+?86[-\s]?)?(1[3-9]\d{9}|\d{3,4}[-\s]?\d{7,8})")
@@ -70,11 +69,36 @@ REP_KEYWORDS = {
     "sneaker","shoe","kicks","hoodie","tee","jacket","coat","down","puffer",
 }
 def build_inject(base_query):
+    """Build smart query injection based on what user is searching for."""
     q = base_query.lower()
     is_rep = any(kw in q for kw in REP_KEYWORDS)
+
     if is_rep:
-        return (f"{FACTORY_INJECT} {REP_INJECT}", f"{ALL_Q2_INJECT_BASE} {REP_INJECT}")
-    return (f"{FACTORY_INJECT}", f"{ALL_Q2_INJECT_BASE} 联系方式")
+        # Rep/sneaker/luxury — inject rep keywords + factory contact
+        q1 = f"{FACTORY_INJECT} {REP_INJECT} 微信号"
+        q2 = f"yupoo 1688 weidian 厂家直销 微信 {REP_INJECT} 莆田"
+    else:
+        # Generic product — factory direct, wholesale, no rep terms
+        # Based on video: search Chinese name + factory + WeChat contact
+        q1 = f"{FACTORY_INJECT} 微信号 联系方式 QQ 厂家直营"
+        q2 = f"1688 weidian 厂家直销 批发商 微信 联系方式 源头厂家"
+    return q1, q2
+
+def build_zhihu_inject(base_query):
+    """Zhihu-specific: expert discussions about which factory is best."""
+    return f"哪家工厂 {base_query} 质量好 推荐 厂家 评测"
+
+def build_xianyu_inject(base_query):
+    """Xianyu-specific: factory overruns and clearance stock."""
+    return f"{base_query} 工厂尾货 库存 清仓 余单 原单 微信"
+
+def build_weidian_inject(base_query):
+    """Weidian-specific: find batches, compare quality tiers."""
+    return f"{base_query} 批次 weidian 微店 工厂 微信 联系"
+
+def build_xiaohongshu_inject(base_query):
+    """XHS-specific: trend intel and buyer reviews."""
+    return f"{base_query} 推荐 测评 哪里买 工厂 质量 微信"
 ALL_Q1_INJECT = FACTORY_INJECT
 ALL_Q2_INJECT = ALL_Q2_INJECT_BASE
 
@@ -97,7 +121,7 @@ BLOCKED_DOMAINS = {
     # Social/search/news
     "wikipedia.org","baidu.com","google.com","youtube.com",
     "instagram.com","facebook.com","twitter.com","x.com","tiktok.com",
-    "douyin.com",
+    "douyin.com","alibaba.com","amazon.com","amazon.co.uk","amazon.de","chinagoods.com","hktdc.com","global.1688.com","chinese.alibaba.com",
     "163.com","sohu.com","sina.com.cn","qq.com","ifeng.com",
     # Maps/directories
     "mapbar.com","amap.com","dianping.com","yelp.com","maps.google.com",
@@ -130,9 +154,16 @@ def _is_blocked(url):
 
 def _wq(wid):
     if not WECHAT_VALID.match(wid): return 0
-    if WECHAT_GARBAGE.search(wid): return 1
-    if re.search(r"[a-zA-Z]",wid) and re.search(r"[0-9]",wid) and len(wid)>=8: return 3
-    return 2
+    if WECHAT_GARBAGE.search(wid): return 0
+    if len(wid) < 5 or len(wid) > 20: return 0
+    has_alpha = bool(re.search(r"[a-zA-Z]", wid))
+    has_digit = bool(re.search(r"[0-9]", wid))
+    # Pure numbers 6-10 digits — valid WeChat (like 8370035)
+    if not has_alpha and has_digit and 6 <= len(wid) <= 10: return 3
+    # Mix of letters and numbers — high quality
+    if has_alpha and has_digit and len(wid) >= 6: return 3
+    if has_alpha and len(wid) >= 8: return 2
+    return 1
 
 def _conf(w):
     base={3:0.85,2:0.60,1:0.25,0:0.0}.get(w.get("quality",0),0.0)
@@ -714,8 +745,12 @@ async def search_platform(
             if platform=="all":
                 seen_all=set(seen_links)
                 _inj1, _inj2 = build_inject(base)
-                q1=f"{base} {_inj1}"
-                q2=f"{base} {_inj2}"
+                q1 = f"{base} {_inj1}"
+                q2 = f"{base} {_inj2}"
+                # Add Zhihu expert intel query
+                q3 = f"site:zhihu.com {base} 工厂 推荐 哪家好"
+                # Add Weidian batch query
+                q4 = f"weidian {base} {build_weidian_inject(base)}"
                 r1=await _baidu_search(page,q1,max_r,timeout,delay,seen_all,"All-in-One",mode)
                 for r in r1: seen_all.add(r["link"])
                 results.extend(r1)
@@ -727,10 +762,13 @@ async def search_platform(
                 if platform in PLAT:
                     # For direct platform chips, still search via Baidu with platform keyword
                     injects = {
-                        "1688": f"1688 厂家直销 批发 微信 联系方式",
-                        "taobao": f"淘宝 厂家店 工厂 微信",
-                        "xianyu": f"闲鱼 库存 尾货 微信",
-                        "weidian": f"微店 weidian 厂家 微信",
+                        "1688": f"1688 厂家直销 批发 微信 回购率 联系方式",
+                        "taobao": f"淘宝 厂家店 工厂 微信 销量",
+                        "xianyu": f"闲鱼 {build_xianyu_inject(base)}",
+                        "weidian": f"微店 {build_weidian_inject(base)}",
+                        "xiaohongshu": f"小红书 {build_xiaohongshu_inject(base)}",
+                        "zhihu": f"知乎 {build_zhihu_inject(base)}",
+                        "weibo": f"微博 工厂 {base} 微信 联系方式 厂家",
                     }
                     _pi1, _ = build_inject(base)
                     inject = injects.get(platform, _pi1)
