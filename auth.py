@@ -122,8 +122,8 @@ def login_user(email, password, ip):
     if user["password"] != _hash(password):
         return {"valid": False, "error": "Wrong password."}
     token = secrets.token_urlsafe(32)
-    user["session_token"] = token
-    user["last_login"]    = time.time()
+    _SESSIONS[token] = user["email"]
+    user["last_login"] = time.time()
     if ip not in user.get("ip_history", []):
         user.setdefault("ip_history", []).append(ip)
     _save(data)
@@ -148,10 +148,11 @@ def _ensure_owner():
         _save(data)
 
 def validate_token(token, ip):
-    if not token:
+    if not token or token not in _SESSIONS:
         return {"valid": False}
+    email = _SESSIONS[token]
     data = _load()
-    user = next((u for u in data["approved"] if u.get("session_token") == token), None)
+    user = next((u for u in data["approved"] if u["email"] == email), None)
     if not user or user.get("revoked"):
         return {"valid": False}
     expires_at = user.get("expires_at")
