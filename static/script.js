@@ -1627,35 +1627,35 @@ const SHIP_RATES = {
     {name:'FedEx IP Express',   base:18, per:14,  days:'3-5',   risk:'high', rec:false, note:'Fastest — high customs scrutiny'},
     {name:'DHL Express',        base:16, per:13,  days:'3-5',   risk:'high', rec:false, note:'Fast — declared value matters'},
     {name:'UPS Express',        base:17, per:13,  days:'3-6',   risk:'high', rec:false, note:'Similar to DHL'},
-    {name:'SF Express Int'l',  base:12, per:9,   days:'5-8',   risk:'med',  rec:true,  note:'Chinese express — lower scrutiny than DHL/FedEx'},
+    {name:'SF Express Intl',  base:12, per:9,   days:'5-8',   risk:'med',  rec:true,  note:'Chinese express — lower scrutiny than DHL/FedEx'},
     {name:'EMS (China Post)',   base:7,  per:5.5, days:'7-14',  risk:'med',  rec:true,  note:'Good balance — widely used for reps'},
     {name:'Private Line Haul',  base:4,  per:3.5, days:'10-18', risk:'low',  rec:false, note:'Cheapest — slowest — find via private agent'},
   ],
   uk: [
     {name:'FedEx IP Express',   base:20, per:16,  days:'3-5',   risk:'high', rec:false, note:'Fast but UK customs aggressive'},
     {name:'DHL Express',        base:18, per:15,  days:'3-5',   risk:'high', rec:false, note:'Common but high scrutiny post-Brexit'},
-    {name:'SF Express Int'l',  base:14, per:10,  days:'5-8',   risk:'med',  rec:true,  note:'Better odds than DHL for sensitive goods'},
+    {name:'SF Express Intl',  base:14, per:10,  days:'5-8',   risk:'med',  rec:true,  note:'Better odds than DHL for sensitive goods'},
     {name:'EMS',                base:8,  per:6,   days:'8-15',  risk:'med',  rec:true,  note:'Popular for rep shipments to UK'},
     {name:'Private Line Haul',  base:5,  per:4,   days:'10-18', risk:'low',  rec:false, note:'Ask your private agent'},
   ],
   eu: [
     {name:'FedEx IP Express',   base:22, per:17,  days:'3-5',   risk:'high', rec:false, note:'EU customs varies by country'},
     {name:'DHL Express',        base:20, per:16,  days:'3-6',   risk:'high', rec:false, note:'Germany/NL most thorough'},
-    {name:'SF Express Int'l',  base:15, per:11,  days:'5-8',   risk:'med',  rec:true,  note:'Good for Eastern EU'},
+    {name:'SF Express Intl',  base:15, per:11,  days:'5-8',   risk:'med',  rec:true,  note:'Good for Eastern EU'},
     {name:'EMS',                base:9,  per:7,   days:'8-16',  risk:'med',  rec:true,  note:'Decent option for most EU'},
     {name:'Private Line Haul',  base:5,  per:4.5, days:'12-20', risk:'low',  rec:false, note:'Ask private agent for EU routes'},
   ],
   au: [
     {name:'FedEx IP Express',   base:25, per:18,  days:'4-6',   risk:'high', rec:false, note:'AU border force strict'},
     {name:'DHL Express',        base:22, per:17,  days:'4-6',   risk:'high', rec:false, note:'High scrutiny'},
-    {name:'SF Express Int'l',  base:16, per:12,  days:'6-9',   risk:'med',  rec:true,  note:'Better option for AU'},
+    {name:'SF Express Intl',  base:16, per:12,  days:'6-9',   risk:'med',  rec:true,  note:'Better option for AU'},
     {name:'EMS',                base:10, per:8,   days:'8-15',  risk:'med',  rec:false, note:'Moderate risk'},
     {name:'Private Line Haul',  base:6,  per:5,   days:'12-22', risk:'low',  rec:false, note:'Slowest but safest'},
   ],
   ca: [
     {name:'FedEx IP Express',   base:19, per:15,  days:'3-5',   risk:'high', rec:false, note:'CA customs unpredictable'},
     {name:'DHL Express',        base:17, per:14,  days:'3-6',   risk:'high', rec:false, note:'Common but watched'},
-    {name:'SF Express Int'l',  base:13, per:10,  days:'5-8',   risk:'med',  rec:true,  note:'Solid option for Canada'},
+    {name:'SF Express Intl',  base:13, per:10,  days:'5-8',   risk:'med',  rec:true,  note:'Solid option for Canada'},
     {name:'EMS',                base:8,  per:6.5, days:'8-16',  risk:'med',  rec:true,  note:'Works well for CA'},
     {name:'Private Line Haul',  base:4,  per:3.5, days:'12-22', risk:'low',  rec:false, note:'Cheapest'},
   ],
@@ -1892,4 +1892,145 @@ document.getElementById('passingForm')?.addEventListener('submit', e=>{
     btnId:'passingBtn',dotId:'passingDot',statusId:'passingStatus',
     resultsId:'passingResults',hintId:'passingHint',
     hintText:`Passing/NFC search: ${brand} ${query}`.trim()});
+});
+
+// ── PASSING / NFC TAB ─────────────────────────────────────────────
+
+let passingMode = 'supplier';
+
+const PASSING_INJECT = {
+  supplier: '过验 NFC芯片 防伪 同厂 纯原 同材质 1:1 莆田 工厂 微信号 联系方式',
+  batch:    '批次 哪个批次 质量对比 过验 通过验 推荐批次 weidian 小红书',
+  nfc:      'NFC芯片 NFC防伪 扫码验真 NFC过验 NFC chip 微信 联系方式 工厂',
+};
+
+const PASSING_VERDICT_WORDS = [
+  '过验','通过验','pass','passing','nfc','纯原','同厂','同材质',
+  '1:1','原厂','推荐','好评','值得买','完美','正品级'
+];
+
+function setPassingMode(mode, btn){
+  passingMode = mode;
+  document.querySelectorAll('#tab-passing .ff-mode-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('passingMode').value = mode;
+
+  const batchSection = document.getElementById('passingBatchSection');
+  if(batchSection) batchSection.style.display = mode==='batch' ? '' : 'none';
+
+  const q = document.getElementById('passingQuery');
+  const b = document.getElementById('passingBtn');
+  if(mode==='supplier'){
+    if(q) q.placeholder='Jordan 4 bred, Yeezy 350 zebra…';
+    if(b) b.textContent='🏭 Find Passing Supplier';
+  } else if(mode==='batch'){
+    if(q) q.placeholder='Jordan 4 bred — which batch passes best?';
+    if(b) b.textContent='📦 Find Batch Intel';
+  } else if(mode==='nfc'){
+    if(q) q.placeholder='Jordan 4, Air Max — NFC chip version';
+    if(b) b.textContent='📱 Find NFC Factory';
+  }
+}
+
+// Highlight passing verdict words in snippet
+function highlightPassingVerdicts(text){
+  let result = text;
+  PASSING_VERDICT_WORDS.forEach(word=>{
+    const re = new RegExp(`(${word})`, 'gi');
+    result = result.replace(re, '<mark class="verdict-mark">$1</mark>');
+  });
+  return result;
+}
+
+// Override buildCard for passing results to highlight verdicts
+function buildPassingCard(item, index){
+  const card = buildCard(item, index);
+  // Highlight verdict words in snippet
+  const snip = card.querySelector('.card-snip');
+  if(snip) snip.innerHTML = highlightPassingVerdicts(snip.textContent||'');
+  return card;
+}
+
+// Run batch intel search across Weidian + XHS
+async function runBatchIntel(brand, query){
+  const results = document.getElementById('batchIntelResults');
+  if(!results) return;
+  results.innerHTML = '<div class="loader"><div class="loader-dots"><span></span><span></span><span></span></div>Searching Weidian + Xiaohongshu for batch reviews…</div>';
+
+  const queries = [
+    {q:`${brand} ${query} 批次 过验 推荐`.trim(), platform:'weidian', label:'Weidian Batches'},
+    {q:`${brand} ${query} 哪个批次好 测评 小红书`.trim(), platform:'xiaohongshu', label:'XHS Reviews'},
+    {q:`${brand} ${query} 过验 同厂 纯原`.trim(), platform:'zhihu', label:'Zhihu Expert'},
+  ];
+
+  const seen = new Set();
+  const all = [];
+  for(const {q, platform, label} of queries){
+    try{
+      const r = await fetch('/search',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({query:q, brand:'', platform, mode:'passing', deep_scan:false, wechat_only:false})});
+      const d = await r.json();
+      (d.results||[]).forEach(item=>{
+        if(!seen.has(item.link)){ seen.add(item.link); all.push({...item, _label:label}); }
+      });
+    } catch{}
+  }
+
+  results.innerHTML = '';
+  if(!all.length){ results.innerHTML='<div class="empty">No batch intel found — try searching the product name in English and Chinese</div>'; return; }
+  all.forEach((item,i)=>results.appendChild(buildPassingCard(item,i)));
+}
+
+// Patch passing form handler to use mode-specific logic
+document.getElementById('passingForm')?.addEventListener('submit', async e=>{
+  e.preventDefault();
+  const brand = document.getElementById('passingBrand')?.value.trim()||'';
+  const query = document.getElementById('passingQuery')?.value.trim()||'';
+  const deepScan = document.getElementById('passingDeepScan')?.checked||false;
+  const wcOnly = document.getElementById('passingWcOnly')?.checked||false;
+  const mode = document.getElementById('passingMode')?.value||'supplier';
+
+  if(mode==='batch'){
+    // Run batch intel search
+    const batchSection = document.getElementById('passingBatchSection');
+    if(batchSection) batchSection.style.display='';
+    runBatchIntel(brand, query);
+    return;
+  }
+
+  const inject = PASSING_INJECT[mode]||PASSING_INJECT.supplier;
+  const fullQuery = `${brand} ${query} ${inject}`.trim();
+
+  const results = document.getElementById('passingResults');
+  const dot = document.getElementById('passingDot');
+  const status = document.getElementById('passingStatus');
+  const hint = document.getElementById('passingHint');
+  const btn = document.getElementById('passingBtn');
+
+  if(btn){ btn.disabled=true; btn._orig=btn.innerHTML; btn.innerHTML='Searching…'; }
+  if(dot) dot.className='status-dot active';
+  if(status) status.textContent='Searching…';
+  if(results) results.innerHTML='<div class="loader"><div class="loader-dots"><span></span><span></span><span></span></div>Searching for passing goods…</div>';
+  if(hint){ hint.style.display='block'; hint.textContent=`Passing search: ${brand} ${query}`.trim(); }
+
+  try{
+    const r = await fetch('/search',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({query:fullQuery, brand:'', platform:'baidu', mode:'passing', deep_scan:deepScan, wechat_only:wcOnly})});
+    const d = await r.json();
+    const res = d.results||[];
+    if(dot) dot.className='status-dot';
+    if(status) status.textContent=`${res.length} found`;
+    if(results){
+      results.innerHTML='';
+      if(!res.length) results.innerHTML='<div class="empty">No results — try enabling Deep Scan or different keywords</div>';
+      else res.forEach((item,i)=>results.appendChild(buildPassingCard(item,i)));
+    }
+    updateStats(res);
+  } catch(e){
+    if(dot) dot.className='status-dot error';
+    if(status) status.textContent='Error';
+    if(results) results.innerHTML='<div class="empty">Search failed — please try again</div>';
+  } finally {
+    if(btn){ btn.disabled=false; btn.innerHTML=btn._orig||'Search'; }
+  }
 });
