@@ -442,12 +442,32 @@ async def _baidu_search(page, full_q, max_r, timeout, delay, seen_links, platfor
             logger.info("Baidu AI API: %d results", len(results))
             if results:
                 return results
-        logger.warning("Baidu AI API returned nothing, trying ScrapingDog then Playwright")
-        # Try ScrapingDog API as middle tier
-        sd_results = await _scrapingdog_search(full_q, max_r)
-        if sd_results:
-            logger.info("ScrapingDog: got %d results", len(sd_results))
-            return sd_results
+        logger.warning("Baidu AI API returned nothing, trying ScrapingDog...")
+        # Middle tier: ScrapingDog structured API
+        sd_refs = await asyncio.get_event_loop().run_in_executor(None, lambda: _scrapingdog_baidu_sync(full_q, max_r))
+        if sd_refs:
+            logger.info("ScrapingDog: processing %d refs into results", len(sd_refs))
+            for ref in sd_refs[:max_r]:
+                if len(results) >= max_r: break
+                title   = ref.get("title","")
+                href    = ref.get("url","")
+                snippet = ref.get("snippet","")
+                combined = " ".join(filter(None,[title,snippet,href]))
+                c  = _contacts(combined)
+                sc = _score(title,snippet,href,mode)
+                best_wq = max((w["quality"] for w in c["wechat_ids"]),default=0)
+                results.append({
+                    "title":title,"link":href or url,"snippet":snippet,
+                    "wechat_ids":c["wechat_ids"],"emails":c["emails"],"phones":c["phones"],
+                    "factory_score":sc,"wechat_quality":best_wq,
+                    "has_contact":bool(c["wechat_ids"] or c["emails"] or c["phones"]),
+                    "has_verified_wechat":best_wq>=3,"is_factory_like":sc>=3,
+                    "platform":platform_label,"baidu_query":full_q,"mode":mode,
+                    "deep_scanned":False,"page_num":page_num,"variation":0,
+                })
+            if results:
+                logger.info("ScrapingDog: returning %d results", len(results))
+                return results
         logger.warning("ScrapingDog returned nothing, falling back to Playwright")
 
     try:
