@@ -223,6 +223,26 @@ def create_app() -> Flask:
         result = auth.set_admin(data.get("email",""), data.get("is_admin", True))
         return jsonify(result)
 
+    @app.post("/translate")
+    @require_auth
+    def translate():
+        import urllib.request, urllib.parse
+        data   = request.get_json(silent=True) or {}
+        text   = (data.get("text") or "").strip()[:2000]
+        target = (data.get("target") or "en").strip()
+        source = (data.get("source") or "auto").strip()
+        if not text: return jsonify({"translated": text})
+        try:
+            url = f"https://translate.googleapis.com/translate_a/single?client=gtx&sl={source}&tl={target}&dt=t&q={urllib.parse.quote(text)}"
+            req = urllib.request.Request(url, headers={"User-Agent":"Mozilla/5.0"})
+            with urllib.request.urlopen(req, timeout=8) as resp:
+                import json as _json
+                d = _json.loads(resp.read())
+            translated = "".join(s[0] for s in d[0] if s[0])
+            return jsonify({"translated": translated})
+        except Exception as e:
+            return jsonify({"translated": text, "error": str(e)})
+
     @app.get("/api/saved")
     @require_auth
     def get_saved():
