@@ -16,7 +16,7 @@
     <header class="hero">
       <div class="hero-pill"><span class="hero-pill-dot"></span>PRIVATE ACCESS · BAIDU AI · LIVE</div>
       <h1 class="hero-title">Source<span class="hero-accent">F<span class="tower-wrap"><span class="tower-i">i</span><svg class="tower-waves" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"><circle class="wave w1" cx="30" cy="30" r="8" /><circle class="wave w2" cx="30" cy="30" r="8" /><circle class="wave w3" cx="30" cy="30" r="8" /></svg></span>nder</span></h1>
-      <p class="hero-sub">Chinese suppliers · Factory WeChats · Passing goods · Freight</p>
+      <p class="hero-sub">1688 · Weidian · Xianyu · Weibo · Zhihu · Baidu · Yupoo · 小红书</p>
       <div class="hero-stats">
         <div class="hero-stat"><div class="stat-val" id="statSuppliers">—</div><div class="stat-label">Suppliers</div></div>
         <div class="hero-stat"><div class="stat-val" id="statWechats">—</div><div class="stat-label">WeChats</div></div>
@@ -41,6 +41,10 @@
       <button class="tab-btn" data-tab="finds">
         <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M8 2l1.5 3 3.5.5-2.5 2.5.5 3.5L8 10l-3 1.5.5-3.5L3 5.5l3.5-.5z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
         Finds
+      </button>
+      <button class="tab-btn" data-tab="research">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><circle cx="6" cy="6" r="4" stroke="currentColor" stroke-width="1.5"/><path d="M10 10l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M6 4v4M4 6h4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+        Research
       </button>
       <button class="tab-btn" data-tab="admin" id="adminTabBtn" style="display:none">
         <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M8 2a3 3 0 100 6 3 3 0 000-6zM2 13c0-2.8 2.7-5 6-5s6 2.2 6 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="13" cy="5" r="2" fill="currentColor"/></svg>
@@ -67,15 +71,15 @@
           <div class="platform-row">
             <label class="row-label">Platform</label>
             <div class="chips" id="supplierChips">
-              <button type="button" class="chip chip-all active" data-platform="all">⚡ All-in-One</button>
-              <button type="button" class="chip" data-platform="baidu">Baidu</button>
-              <button type="button" class="chip" data-platform="yupoo">Yupoo</button>
-              <button type="button" class="chip" data-platform="1688">1688</button>
-              <button type="button" class="chip" data-platform="xianyu">Xianyu</button>
-              <button type="button" class="chip" data-platform="xiaohongshu">小红书</button>
-              <button type="button" class="chip" data-platform="weidian">Weidian</button>
-              <button type="button" class="chip" data-platform="pinduoduo">Pinduoduo</button>
-              <button type="button" class="chip" data-platform="wechat">WeChat</button>
+              <button type="button" class="chip chip-all active" data-platform="all" title="Searches all platforms simultaneously">⚡ All-in-One</button>
+              <button type="button" class="chip" data-platform="baidu" title="Hidden factories not on 1688 — direct websites, WeChats, QQ">🔍 Baidu</button>
+              <button type="button" class="chip" data-platform="1688" title="Factory direct wholesale — repurchase rate + transaction count">🏭 1688</button>
+              <button type="button" class="chip" data-platform="weidian" title="Find product batches — compare quality tiers">📦 Weidian</button>
+              <button type="button" class="chip" data-platform="xianyu" title="Factory overruns &amp; clearance — sometimes cheaper than 1688">🏷️ Xianyu</button>
+              <button type="button" class="chip" data-platform="xiaohongshu" title="Trend intel — buyer reviews, batch comparisons">📕 小红书</button>
+              <button type="button" class="chip" data-platform="weibo" title="Factory announcements — direct contact info">📢 Weibo</button>
+              <button type="button" class="chip" data-platform="zhihu" title="Expert discussions — which factory makes the best X?">💬 Zhihu</button>
+              <button type="button" class="chip" data-platform="yupoo" title="Rep seller albums — WeChat in bio">🖼️ Yupoo</button>
             </div>
             <input type="hidden" id="supplierPlatform" value="all"/>
           </div>
@@ -237,6 +241,99 @@
         <div class="admin-section-title"><span class="admin-dot" style="background:var(--c2)"></span>Analytics</div>
         <div id="analyticsTable" class="crm-table-wrap"></div>
       </div>
+    </section>
+
+    <!-- RESEARCH TAB -->
+    <section class="tab-panel" id="tab-research">
+
+      <!-- AUTO-TRANSLATE QUERY -->
+      <div class="research-section">
+        <div class="research-header">
+          <div class="research-icon">🈯</div>
+          <div>
+            <div class="research-title">Chinese Query Translator</div>
+            <div class="research-desc">Translate your product name to Chinese before searching — gets 10x better results on Baidu & 1688</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <input type="text" id="translateQueryInput" placeholder="e.g. Running shoes factory, yoga leggings..." style="flex:1;min-width:200px"/>
+          <button class="btn-primary" onclick="translateQuery()" style="height:42px;padding:0 16px;white-space:nowrap">🈯 Translate</button>
+        </div>
+        <div id="translateQueryResult" style="margin-top:10px"></div>
+      </div>
+
+      <!-- FACTORY VALIDATOR -->
+      <div class="research-section">
+        <div class="research-header">
+          <div class="research-icon">🏭</div>
+          <div>
+            <div class="research-title">Factory Validator</div>
+            <div class="research-desc">Paste a 1688/Weidian URL — we check repurchase rate, transaction count, shop age, and WeChat extraction</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <input type="text" id="validateUrl" placeholder="https://shop.1688.com/..." style="flex:1;min-width:200px"/>
+          <button class="btn-primary" onclick="validateFactory()" style="height:42px;padding:0 16px;white-space:nowrap">🔍 Validate</button>
+        </div>
+        <div id="validateResult" style="margin-top:12px"></div>
+      </div>
+
+      <!-- TREND CHECKER -->
+      <div class="research-section">
+        <div class="research-header">
+          <div class="research-icon">📈</div>
+          <div>
+            <div class="research-title">Trend Checker</div>
+            <div class="research-desc">Search Taobao & Xiaohongshu to see what's selling before you source — validate demand first</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <input type="text" id="trendInput" placeholder="Product to check trends for..." style="flex:1;min-width:200px"/>
+          <button class="btn-primary" onclick="checkTrend()" style="background:var(--c3);height:42px;padding:0 16px;white-space:nowrap">📈 Check Trend</button>
+        </div>
+        <div id="trendResult" class="results" style="margin-top:12px"></div>
+      </div>
+
+      <!-- BATCH COMPARATOR -->
+      <div class="research-section">
+        <div class="research-header">
+          <div class="research-icon">⚖️</div>
+          <div>
+            <div class="research-title">Batch Comparator</div>
+            <div class="research-desc">Search Weidian for multiple quality tiers of the same product — find which batch is worth buying</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <input type="text" id="batchInput" placeholder="e.g. Jordan 4 batch, Dunk SB batch..." style="flex:1;min-width:200px"/>
+          <button class="btn-primary" onclick="compareBatches()" style="background:var(--a);color:#000;height:42px;padding:0 16px;white-space:nowrap">⚖️ Compare Batches</button>
+        </div>
+        <div id="batchResult" class="results" style="margin-top:12px"></div>
+      </div>
+
+      <!-- QUICK LINKS -->
+      <div class="research-section">
+        <div class="research-header">
+          <div class="research-icon">🔗</div>
+          <div>
+            <div class="research-title">Quick Open</div>
+            <div class="research-desc">Open any platform directly — pre-searched for your product</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <input type="text" id="quickInput" placeholder="Product name..." style="flex:1;min-width:200px"/>
+        </div>
+        <div class="quick-links" id="quickLinks" style="margin-top:10px;display:flex;flex-wrap:wrap;gap:6px">
+          <button class="quick-btn" onclick="quickOpen('1688')">🏭 1688</button>
+          <button class="quick-btn" onclick="quickOpen('taobao')">🛒 Taobao</button>
+          <button class="quick-btn" onclick="quickOpen('weidian')">📦 Weidian</button>
+          <button class="quick-btn" onclick="quickOpen('xianyu')">🏷️ Xianyu</button>
+          <button class="quick-btn" onclick="quickOpen('xiaohongshu')">📕 小红书</button>
+          <button class="quick-btn" onclick="quickOpen('weibo')">📢 Weibo</button>
+          <button class="quick-btn" onclick="quickOpen('zhihu')">💬 Zhihu</button>
+          <button class="quick-btn" onclick="quickOpen('jadeship')">🚀 Jadeship</button>
+        </div>
+      </div>
+
     </section>
 
     <!-- SAVED -->
