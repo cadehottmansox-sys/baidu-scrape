@@ -75,6 +75,17 @@ FF_PRIVATE_AGENT_QUERIES = [
 ]
 PASSING_TERMS  = ["passing","nfc","芯片","过货","验货","防伪","莆田","1:1","高仿","复刻"]
 
+# How passing suppliers actually advertise on Chinese platforms
+PASSING_INJECT = (
+    "过验 passing NFC芯片 防伪芯片 1:1 同厂 纯原 同材质 "
+    "莆田 高仿 复刻 工厂 微信号 联系方式 "
+    "过机场 通过验 专柜验 真标 过检"
+)
+PASSING_NFC_INJECT = (
+    "NFC芯片 NFC防伪 扫码验真 NFC过验 NFC chip "
+    "防伪芯片 工厂 微信 联系方式 莆田 过验"
+)
+
 REP_INJECT = "复刻 高仿 1:1 莆田 代工 原单 余单 工厂货 rep replica fashionreps"
 FACTORY_INJECT = "厂家直销 源头工厂 一手货源 微信号 联系方式 批发 代理 工厂"
 ALL_Q2_INJECT_BASE = "yupoo 1688 微店 weidian 厂家直销 微信 源头工厂"
@@ -87,6 +98,28 @@ REP_KEYWORDS = {
     "moncler","canada goose","rep","replica","1:1","passing","nfc","putian","莆田",
     "sneaker","shoe","kicks","hoodie","tee","jacket","coat","down","puffer",
 }
+# Auto-translate common English product terms to Chinese for better Baidu results
+EN_ZH_MAP = {
+    "soccer cleats":"足球鞋","soccer shoes":"足球鞋","football boots":"足球鞋",
+    "sneakers":"运动鞋","shoes":"鞋子","boots":"靴子","sandals":"凉鞋",
+    "hoodie":"卫衣","t-shirt":"T恤","jacket":"夹克","coat":"大衣",
+    "pants":"裤子","leggings":"打底裤","shorts":"短裤","dress":"连衣裙",
+    "bag":"包包","backpack":"背包","wallet":"钱包","belt":"皮带",
+    "watch":"手表","sunglasses":"太阳镜","hat":"帽子","cap":"帽子",
+    "yoga pants":"瑜伽裤","yoga leggings":"瑜伽裤","sports bra":"运动内衣",
+    "tracksuit":"运动套装","sweatpants":"运动裤","polo":"polo衫",
+    "down jacket":"羽绒服","puffer":"羽绒服","windbreaker":"风衣",
+    "tech fleece":"科技抓绒","air max":"气垫","air force":"空军一号",
+}
+
+def _translate_to_zh(query):
+    """Auto-translate common English product terms to Chinese."""
+    q = query
+    for en, zh in EN_ZH_MAP.items():
+        import re
+        q = re.sub(re.escape(en), zh, q, flags=re.IGNORECASE)
+    return q
+
 def build_inject(base_query):
     """Build smart query injection based on what user is searching for."""
     q = base_query.lower()
@@ -133,14 +166,14 @@ BLOCKED_DOMAINS = {
     # Western retail
     "amazon.com","amazon.cn","ebay.com","target.com","walmart.com",
     "bestbuy.com","costco.com","etsy.com","shopify.com",
-    "stockx.com","goat.com","kickscrew.com","flightclub.com",
+    "stockx.com","goat.com","kickscrew.com","flightclub.com","soccer.com","footlocker.com","foot-locker.com","zalando.com","asos.com","farfetch.com","ssense.com","nordstrom.com","macys.com","zappos.com","sportsdirect.com","decathlon.com",
     "klarna.com","paypal.com","aliexpress.com",
     # Chinese retail (official)
     "tmall.com","jd.com","pinduoduo.com","taobao.com",
     # Social/search/news
     "wikipedia.org","baidu.com","google.com","youtube.com",
     "instagram.com","facebook.com","twitter.com","x.com","tiktok.com",
-    "douyin.com","alibaba.com","amazon.com","amazon.co.uk","amazon.de","chinagoods.com","hktdc.com","global.1688.com","chinese.alibaba.com",
+    "douyin.com","alibaba.com","amazon.com","amazon.co.uk","amazon.de","chinagoods.com","hktdc.com","global.1688.com","chinese.alibaba.com","stockx.com","goat.com","grailed.com","depop.com","farfetch.com","ssense.com","mrporter.com","net-a-porter.com",
     "163.com","sohu.com","sina.com.cn","qq.com","ifeng.com",
     # Maps/directories
     "mapbar.com","amap.com","dianping.com","yelp.com","maps.google.com",
@@ -739,7 +772,10 @@ async def search_platform(
     ua        = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
     results   = []
 
-    base = f"{brand.strip()} {query.strip()}".strip() if brand.strip() else query.strip()
+    base_raw = f"{brand.strip()} {query.strip()}".strip() if brand.strip() else query.strip()
+    base = _translate_to_zh(base_raw)
+    if base != base_raw:
+        logger.info("Auto-translated: %s -> %s", base_raw[:60], base[:60])
 
     async with async_playwright() as p:
         browser=await _launch(p,headless)
@@ -763,9 +799,13 @@ async def search_platform(
         try:
             if platform=="all":
                 seen_all=set(seen_links)
-                _inj1, _inj2 = build_inject(base)
-                q1 = f"{base} {_inj1}"
-                q2 = f"{base} {_inj2}"
+                if mode == "passing":
+                    q1 = f"{base} {PASSING_INJECT}"
+                    q2 = f"{base} {PASSING_NFC_INJECT}"
+                else:
+                    _inj1, _inj2 = build_inject(base)
+                    q1 = f"{base} {_inj1}"
+                    q2 = f"{base} {_inj2}"
                 # Add Zhihu expert intel query
                 q3 = f"site:zhihu.com {base} 工厂 推荐 哪家好"
                 # Add Weidian batch query
@@ -802,6 +842,12 @@ async def search_platform(
                         ])
                         ff_inject = FF_REP_INJECT if is_rep_ff else FF_SAFE_INJECT
                         full_q = f"{base} {ff_inject}"
+                    elif mode == "passing":
+                        # Use NFC inject if NFC in query, else general passing inject
+                        if "nfc" in query.lower():
+                            full_q = f"{base} {PASSING_NFC_INJECT}"
+                        else:
+                            full_q = f"{base} {PASSING_INJECT}"
                     else:
                         _bi1, _ = build_inject(base)
                         full_q = f"{base} {_bi1}"
