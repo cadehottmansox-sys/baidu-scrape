@@ -419,8 +419,10 @@ def create_app() -> Flask:
 
         if not query:
             return jsonify({"error": "Please enter a search query."}), 400
-        if mode not in {"supplier", "ff", "passing"}:
+        if mode not in {"supplier", "ff", "passing", "trend", "batch", "research"}:
             return jsonify({"error": "Invalid mode."}), 400
+        # Normalize research modes to supplier
+        if mode in {"trend", "batch", "research"}: mode = "supplier"
 
         try:
             results = asyncio.run(search_platform(
