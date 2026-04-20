@@ -1629,3 +1629,472 @@ function quickOpenWith(platform, query){
   const urlFn = PLATFORM_URLS[platform];
   if(urlFn) window.open(urlFn(query), '_blank');
 }
+
+// ── FREIGHT TAB ───────────────────────────────────────────────────
+
+// Known rep-friendly forwarders directory
+const FF_DIRECTORY = [
+  {
+    name: "Sugargoo",
+    tags: ["USA","UK","EU","REP","AGENT"],
+    desc: "Popular agent for rep buyers. Good QC photos, consolidation. Use for warehousing only — find your own FF for shipping.",
+    wechat: "",
+    price: "Agent fees apply — use own FF for int'l shipping",
+    type: "agent",
+  },
+  {
+    name: "Pandabuy",
+    tags: ["USA","UK","EU","AGENT","REP"],
+    desc: "Most popular rep agent. Free warehousing, good QC. Never use their shipping rates — always choose cheaper line haul.",
+    wechat: "",
+    price: "Free storage 90 days — compare their shipping rates",
+    type: "agent",
+  },
+  {
+    name: "Cssbuy",
+    tags: ["USA","EU","REP","AGENT"],
+    desc: "Budget-friendly agent. Good for lower value items. Basic QC included.",
+    wechat: "",
+    price: "Lower fees than Pandabuy",
+    type: "agent",
+  },
+  {
+    name: "Search Baidu for Rep FF",
+    tags: ["REP","SENSITIVE","PUTIAN"],
+    desc: "Real rep freight forwarders don't advertise publicly. Use the search above — they're found via WeChat referrals and Chinese forums.",
+    wechat: "",
+    price: "~$3-8/kg depending on route and method",
+    type: "rep",
+  },
+  {
+    name: "Yoybuy",
+    tags: ["USA","AU","CA","AGENT"],
+    desc: "Good for Australia and Canada routes. Consolidation available.",
+    wechat: "",
+    price: "Competitive rates for AU/CA",
+    type: "agent",
+  },
+  {
+    name: "Allchinabuy",
+    tags: ["USA","UK","EU","REP","AGENT"],
+    desc: "Rep-friendly agent. Good communication. Multiple shipping lines available.",
+    wechat: "",
+    price: "Compare rates — line haul usually cheapest",
+    type: "agent",
+  },
+];
+
+const TAG_CLASS = {
+  "USA":"fft-route","UK":"fft-route","EU":"fft-route","AU":"fft-route","CA":"fft-route",
+  "REP":"fft-rep","SENSITIVE":"fft-rep","PUTIAN":"fft-rep",
+  "AGENT":"fft-agent","GOOD":"fft-good","FREE":"fft-good"
+};
+
+function renderFFDirectory(mode){
+  const grid = document.getElementById('ffDirGrid');
+  if(!grid) return;
+  const filtered = mode === 'agent'
+    ? FF_DIRECTORY.filter(f=>f.type==='agent')
+    : mode === 'rep'
+    ? FF_DIRECTORY
+    : FF_DIRECTORY.filter(f=>f.type!=='rep');
+
+  grid.innerHTML = filtered.map(f=>`
+    <div class="ff-dir-card">
+      <div class="ff-dir-name">${f.name}</div>
+      <div class="ff-dir-tags">${f.tags.map(t=>`<span class="ff-dir-tag ${TAG_CLASS[t]||'fft-route'}">${t}</span>`).join('')}</div>
+      <div class="ff-dir-desc">${f.desc}</div>
+      ${f.wechat ? `<div class="ff-dir-wc" onclick="navigator.clipboard.writeText('${f.wechat}').then(()=>showToast('WeChat copied!'))">wx: ${f.wechat}</div>` : ''}
+      <div class="ff-dir-price">${f.price}</div>
+    </div>
+  `).join('');
+}
+
+let currentFFMode = 'rep';
+
+function setFFMode(mode, btn){
+  currentFFMode = mode;
+  document.querySelectorAll('.ff-mode-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('ffMode').value = mode;
+
+  // Show/hide banners
+  const repBanner = document.getElementById('ffRepBanner');
+  const agentBanner = document.getElementById('ffAgentBanner');
+  const dir = document.getElementById('ffDirectory');
+  if(repBanner) repBanner.style.display = mode==='rep' ? '' : 'none';
+  if(agentBanner) agentBanner.style.display = mode==='agent' ? '' : 'none';
+
+  // Update search placeholder
+  const q = document.getElementById('ffQuery');
+  if(q){
+    q.placeholder = mode==='rep'
+      ? 'e.g. shoes bags Putian to USA, rep apparel China to UK…'
+      : mode==='agent'
+      ? 'e.g. consolidation, QC photos, warehousing…'
+      : 'e.g. electronics China to USA, apparel Guangzhou to UK…';
+  }
+
+  // Update button
+  const btn2 = document.getElementById('ffBtn');
+  if(btn2) btn2.textContent = mode==='rep' ? '🔒 Find Rep Forwarders' : mode==='agent' ? '🏢 Find Agents' : '📦 Find Forwarders';
+
+  renderFFDirectory(mode);
+}
+
+function setFFRoute(origin, dest){
+  const q = document.getElementById('ffQuery');
+  const o = document.getElementById('ffOrigin');
+  if(q) q.value = `${origin} to ${dest} freight forwarder`;
+  if(o) o.value = origin;
+}
+
+// Init freight tab
+document.addEventListener('DOMContentLoaded', ()=>{
+  renderFFDirectory('rep');
+});
+
+// ═══════════════════════════════════════════════════════════════
+// ██████╗  ██████╗ ███╗   ██╗██╗   ██╗███████╗    ████████╗ ██████╗  ██████╗ ██╗     ███████╗
+// ██╔══██╗██╔═══██╗████╗  ██║██║   ██║██╔════╝    ╚══██╔══╝██╔═══██╗██╔═══██╗██║     ██╔════╝
+// ██████╔╝██║   ██║██╔██╗ ██║██║   ██║███████╗       ██║   ██║   ██║██║   ██║██║     ███████╗
+// ██╔══██╗██║   ██║██║╚██╗██║██║   ██║╚════██║       ██║   ██║   ██║██║   ██║██║     ╚════██║
+// ██████╔╝╚██████╔╝██║ ╚████║╚██████╔╝███████║       ██║   ╚██████╔╝╚██████╔╝███████╗███████║
+// ═══════════════════════════════════════════════════════════════
+
+// ── SUPPLIER INTELLIGENCE ────────────────────────────────────────
+
+// Middleman Detection Score
+function detectMiddleman(item){
+  let score = 0;
+  const txt = ((item.title||'') + ' ' + (item.snippet||'')).toLowerCase();
+  // Bad signs — middleman indicators
+  if(txt.includes('代购')) score += 2;
+  if(txt.includes('代理')) score += 1;
+  if(txt.includes('分销')) score += 1;
+  if(txt.includes('零售')) score += 2;
+  if(txt.includes('专卖')) score += 1;
+  if(txt.includes('批发商')) score += 1;
+  if(/price|价格.*negotiable|面议/.test(txt)) score += 1;
+  // Good signs — factory indicators
+  if(txt.includes('工厂') || txt.includes('factory')) score -= 3;
+  if(txt.includes('厂家')) score -= 3;
+  if(txt.includes('oem') || txt.includes('odm')) score -= 3;
+  if(txt.includes('源头')) score -= 2;
+  if(txt.includes('直销')) score -= 2;
+  if(txt.includes('moq') || txt.includes('最低起订')) score -= 2;
+  if(txt.includes('生产') || txt.includes('manufacture')) score -= 2;
+  if(item.is_factory_like) score -= 3;
+  return Math.max(0, Math.min(10, score + 5));
+}
+
+// Auto-inject middleman score into cards
+const _origBuildCard2 = buildCard;
+
+// Price Estimator — estimates factory price vs retail
+function estimateMargin(retailPrice, currency='USD'){
+  const rates = {USD:7.2, EUR:7.8, GBP:9.1, AUD:4.7, CAD:5.3};
+  const rate = rates[currency] || 7.2;
+  const cny = retailPrice * rate;
+  const factory = cny * 0.08; // typical ~8% of retail
+  const moq10 = factory * 10;
+  return {
+    retailCNY: Math.round(cny),
+    estimatedFactory: Math.round(factory),
+    moq10Cost: Math.round(moq10),
+    margin: Math.round(((retailPrice - factory/rate) / retailPrice) * 100),
+  };
+}
+
+// ── PRICE MARGIN CALCULATOR (Research tab) ───────────────────────
+function calcMargin(){
+  const retail = parseFloat(document.getElementById('marginRetail')?.value || 0);
+  const currency = document.getElementById('marginCurrency')?.value || 'USD';
+  const qty = parseInt(document.getElementById('marginQty')?.value || 10);
+  const result = document.getElementById('marginResult');
+  if(!retail || !result) return;
+  const r = estimateMargin(retail, currency);
+  const totalCost = r.estimatedFactory * qty;
+  const totalRevenue = retail * qty;
+  const profit = totalRevenue - totalCost/7.2;
+  result.innerHTML = `
+    <div class="margin-grid">
+      <div class="margin-item"><div class="margin-val">¥${r.estimatedFactory}</div><div class="margin-lbl">Est. Factory Price</div></div>
+      <div class="margin-item"><div class="margin-val" style="color:var(--g)">${r.margin}%</div><div class="margin-lbl">Est. Margin</div></div>
+      <div class="margin-item"><div class="margin-val" style="color:var(--a)">¥${r.moq10Cost}</div><div class="margin-lbl">MOQ 10 Cost</div></div>
+      <div class="margin-item"><div class="margin-val" style="color:var(--c)">$${profit.toFixed(0)}</div><div class="margin-lbl">Profit at qty ${qty}</div></div>
+    </div>
+    <div style="font-size:10px;color:var(--text3);font-family:var(--mono);margin-top:8px">⚠ Estimates only — actual factory prices vary. Use as negotiation baseline.</div>
+  `;
+}
+
+// ── WECHAT BULK MANAGER ──────────────────────────────────────────
+let wcContacts = JSON.parse(localStorage.getItem('sf_wc_contacts') || '[]');
+
+function saveWCContacts(){ localStorage.setItem('sf_wc_contacts', JSON.stringify(wcContacts)); }
+
+function addWCContact(id, source, product){
+  if(wcContacts.find(c=>c.id===id)) return false;
+  wcContacts.unshift({id, source, product, added:Date.now(), status:'new', notes:''});
+  saveWCContacts();
+  renderWCManager();
+  return true;
+}
+
+function renderWCManager(){
+  const list = document.getElementById('wcManagerList');
+  const count = document.getElementById('wcManagerCount');
+  if(!list) return;
+  if(count) count.textContent = wcContacts.length;
+  if(!wcContacts.length){ list.innerHTML='<div class="admin-empty">No WeChats saved yet — they appear here when you copy from results</div>'; return; }
+  list.innerHTML = wcContacts.map((c,i)=>`
+    <div class="wc-manager-row">
+      <div class="wc-manager-id" onclick="navigator.clipboard.writeText('${c.id}').then(()=>showToast('Copied ${c.id}!'))">${c.id}</div>
+      <div class="wc-manager-src">${c.source||'—'}</div>
+      <div class="wc-manager-prod">${c.product||'—'}</div>
+      <select class="wc-status-select" onchange="wcContacts[${i}].status=this.value;saveWCContacts()" style="background:rgba(0,0,0,.4);border:1px solid var(--b);border-radius:5px;color:var(--text);font-family:var(--mono);font-size:9px;padding:2px 4px">
+        <option value="new" ${c.status==='new'?'selected':''}>New</option>
+        <option value="added" ${c.status==='added'?'selected':''}>Added</option>
+        <option value="replied" ${c.status==='replied'?'selected':''}>Replied</option>
+        <option value="dead" ${c.status==='dead'?'selected':''}>Dead</option>
+      </select>
+      <div class="crm-row-del" onclick="wcContacts.splice(${i},1);saveWCContacts();renderWCManager()">✕</div>
+    </div>
+  `).join('');
+}
+
+function exportWCList(){
+  const text = wcContacts.map(c=>`${c.id} | ${c.product||''} | ${c.source||''}`).join('\n');
+  navigator.clipboard.writeText(text).then(()=>showToast(`✓ Copied ${wcContacts.length} WeChats`));
+}
+
+// Auto-save WeChats when user copies one
+const _origCopyText = copyText;
+function copyText(text, label){
+  _origCopyText(text, label);
+  // If it looks like a WeChat ID, save it
+  if(text && /^[a-zA-Z0-9][a-zA-Z0-9_]{4,19}$/.test(text) && !/^\d+$/.test(text.slice(0,3))){
+    addWCContact(text, 'copied', '');
+  }
+}
+
+// ── KEYWORD BUILDER ──────────────────────────────────────────────
+const KEYWORD_TEMPLATES = {
+  'Factory Direct': '{product} 工厂 厂家直销 源头 微信号 联系方式',
+  'Rep/1:1': '{product} 复刻 1:1 高仿 莆田 微信 货源',
+  'Wholesale': '{product} 批发 代理 一件代发 微信 联系',
+  'Xianyu Overrun': '{product} 余单 尾货 工厂清仓 闲鱼 微信',
+  'WeChat Only': '{product} 微信 加微信 微信号 wx联系',
+  'Passing/NFC': '{product} 过验 NFC 1:1 通过验 防伪芯片 莆田',
+  'Weidian Batch': '{product} 批次 weidian 质量对比 微信',
+  'Zhihu Expert': '{product} 哪家工厂 质量好 推荐 知乎',
+};
+
+function buildKeyword(template){
+  const product = document.getElementById('kwProduct')?.value.trim() || '';
+  const result = document.getElementById('kwResult');
+  if(!result) return;
+  const kw = KEYWORD_TEMPLATES[template]?.replace('{product}', product) || '';
+  result.innerHTML = `
+    <div class="translate-result">
+      <div class="tr-row">
+        <span class="tr-label">${template}</span>
+        <span class="tr-val" style="font-size:12px">${kw}</span>
+        <button class="tool-btn" onclick="navigator.clipboard.writeText('${kw.replace(/'/g,"\\'")}').then(()=>showToast('Copied!'))">Copy</button>
+      </div>
+      <div style="margin-top:8px;display:flex;gap:6px">
+        <button class="btn-primary" style="height:32px;font-size:11px;padding:0 12px" onclick="switchTab('supplier');document.getElementById('queryInput').value='${kw.replace(/'/g,"\\'")}';document.getElementById('supplierForm').dispatchEvent(new Event('submit'))">⚡ Search This</button>
+      </div>
+    </div>
+  `;
+}
+
+// ── SUPPLIER NOTES SYNC ──────────────────────────────────────────
+// Auto-save notes to server
+async function saveNoteToServer(link, note){
+  try{
+    await fetch('/api/notes', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({link, note})});
+  } catch{}
+}
+
+// ── LIVE SEARCH SUGGESTIONS ──────────────────────────────────────
+const SEARCH_SUGGESTIONS = [
+  'Jordan 4 Putian factory', 'Alo yoga leggings supplier', 'Supreme hoodie rep',
+  'LV belt factory WeChat', 'Nike tech fleece manufacturer', 'Yeezy 350 batch',
+  'Canada Goose jacket factory', 'Stone Island rep supplier', 'Dunk Low 1:1',
+  'Gucci bag factory Putian', 'Moncler jacket rep', 'Off White sneaker factory',
+  'Lululemon leggings wholesale', 'Balenciaga Triple S rep', 'Chrome Hearts rep',
+];
+
+function initSearchSuggestions(){
+  const input = document.getElementById('queryInput');
+  if(!input) return;
+  const wrap = document.createElement('div');
+  wrap.className = 'suggestion-wrap';
+  wrap.style.cssText = 'display:flex;flex-wrap:wrap;gap:5px;margin-top:8px';
+  const shown = SEARCH_SUGGESTIONS.sort(()=>Math.random()-.5).slice(0,5);
+  shown.forEach(s=>{
+    const btn = document.createElement('button');
+    btn.className = 'suggestion-pill';
+    btn.textContent = s;
+    btn.addEventListener('click',()=>{
+      input.value = s;
+      input.focus();
+    });
+    wrap.appendChild(btn);
+  });
+  input.parentElement?.appendChild(wrap);
+}
+
+// ── SEARCH HISTORY ANALYTICS ─────────────────────────────────────
+function getSearchStats(){
+  const h = JSON.parse(localStorage.getItem('sf_history')||'[]');
+  const terms = {};
+  h.forEach(s=>{ const k=(s.brand+' '+s.query).trim(); terms[k]=(terms[k]||0)+1; });
+  return Object.entries(terms).sort((a,b)=>b[1]-a[1]).slice(0,10);
+}
+
+function renderSearchStats(){
+  const el = document.getElementById('searchStatsContent');
+  if(!el) return;
+  const stats = getSearchStats();
+  if(!stats.length){ el.innerHTML='<div class="admin-empty">No search history yet</div>'; return; }
+  el.innerHTML = stats.map(([term,count])=>`
+    <div class="wc-manager-row" style="cursor:pointer" onclick="switchTab('supplier');document.getElementById('queryInput').value='${term}';document.getElementById('supplierForm').dispatchEvent(new Event('submit'))">
+      <div class="wc-manager-id">${term}</div>
+      <div class="wc-manager-src" style="color:var(--c)">${count}x</div>
+      <div class="wc-manager-prod" style="color:var(--text3)">click to re-run →</div>
+    </div>
+  `).join('');
+}
+
+// ── INIT ALL TOOLS ────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', ()=>{
+  initSearchSuggestions();
+  renderWCManager();
+  renderFFDirectory('rep');
+
+  // Tab handlers for new tools
+  document.addEventListener('click', e=>{
+    const btn = e.target.closest('.tab-btn');
+    if(!btn) return;
+    const tab = btn.dataset.tab;
+    if(tab==='tools') { renderWCManager(); renderSearchStats(); }
+  });
+});
+
+// ── SHIPPING CALCULATOR ───────────────────────────────────────────
+const SHIP_RATES = {
+  usa: [
+    {name:'Line Haul',base:3.5,per:3.2,days:'12-20',risk:'low'},
+    {name:'EMS',base:8,per:6.5,days:'7-14',risk:'med'},
+    {name:'DHL/FedEx',base:15,per:12,days:'3-7',risk:'high'},
+    {name:'Sea Freight',base:50,per:1.8,days:'30-45',risk:'low'},
+  ],
+  uk: [
+    {name:'Line Haul',base:4,per:4,days:'10-18',risk:'low'},
+    {name:'EMS',base:9,per:7,days:'8-15',risk:'med'},
+    {name:'DHL/FedEx',base:18,per:14,days:'3-6',risk:'high'},
+    {name:'Sea Freight',base:60,per:2,days:'25-40',risk:'low'},
+  ],
+  eu: [
+    {name:'Line Haul',base:4.5,per:4.5,days:'10-20',risk:'low'},
+    {name:'EMS',base:10,per:8,days:'8-16',risk:'med'},
+    {name:'DHL/FedEx',base:20,per:15,days:'3-7',risk:'high'},
+    {name:'Sea Freight',base:65,per:2.2,days:'28-42',risk:'low'},
+  ],
+  au: [
+    {name:'Line Haul',base:5,per:5,days:'12-22',risk:'low'},
+    {name:'EMS',base:10,per:8.5,days:'8-15',risk:'med'},
+    {name:'DHL/FedEx',base:22,per:16,days:'4-8',risk:'high'},
+    {name:'Sea Freight',base:70,per:2.5,days:'20-35',risk:'low'},
+  ],
+  ca: [
+    {name:'Line Haul',base:4,per:4,days:'12-22',risk:'low'},
+    {name:'EMS',base:9,per:7.5,days:'8-16',risk:'med'},
+    {name:'DHL/FedEx',base:20,per:14,days:'4-8',risk:'high'},
+    {name:'Sea Freight',base:60,per:2,days:'30-45',risk:'low'},
+  ],
+};
+
+function calcShipping(){
+  const weight = parseFloat(document.getElementById('shipWeight')?.value || 0);
+  const dest = document.getElementById('shipDest')?.value || 'usa';
+  const result = document.getElementById('shipResult');
+  if(!weight || !result) return;
+  const methods = SHIP_RATES[dest] || SHIP_RATES.usa;
+  result.innerHTML = `
+    <div class="ship-result-grid">
+      ${methods.map(m=>{
+        const cost = (m.base + m.per * weight).toFixed(2);
+        return `
+          <div class="ship-method">
+            <div class="ship-method-name">${m.name}</div>
+            <div class="ship-method-price">$${cost}</div>
+            <div class="ship-method-time">${m.days} days</div>
+            <div class="ship-method-risk risk-${m.risk}">${m.risk.toUpperCase()} RISK</div>
+          </div>
+        `;
+      }).join('')}
+    </div>
+    <div style="font-size:10px;color:var(--text3);font-family:var(--mono);margin-top:8px">
+      ⚠ Estimates only — actual rates vary by forwarder. Low risk = less customs scrutiny for sensitive goods.
+    </div>
+  `;
+}
+
+// ── SEARCH SUGGESTIONS INIT ──────────────────────────────────────
+// Inject suggestion pills under search bar on load
+setTimeout(()=>{
+  const input = document.getElementById('queryInput');
+  if(!input || document.querySelector('.suggestion-wrap')) return;
+  const wrap = document.createElement('div');
+  wrap.className='suggestion-wrap';
+  wrap.style.cssText='display:flex;flex-wrap:wrap;gap:5px;margin-top:8px';
+  const shown = SEARCH_SUGGESTIONS.sort(()=>Math.random()-.5).slice(0,6);
+  shown.forEach(s=>{
+    const btn=document.createElement('button');
+    btn.className='suggestion-pill';
+    btn.textContent=s;
+    btn.addEventListener('click',()=>{ input.value=s; input.focus(); });
+    wrap.appendChild(btn);
+  });
+  input.closest('.field')?.appendChild(wrap);
+}, 500);
+
+// ── NOTES API ────────────────────────────────────────────────────
+async function saveNoteServer(link, note){
+  try{ await fetch('/api/notes',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({link,note})}); }catch{}
+}
+
+// Auto-save card notes to server
+document.addEventListener('input', e=>{
+  if(e.target.classList.contains('card-note')){
+    const card = e.target.closest('.result-card');
+    const link = card?.dataset?.link;
+    if(link){
+      notes[link] = e.target.value;
+      saveNotes();
+      clearTimeout(e.target._saveTimer);
+      e.target._saveTimer = setTimeout(()=>saveNoteServer(link, e.target.value), 1500);
+    }
+  }
+});
+
+// ── QUICK SEARCH SHORTCUT ─────────────────────────────────────────
+document.addEventListener('keydown', e=>{
+  if(e.key==='/' && !['INPUT','TEXTAREA'].includes(document.activeElement.tagName)){
+    e.preventDefault();
+    switchTab('supplier');
+    document.getElementById('queryInput')?.focus();
+  }
+  if(e.key==='Escape'){
+    document.getElementById('queryInput')?.blur();
+    document.querySelectorAll('.modal-overlay').forEach(m=>m.style.display='none');
+  }
+  // Alt+F = Finds, Alt+R = Research, Alt+T = Tools
+  if(e.altKey && e.key==='f') switchTab('finds');
+  if(e.altKey && e.key==='r') switchTab('research');
+  if(e.altKey && e.key==='t') switchTab('tools');
+  if(e.altKey && e.key==='c') switchTab('crm');
+});
