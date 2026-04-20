@@ -486,10 +486,15 @@ async def _baidu_search(page, full_q, max_r, timeout, delay, seen_links, platfor
             if len(results) >= max_r: break
             block = blocks.nth(i)
 
-            # Try multiple title selectors
+            # Try multiple title selectors - Baidu changes structure frequently
             title = ""
             href  = ""
-            for title_sel in ["h3 a", ".c-title a", "h3", "a.c-title"]:
+            for title_sel in [
+                "h3 a", ".c-title a", "h3", "a.c-title",
+                "[class*='title'] a", "[class*='Title'] a",
+                "a[href*='baidu']", "a[href^='http']",
+                "a", "h3 span",
+            ]:
                 tn = block.locator(title_sel).first
                 if await tn.count() > 0:
                     try:
@@ -500,6 +505,22 @@ async def _baidu_search(page, full_q, max_r, timeout, delay, seen_links, platfor
                             href  = h
                             break
                     except: continue
+
+            # Last resort: use full block text as title
+            if not title:
+                try:
+                    block_text_raw = (await block.inner_text()).strip()
+                    if block_text_raw and len(block_text_raw) > 5:
+                        title = block_text_raw[:80]
+                except: pass
+
+            # Get href from any link if we still don't have one
+            if not href:
+                try:
+                    any_a = block.locator("a").first
+                    if await any_a.count() > 0:
+                        href = (await any_a.get_attribute("href") or "").strip()
+                except: pass
 
             if not title: continue
             if href in seen_links or _is_blocked(href): continue
