@@ -16,13 +16,13 @@ from pathlib import Path
 DATA_FILE = Path(__file__).parent / "data" / "users.json"
 
 def _load():
-    DATA_FILE.parent.mkdir(exist_ok=True)
-    if not DATA_FILE.exists():
-        DATA_FILE.write_text(json.dumps({"requests": [], "approved": []}))
-    return json.loads(DATA_FILE.read_text())
+    import storage
+    data = storage.read("sf_users", {"requests": [], "approved": []})
+    return data if data else {"requests": [], "approved": []}
 
 def _save(data):
-    DATA_FILE.write_text(json.dumps(data, indent=2))
+    import storage
+    storage.write("sf_users", data)
 
 def _hash(password: str) -> str:
     return hashlib.sha256(password.encode()).hexdigest()
