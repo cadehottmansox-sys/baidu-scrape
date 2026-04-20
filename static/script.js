@@ -1620,36 +1620,44 @@ document.addEventListener('DOMContentLoaded', ()=>{
 });
 
 // ── SHIPPING CALCULATOR ───────────────────────────────────────────
+// Express-focused rates — what rep buyers actually use
+// All prices in USD per kg (approx from private agents)
 const SHIP_RATES = {
   usa: [
-    {name:'Line Haul',base:3.5,per:3.2,days:'12-20',risk:'low'},
-    {name:'EMS',base:8,per:6.5,days:'7-14',risk:'med'},
-    {name:'DHL/FedEx',base:15,per:12,days:'3-7',risk:'high'},
-    {name:'Sea Freight',base:50,per:1.8,days:'30-45',risk:'low'},
+    {name:'FedEx IP Express',   base:18, per:14,  days:'3-5',   risk:'high', rec:false, note:'Fastest — high customs scrutiny'},
+    {name:'DHL Express',        base:16, per:13,  days:'3-5',   risk:'high', rec:false, note:'Fast — declared value matters'},
+    {name:'UPS Express',        base:17, per:13,  days:'3-6',   risk:'high', rec:false, note:'Similar to DHL'},
+    {name:'SF Express Int'l',  base:12, per:9,   days:'5-8',   risk:'med',  rec:true,  note:'Chinese express — lower scrutiny than DHL/FedEx'},
+    {name:'EMS (China Post)',   base:7,  per:5.5, days:'7-14',  risk:'med',  rec:true,  note:'Good balance — widely used for reps'},
+    {name:'Private Line Haul',  base:4,  per:3.5, days:'10-18', risk:'low',  rec:false, note:'Cheapest — slowest — find via private agent'},
   ],
   uk: [
-    {name:'Line Haul',base:4,per:4,days:'10-18',risk:'low'},
-    {name:'EMS',base:9,per:7,days:'8-15',risk:'med'},
-    {name:'DHL/FedEx',base:18,per:14,days:'3-6',risk:'high'},
-    {name:'Sea Freight',base:60,per:2,days:'25-40',risk:'low'},
+    {name:'FedEx IP Express',   base:20, per:16,  days:'3-5',   risk:'high', rec:false, note:'Fast but UK customs aggressive'},
+    {name:'DHL Express',        base:18, per:15,  days:'3-5',   risk:'high', rec:false, note:'Common but high scrutiny post-Brexit'},
+    {name:'SF Express Int'l',  base:14, per:10,  days:'5-8',   risk:'med',  rec:true,  note:'Better odds than DHL for sensitive goods'},
+    {name:'EMS',                base:8,  per:6,   days:'8-15',  risk:'med',  rec:true,  note:'Popular for rep shipments to UK'},
+    {name:'Private Line Haul',  base:5,  per:4,   days:'10-18', risk:'low',  rec:false, note:'Ask your private agent'},
   ],
   eu: [
-    {name:'Line Haul',base:4.5,per:4.5,days:'10-20',risk:'low'},
-    {name:'EMS',base:10,per:8,days:'8-16',risk:'med'},
-    {name:'DHL/FedEx',base:20,per:15,days:'3-7',risk:'high'},
-    {name:'Sea Freight',base:65,per:2.2,days:'28-42',risk:'low'},
+    {name:'FedEx IP Express',   base:22, per:17,  days:'3-5',   risk:'high', rec:false, note:'EU customs varies by country'},
+    {name:'DHL Express',        base:20, per:16,  days:'3-6',   risk:'high', rec:false, note:'Germany/NL most thorough'},
+    {name:'SF Express Int'l',  base:15, per:11,  days:'5-8',   risk:'med',  rec:true,  note:'Good for Eastern EU'},
+    {name:'EMS',                base:9,  per:7,   days:'8-16',  risk:'med',  rec:true,  note:'Decent option for most EU'},
+    {name:'Private Line Haul',  base:5,  per:4.5, days:'12-20', risk:'low',  rec:false, note:'Ask private agent for EU routes'},
   ],
   au: [
-    {name:'Line Haul',base:5,per:5,days:'12-22',risk:'low'},
-    {name:'EMS',base:10,per:8.5,days:'8-15',risk:'med'},
-    {name:'DHL/FedEx',base:22,per:16,days:'4-8',risk:'high'},
-    {name:'Sea Freight',base:70,per:2.5,days:'20-35',risk:'low'},
+    {name:'FedEx IP Express',   base:25, per:18,  days:'4-6',   risk:'high', rec:false, note:'AU border force strict'},
+    {name:'DHL Express',        base:22, per:17,  days:'4-6',   risk:'high', rec:false, note:'High scrutiny'},
+    {name:'SF Express Int'l',  base:16, per:12,  days:'6-9',   risk:'med',  rec:true,  note:'Better option for AU'},
+    {name:'EMS',                base:10, per:8,   days:'8-15',  risk:'med',  rec:false, note:'Moderate risk'},
+    {name:'Private Line Haul',  base:6,  per:5,   days:'12-22', risk:'low',  rec:false, note:'Slowest but safest'},
   ],
   ca: [
-    {name:'Line Haul',base:4,per:4,days:'12-22',risk:'low'},
-    {name:'EMS',base:9,per:7.5,days:'8-16',risk:'med'},
-    {name:'DHL/FedEx',base:20,per:14,days:'4-8',risk:'high'},
-    {name:'Sea Freight',base:60,per:2,days:'30-45',risk:'low'},
+    {name:'FedEx IP Express',   base:19, per:15,  days:'3-5',   risk:'high', rec:false, note:'CA customs unpredictable'},
+    {name:'DHL Express',        base:17, per:14,  days:'3-6',   risk:'high', rec:false, note:'Common but watched'},
+    {name:'SF Express Int'l',  base:13, per:10,  days:'5-8',   risk:'med',  rec:true,  note:'Solid option for Canada'},
+    {name:'EMS',                base:8,  per:6.5, days:'8-16',  risk:'med',  rec:true,  note:'Works well for CA'},
+    {name:'Private Line Haul',  base:4,  per:3.5, days:'12-22', risk:'low',  rec:false, note:'Cheapest'},
   ],
 };
 
@@ -1660,21 +1668,25 @@ function calcShipping(){
   if(!weight || !result) return;
   const methods = SHIP_RATES[dest] || SHIP_RATES.usa;
   result.innerHTML = `
-    <div class="ship-result-grid">
+    <div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">
       ${methods.map(m=>{
         const cost = (m.base + m.per * weight).toFixed(2);
         return `
-          <div class="ship-method">
-            <div class="ship-method-name">${m.name}</div>
-            <div class="ship-method-price">$${cost}</div>
-            <div class="ship-method-time">${m.days} days</div>
-            <div class="ship-method-risk risk-${m.risk}">${m.risk.toUpperCase()} RISK</div>
+          <div class="ship-row ${m.rec?'ship-row-rec':''}">
+            <div class="ship-row-name">
+              ${m.rec?'<span class="ship-rec-badge">✓ REC</span>':''}
+              ${m.name}
+            </div>
+            <div class="ship-row-price">$${cost}</div>
+            <div class="ship-row-time">${m.days} days</div>
+            <div class="ship-row-risk risk-${m.risk}">${m.risk}</div>
+            <div class="ship-row-note">${m.note}</div>
           </div>
         `;
       }).join('')}
     </div>
-    <div style="font-size:10px;color:var(--text3);font-family:var(--mono);margin-top:8px">
-      ⚠ Estimates only — actual rates vary by forwarder. Low risk = less customs scrutiny for sensitive goods.
+    <div style="font-size:10px;color:var(--text3);font-family:var(--mono);margin-top:10px;padding:8px;background:rgba(0,0,0,.2);border-radius:6px;line-height:1.6">
+      ✓ REC = recommended for rep shipments · Prices are per kg estimates from private agents · Always confirm rates via WeChat before sending
     </div>
   `;
 }
