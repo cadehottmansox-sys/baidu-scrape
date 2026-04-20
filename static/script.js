@@ -1799,3 +1799,85 @@ async function runPrivateAgentSearch(){
   if(hint){ hint.textContent = `Found ${allResults.length} results across ${queries.length} private agent queries`; }
   showToast(`Found ${allResults.length} potential private agents`);
 }
+
+// ── FORM HANDLERS ────────────────────────────────────────────────
+// Generic search runner
+async function runSearch({query, brand='', platform='all', mode='supplier', deepScan=false, wcOnly=false,
+  btnId, dotId, statusId, resultsId, hintId, hintText}){
+  const btn = document.getElementById(btnId);
+  const dot = document.getElementById(dotId);
+  const status = document.getElementById(statusId);
+  const results = document.getElementById(resultsId);
+  const hint = document.getElementById(hintId);
+  if(!query){ showToast('Enter a search query'); return; }
+  if(btn){ btn.disabled=true; btn._orig=btn.innerHTML; btn.innerHTML='Searching…'; }
+  if(dot) dot.className='status-dot active';
+  if(status) status.textContent='Searching…';
+  if(results) results.innerHTML='<div class="loader"><div class="loader-dots"><span></span><span></span><span></span></div>Searching…</div>';
+  if(hint && hintText){ hint.style.display='block'; hint.textContent=hintText; }
+  try{
+    const r = await fetch('/search',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({query,brand,platform,mode,deep_scan:deepScan,wechat_only:wcOnly})});
+    const d = await r.json();
+    const res = d.results||[];
+    if(dot) dot.className='status-dot';
+    if(status) status.textContent=`${res.length} found`;
+    if(results){
+      results.innerHTML='';
+      if(!res.length) results.innerHTML='<div class="empty">No results found — try different keywords</div>';
+      else res.forEach((item,i)=>results.appendChild(buildCard(item,i)));
+    }
+    updateStats(res);
+    // Save to history
+    history.unshift({query,brand,platform,mode,ts:Date.now()});
+    if(history.length>50) history.length=50;
+    saveHistory();
+  } catch(e){
+    if(dot) dot.className='status-dot error';
+    if(status) status.textContent='Error';
+    if(results) results.innerHTML='<div class="empty">Search failed — please try again</div>';
+  } finally {
+    if(btn){ btn.disabled=false; btn.innerHTML=btn._orig||'Search'; }
+  }
+}
+
+// Supplier form
+document.getElementById('supplierForm')?.addEventListener('submit', e=>{
+  e.preventDefault();
+  const brand = document.getElementById('brandInput')?.value.trim()||'';
+  const query = document.getElementById('queryInput')?.value.trim()||'';
+  const platform = document.getElementById('supplierPlatform')?.value||'all';
+  const deepScan = document.getElementById('supplierDeepScan')?.checked||false;
+  const wcOnly = document.getElementById('supplierWcOnly')?.checked||false;
+  runSearch({query,brand,platform,mode:'supplier',deepScan,wcOnly,
+    btnId:'supplierBtn',dotId:'supplierDot',statusId:'supplierStatus',
+    resultsId:'supplierResults',hintId:'supplierHint',
+    hintText:`Searching for: ${brand} ${query}`.trim()});
+});
+
+// Freight form
+document.getElementById('ffForm')?.addEventListener('submit', e=>{
+  e.preventDefault();
+  const query = document.getElementById('ffQuery')?.value.trim()||'';
+  const origin = document.getElementById('ffOrigin')?.value.trim()||'';
+  const deepScan = document.getElementById('ffDeepScan')?.checked||false;
+  const ffMode = document.getElementById('ffMode')?.value||'rep';
+  const fullQuery = origin ? `${origin} ${query}` : query;
+  runSearch({query:fullQuery,brand:'',platform:'baidu',mode:'ff',deepScan,wcOnly:false,
+    btnId:'ffBtn',dotId:'ffDot',statusId:'ffStatus',
+    resultsId:'ffResults',hintId:'ffHint',
+    hintText:`${ffMode==='rep'?'Private agent search':'Standard freight search'}: ${fullQuery}`});
+});
+
+// Passing form
+document.getElementById('passingForm')?.addEventListener('submit', e=>{
+  e.preventDefault();
+  const brand = document.getElementById('passingBrand')?.value.trim()||'';
+  const query = document.getElementById('passingQuery')?.value.trim()||'';
+  const deepScan = document.getElementById('passingDeepScan')?.checked||false;
+  const wcOnly = document.getElementById('passingWcOnly')?.checked||false;
+  runSearch({query,brand,platform:'baidu',mode:'passing',deepScan,wcOnly,
+    btnId:'passingBtn',dotId:'passingDot',statusId:'passingStatus',
+    resultsId:'passingResults',hintId:'passingHint',
+    hintText:`Passing/NFC search: ${brand} ${query}`.trim()});
+});
