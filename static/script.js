@@ -113,7 +113,7 @@ function updateStats(results){
 (function(){
   const el=document.getElementById("heroTitle");
   if(!el) return;
-  const text="SourceFinder";
+  const text="Cade's SourceFinder";
   let i=0;
   el.innerHTML='<span class="cursor"></span>';
   const type=()=>{
@@ -131,7 +131,7 @@ function updateStats(results){
 (function(){
   const el=document.getElementById("heroTitle");
   if(!el) return;
-  const text="SourceFinder";
+  const text="Cade's SourceFinder";
   let i=0;
   el.innerHTML='<span class="cursor"></span>';
   const type=()=>{
@@ -910,7 +910,7 @@ function showSetPassword(email){
   overlay.innerHTML = `
     <div class="setpw-card">
       <div class="setpw-title">🎉 You're Approved!</div>
-      <div class="setpw-sub">Set your password to access SourceFinder.<br>You'll only need to do this once.</div>
+      <div class="setpw-sub">Set your password to access Cade's SourceFinder.<br>You'll only need to do this once.</div>
       <label>Email</label>
       <input type="email" id="spEmail" value="${email}" readonly style="opacity:.5;cursor:not-allowed"/>
       <label>Choose Password</label>
@@ -1138,7 +1138,7 @@ async function translateQuery(){
           <button class="tool-btn" onclick="navigator.clipboard.writeText('${wholesaleTerm}').then(()=>showToast('Copied!'))">Copy</button>
         </div>
         <div style="margin-top:12px;display:flex;gap:6px;flex-wrap:wrap">
-          <button class="btn-primary" style="height:36px;font-size:11px;padding:0 12px" onclick="autoSearchChinese('${zh}')">⚡ Search SourceFinder with this</button>
+          <button class="btn-primary" style="height:36px;font-size:11px;padding:0 12px" onclick="autoSearchChinese('${zh}')">⚡ Search Cade's SourceFinder with this</button>
           <button class="quick-btn" onclick="quickOpenWith('1688','${factoryTerm}')">Open on 1688</button>
           <button class="quick-btn" onclick="quickOpenWith('taobao','${zh}')">Open on Taobao</button>
         </div>
