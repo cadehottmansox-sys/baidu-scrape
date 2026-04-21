@@ -11,7 +11,7 @@ def _do_scrapingdog(query, max_results=10):
     api_key = os.getenv("SCRAPINGDOG_API_KEY", "")
     if not api_key: return None
     try:
-        r = _req.get("https://api.scrapingdog.com/baidu",
+        r = _req.get("https://api.scrapingdog.com/baidu/search/",
             params={"api_key": api_key, "query": query, "results": min(max_results*2,20), "country":"cn"},
             timeout=15)
         if r.status_code != 200: return None
