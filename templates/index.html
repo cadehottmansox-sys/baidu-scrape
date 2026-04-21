@@ -16,7 +16,7 @@
     <header class="hero">
       <div class="hero-pill"><span class="hero-pill-dot"></span>Ã¢ÂÂ¡ PRIVATE ACCESS Â· BAIDU AI Â· 24/7/365 UPTIME Â· ISSUES? CONTACT CADE</div>
       <h1 class="hero-title">Source<span class="hero-accent">F<span class="tower-wrap"><span class="tower-i">i</span><svg class="tower-waves" viewBox="-40 -40 80 80" xmlns="http://www.w3.org/2000/svg"><circle class="wave w1" cx="0" cy="0" r="4" /><circle class="wave w2" cx="0" cy="0" r="4" /><circle class="wave w3" cx="0" cy="0" r="4" /></svg></span>nder</span></h1>
-      <p class="hero-sub">1688 Â· Weidian Â· Xianyu Â· Weibo Â· Zhihu Â· Baidu Â· Yupoo Â· Ã¥Â°ÂÃ§ÂºÂ¢Ã¤Â¹Â¦</p>
+      <p class="hero-sub"><span style="filter:blur(4px);user-select:none">1688</span> Â· <span style="filter:blur(4px);user-select:none">Weidian</span> Â· <span style="filter:blur(4px);user-select:none">Xianyu</span> Â· <span style="filter:blur(4px);user-select:none">Weibo</span> Â· <span style="filter:blur(4px);user-select:none">Zhihu</span> Â· Baidu Â· <span style="filter:blur(4px);user-select:none">Yupoo</span> Â· Ã¥Â°ÂÃ§ÂºÂ¢Ã¤Â¹Â¦</p>
       <div class="hero-stats">
         <div class="hero-stat"><div class="stat-val" id="statSuppliers">Ã¢ÂÂ</div><div class="stat-label">Suppliers</div></div>
         <div class="hero-stat"><div class="stat-val" id="statWechats">Ã¢ÂÂ</div><div class="stat-label">WeChats</div></div>
@@ -58,7 +58,9 @@
         <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M8 1l2 4.5 5 .5-3.5 3.5 1 5L8 12l-4.5 2.5 1-5L1 6l5-.5z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
         Saved
       </button>
-      <button class="tab-btn" data-tab="crm">
+      <button class="tab-btn" data-tab="howto" onclick="loadTab('howto')">📖 How to Use</button>
+  <button class="tab-btn" data-tab="chat" onclick="loadTab('chat')">💬 Community</button>
+  <button class="tab-btn" data-tab="crm">
         <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><circle cx="6" cy="5" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M2 13c0-2.2 1.8-4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M11 9v4M9 11h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
         CRM
       </button>
@@ -76,14 +78,14 @@
             <label class="row-label">Platform</label>
             <div class="chips" id="supplierChips">
               <button type="button" class="chip chip-all active" data-platform="all" title="Searches all platforms simultaneously">Ã¢ÂÂ¡ All-in-One</button>
-              <button type="button" class="chip" data-platform="baidu" title="Hidden factories not on 1688 Ã¢ÂÂ direct websites, WeChats, QQ">Ã°ÂÂÂ Baidu</button>
-              <button type="button" class="chip" data-platform="1688" title="Factory direct wholesale Ã¢ÂÂ repurchase rate + transaction count">Ã°ÂÂÂ­ 1688</button>
-              <button type="button" class="chip" data-platform="weidian" title="Find product batches Ã¢ÂÂ compare quality tiers">Ã°ÂÂÂ¦ Weidian</button>
-              <button type="button" class="chip" data-platform="xianyu" title="Factory overruns &amp; clearance Ã¢ÂÂ sometimes cheaper than 1688">Ã°ÂÂÂ·Ã¯Â¸Â Xianyu</button>
+              <button type="button" class="chip" data-platform="baidu" title="Hidden factories not on <span style="filter:blur(4px);user-select:none">1688</span> Ã¢ÂÂ direct websites, WeChats, QQ">Ã°ÂÂÂ Baidu</button>
+              <button type="button" class="chip" data-platform="<span style="filter:blur(4px);user-select:none">1688</span>" title="Factory direct wholesale Ã¢ÂÂ repurchase rate + transaction count">Ã°ÂÂÂ­ <span style="filter:blur(4px);user-select:none">1688</span></button>
+              <button type="button" class="chip" data-platform="weidian" title="Find product batches Ã¢ÂÂ compare quality tiers">Ã°ÂÂÂ¦ <span style="filter:blur(4px);user-select:none">Weidian</span></button>
+              <button type="button" class="chip" data-platform="xianyu" title="Factory overruns &amp; clearance Ã¢ÂÂ sometimes cheaper than <span style="filter:blur(4px);user-select:none">1688</span>">Ã°ÂÂÂ·Ã¯Â¸Â <span style="filter:blur(4px);user-select:none">Xianyu</span></button>
               <button type="button" class="chip" data-platform="xiaohongshu" title="Trend intel Ã¢ÂÂ buyer reviews, batch comparisons">Ã°ÂÂÂ Ã¥Â°ÂÃ§ÂºÂ¢Ã¤Â¹Â¦</button>
-              <button type="button" class="chip" data-platform="weibo" title="Factory announcements Ã¢ÂÂ direct contact info">Ã°ÂÂÂ¢ Weibo</button>
-              <button type="button" class="chip" data-platform="zhihu" title="Expert discussions Ã¢ÂÂ which factory makes the best X?">Ã°ÂÂÂ¬ Zhihu</button>
-              <button type="button" class="chip" data-platform="yupoo" title="Rep seller albums Ã¢ÂÂ WeChat in bio">Ã°ÂÂÂ¼Ã¯Â¸Â Yupoo</button>
+              <button type="button" class="chip" data-platform="weibo" title="Factory announcements Ã¢ÂÂ direct contact info">Ã°ÂÂÂ¢ <span style="filter:blur(4px);user-select:none">Weibo</span></button>
+              <button type="button" class="chip" data-platform="zhihu" title="Expert discussions Ã¢ÂÂ which factory makes the best X?">Ã°ÂÂÂ¬ <span style="filter:blur(4px);user-select:none">Zhihu</span></button>
+              <button type="button" class="chip" data-platform="yupoo" title="Rep seller albums Ã¢ÂÂ WeChat in bio">Ã°ÂÂÂ¼Ã¯Â¸Â <span style="filter:blur(4px);user-select:none">Yupoo</span></button>
             </div>
             <input type="hidden" id="supplierPlatform" value="all"/>
           </div>
@@ -269,7 +271,7 @@
         </button>
         <button class="ff-mode-btn" onclick="setPassingMode('batch',this)">
           <span class="ff-mode-icon">Ã°ÂÂÂ¦</span>
-          <div><div class="ff-mode-title">Batch Intel</div><div class="ff-mode-sub">Which batch passes best Ã¢ÂÂ Weidian + XHS reviews</div></div>
+          <div><div class="ff-mode-title">Batch Intel</div><div class="ff-mode-sub">Which batch passes best Ã¢ÂÂ <span style="filter:blur(4px);user-select:none">Weidian</span> + XHS reviews</div></div>
         </button>
         <button class="ff-mode-btn" onclick="setPassingMode('nfc',this)">
           <span class="ff-mode-icon">Ã°ÂÂÂ±</span>
@@ -331,7 +333,7 @@
           <div class="research-icon">Ã°ÂÂÂ¦</div>
           <div>
             <div class="research-title">Batch Intelligence</div>
-            <div class="research-desc">Searching Weidian + Xiaohongshu for batch reviews and passing verdicts</div>
+            <div class="research-desc">Searching <span style="filter:blur(4px);user-select:none">Weidian</span> + Xiaohongshu for batch reviews and passing verdicts</div>
           </div>
         </div>
         <div id="batchIntelResults" class="results"></div>
@@ -419,11 +421,11 @@
           <button class="quick-btn" onclick="buildKeyword('Factory Direct')">Ã°ÂÂÂ­ Factory Direct</button>
           <button class="quick-btn" onclick="buildKeyword('Rep/1:1')">Ã¢ÂÂ¡ Rep / 1:1</button>
           <button class="quick-btn" onclick="buildKeyword('Wholesale')">Ã°ÂÂÂ¦ Wholesale</button>
-          <button class="quick-btn" onclick="buildKeyword('Xianyu Overrun')">Ã°ÂÂÂ·Ã¯Â¸Â Xianyu Overrun</button>
+          <button class="quick-btn" onclick="buildKeyword('<span style="filter:blur(4px);user-select:none">Xianyu</span> Overrun')">Ã°ÂÂÂ·Ã¯Â¸Â <span style="filter:blur(4px);user-select:none">Xianyu</span> Overrun</button>
           <button class="quick-btn" onclick="buildKeyword('WeChat Only')">Ã°ÂÂÂ¬ WeChat Only</button>
           <button class="quick-btn" onclick="buildKeyword('Passing/NFC')">Ã¢ÂÂ Passing/NFC</button>
-          <button class="quick-btn" onclick="buildKeyword('Weidian Batch')">Ã°ÂÂÂ Weidian Batch</button>
-          <button class="quick-btn" onclick="buildKeyword('Zhihu Expert')">Ã°ÂÂ§Â  Zhihu Expert</button>
+          <button class="quick-btn" onclick="buildKeyword('<span style="filter:blur(4px);user-select:none">Weidian</span> Batch')">Ã°ÂÂÂ <span style="filter:blur(4px);user-select:none">Weidian</span> Batch</button>
+          <button class="quick-btn" onclick="buildKeyword('<span style="filter:blur(4px);user-select:none">Zhihu</span> Expert')">Ã°ÂÂ§Â  <span style="filter:blur(4px);user-select:none">Zhihu</span> Expert</button>
         </div>
         <div id="kwResult"></div>
       </div>
@@ -494,7 +496,7 @@
           <div class="research-icon">Ã°ÂÂÂ¯</div>
           <div>
             <div class="research-title">Chinese Query Translator</div>
-            <div class="research-desc">Translate your product name to Chinese before searching Ã¢ÂÂ gets 10x better results on Baidu & 1688</div>
+            <div class="research-desc">Translate your product name to Chinese before searching Ã¢ÂÂ gets 10x better results on Baidu & <span style="filter:blur(4px);user-select:none">1688</span></div>
           </div>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -510,11 +512,11 @@
           <div class="research-icon">Ã°ÂÂÂ­</div>
           <div>
             <div class="research-title">Factory Validator</div>
-            <div class="research-desc">Paste a 1688/Weidian URL Ã¢ÂÂ we check repurchase rate, transaction count, shop age, and WeChat extraction</div>
+            <div class="research-desc">Paste a <span style="filter:blur(4px);user-select:none">1688</span>/<span style="filter:blur(4px);user-select:none">Weidian</span> URL Ã¢ÂÂ we check repurchase rate, transaction count, shop age, and WeChat extraction</div>
           </div>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <input type="text" id="validateUrl" placeholder="https://shop.1688.com/..." style="flex:1;min-width:200px"/>
+          <input type="text" id="validateUrl" placeholder="https://shop.<span style="filter:blur(4px);user-select:none">1688</span>.com/..." style="flex:1;min-width:200px"/>
           <button class="btn-primary" onclick="validateFactory()" style="height:42px;padding:0 16px;white-space:nowrap">Ã°ÂÂÂ Validate</button>
         </div>
         <div id="validateResult" style="margin-top:12px"></div>
@@ -542,7 +544,7 @@
           <div class="research-icon">Ã¢ÂÂÃ¯Â¸Â</div>
           <div>
             <div class="research-title">Batch Comparator</div>
-            <div class="research-desc">Search Weidian for multiple quality tiers of the same product Ã¢ÂÂ find which batch is worth buying</div>
+            <div class="research-desc">Search <span style="filter:blur(4px);user-select:none">Weidian</span> for multiple quality tiers of the same product Ã¢ÂÂ find which batch is worth buying</div>
           </div>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -565,13 +567,13 @@
           <input type="text" id="quickInput" placeholder="Product name..." style="flex:1;min-width:200px"/>
         </div>
         <div class="quick-links" id="quickLinks" style="margin-top:10px;display:flex;flex-wrap:wrap;gap:6px">
-          <button class="quick-btn" onclick="quickOpen('1688')">Ã°ÂÂÂ­ 1688</button>
+          <button class="quick-btn" onclick="quickOpen('<span style="filter:blur(4px);user-select:none">1688</span>')">Ã°ÂÂÂ­ <span style="filter:blur(4px);user-select:none">1688</span></button>
           <button class="quick-btn" onclick="quickOpen('taobao')">Ã°ÂÂÂ Taobao</button>
-          <button class="quick-btn" onclick="quickOpen('weidian')">Ã°ÂÂÂ¦ Weidian</button>
-          <button class="quick-btn" onclick="quickOpen('xianyu')">Ã°ÂÂÂ·Ã¯Â¸Â Xianyu</button>
+          <button class="quick-btn" onclick="quickOpen('weidian')">Ã°ÂÂÂ¦ <span style="filter:blur(4px);user-select:none">Weidian</span></button>
+          <button class="quick-btn" onclick="quickOpen('xianyu')">Ã°ÂÂÂ·Ã¯Â¸Â <span style="filter:blur(4px);user-select:none">Xianyu</span></button>
           <button class="quick-btn" onclick="quickOpen('xiaohongshu')">Ã°ÂÂÂ Ã¥Â°ÂÃ§ÂºÂ¢Ã¤Â¹Â¦</button>
-          <button class="quick-btn" onclick="quickOpen('weibo')">Ã°ÂÂÂ¢ Weibo</button>
-          <button class="quick-btn" onclick="quickOpen('zhihu')">Ã°ÂÂÂ¬ Zhihu</button>
+          <button class="quick-btn" onclick="quickOpen('weibo')">Ã°ÂÂÂ¢ <span style="filter:blur(4px);user-select:none">Weibo</span></button>
+          <button class="quick-btn" onclick="quickOpen('zhihu')">Ã°ÂÂÂ¬ <span style="filter:blur(4px);user-select:none">Zhihu</span></button>
           <button class="quick-btn" onclick="quickOpen('jadeship')">Ã°ÂÂÂ Jadeship</button>
         </div>
       </div>
@@ -667,5 +669,48 @@
   </div>
 
   <script src="{{ url_for('static', filename='script.js') }}?v=999"></script>
-</body>
+
+<!-- HOW TO USE TAB -->
+<div id="tab-howto" class="tab-content" style="display:none;padding:24px">
+  <h2 style="color:#e2e8f0;font-size:18px;margin-bottom:16px">📖 How to Use Cade's SourceFinder</h2>
+  <div style="display:grid;gap:16px">
+    <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:20px">
+      <h3 style="color:#22c55e;margin-bottom:10px;font-size:14px">1. Searching for Suppliers</h3>
+      <p style="color:#94a3b8;font-size:13px;line-height:1.7">Enter a <b style="color:#e2e8f0">Brand Name</b> (e.g. Nike) and <b style="color:#e2e8f0">Product Keywords</b> (e.g. Calm Slides). Hit Search. The app queries Baidu — China's largest search engine — using specialized factory-finding keywords in Chinese. Results show supplier listings with WeChat IDs you can contact directly.</p>
+    </div>
+    <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:20px">
+      <h3 style="color:#3b82f6;margin-bottom:10px;font-size:14px">2. Choosing a Platform</h3>
+      <p style="color:#94a3b8;font-size:13px;line-height:1.7"><b style="color:#e2e8f0">All-in-One</b> — searches everything at once (recommended)<br><b style="color:#e2e8f0">Yupoo</b> — best for passing quality, factories post full catalogs here<br><b style="color:#e2e8f0">1688</b> — wholesale pricing direct from factories<br><b style="color:#e2e8f0">Weidian</b> — smaller sellers, good for reps<br><b style="color:#e2e8f0">Baidu</b> — broadest search, most results</p>
+    </div>
+    <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:20px">
+      <h3 style="color:#f59e0b;margin-bottom:10px;font-size:14px">3. Passing vs Rep Mode</h3>
+      <p style="color:#94a3b8;font-size:13px;line-height:1.7">Use the <b style="color:#e2e8f0">Passing tab</b> for passing quality items — the search uses different Chinese keywords (原厂, 出口转内销, 1:1开模) that surface export-quality factory contacts instead of typical rep sellers. Middlemen listed in Passing results are often legit — some have exclusive factory relationships.</p>
+    </div>
+    <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:20px">
+      <h3 style="color:#a855f7;margin-bottom:10px;font-size:14px">4. Deep Scan + WeChat IDs</h3>
+      <p style="color:#94a3b8;font-size:13px;line-height:1.7">Toggle <b style="color:#e2e8f0">Deep Scan</b> to have the app visit every result page and extract WeChat IDs from images, QR codes and text. Toggle <b style="color:#e2e8f0">WeChat Only</b> to filter results to only show listings with WeChat contact info. Click any highlighted WeChat ID (shown in green) to copy it instantly.</p>
+    </div>
+    <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:20px">
+      <h3 style="color:#ef4444;margin-bottom:10px;font-size:14px">5. Tips & Best Practices</h3>
+      <p style="color:#94a3b8;font-size:13px;line-height:1.7">• Be specific with keywords — "Jordan 4 Thunder" beats "Jordan shoes"<br>• Add a brand name AND product for best accuracy<br>• Try multiple platforms for the same item<br>• WeChats that appear on multiple results = more trustworthy<br>• Save results using the Saved tab<br>• Use the Finds tab to track contacts you've already reached out to<br>• Issues? Contact Cade immediately.</p>
+    </div>
+  </div>
+</div>
+
+<!-- COMMUNITY CHAT TAB -->
+<div id="tab-chat" class="tab-content" style="display:none;padding:24px">
+  <h2 style="color:#e2e8f0;font-size:18px;margin-bottom:4px">💬 Community Chat</h2>
+  <p style="color:#475569;font-size:12px;margin-bottom:16px">Chat with other SourceFinder members. Share finds, tips, contacts.</p>
+  <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:12px;height:400px;display:flex;flex-direction:column">
+    <div id="sf-chat-msgs" style="flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px">
+      <div style="text-align:center;color:#334155;font-size:12px;padding:20px">Loading messages...</div>
+    </div>
+    <div style="padding:12px;border-top:1px solid rgba(255,255,255,.06);display:flex;gap:8px">
+      <input id="sf-chat-input" placeholder="Type a message... (Enter to send)" 
+        style="flex:1;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#e2e8f0;padding:8px 12px;border-radius:8px;font-size:13px;outline:none"
+        onkeydown="if(event.key=='Enter'&&!event.shiftKey){event.preventDefault();_sfSendMsg();}">
+      <button onclick="_sfSendMsg()" style="background:#3b82f6;border:none;color:white;padding:8px 16px;border-radius:8px;font-size:13px;cursor:pointer">Send</button>
+    </div>
+  </div>
+</div></body>
 </html>
