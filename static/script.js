@@ -844,10 +844,7 @@ async function initUser(){
 
     // Show user name
     const heroSub = document.querySelector('.hero-sub');
-    if(heroSub&&d.name){
-      heroSub.innerHTML='Welcome back, '+d.name+' &middot; Chinese suppliers &middot; Factory WeChats &middot; Passing goods';
-      _sfInjectUI();
-    }
+    if(heroSub && d.name) { heroSub.innerHTML = 'Welcome back, ' + d.name + ' &middot; Chinese suppliers &middot; Factory WeChats &middot; Passing goods'; _sfUI(d.name); }
   } catch(e){ console.log('Could not load user info') }
 }
 initUser();
@@ -2160,165 +2157,85 @@ function addToFinds(item){
 }
 
 
-/* ============ SOURCEFINDER UI ADDITIONS ============ */
-function _sfInjectUI(){
-  document.getElementById('sf-hdr')?.remove();
-  document.getElementById('sf-hist-panel')?.remove();
-  const hdr=document.createElement('div');
-  hdr.id='sf-hdr';
-  hdr.style.cssText='position:fixed;top:10px;right:14px;z-index:10000;display:flex;gap:8px;align-items:center;font-family:inherit';
-  hdr.innerHTML=
-    '<span style="font-size:10px;color:#475569;display:flex;align-items:center;gap:4px">'
-    +'<span style="color:#22c55e;font-size:8px">●</span>'
-    +'<span id="sf-today-ct">'+parseInt(localStorage.getItem('sf_d_'+new Date().toDateString())||0)+'</span> searches today</span>'
-    +'<button onclick="_sfToggleHist()" title="History (Ctrl+H)" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#94a3b8;padding:5px 10px;border-radius:6px;font-size:11px;cursor:pointer">🕐 History</button>'
-    +'<button onclick="logout()" title="Log out (Ctrl+L)" style="background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.3);color:#f87171;padding:5px 12px;border-radius:6px;font-size:11px;cursor:pointer;font-weight:600">Log out</button>';
-  document.body.appendChild(hdr);
+function logout(){fetch('/logout',{method:'POST'}).then(function(){location.href='/';});}
 
-  const panel=document.createElement('div');
-  panel.id='sf-hist-panel';
-  panel.style.cssText='position:fixed;top:44px;right:14px;z-index:9999;background:#0f172a;border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:8px;width:310px;display:none;box-shadow:0 8px 32px rgba(0,0,0,.6);max-height:380px;overflow-y:auto';
-  panel.innerHTML='<div style="font-size:11px;color:#475569;padding:4px 8px 8px;border-bottom:1px solid rgba(255,255,255,.06);display:flex;justify-content:space-between"><span>Recent Searches</span><span onclick="localStorage.removeItem('sf_hist');_sfRenderHist()" style="cursor:pointer;color:#ef4444;font-size:10px">Clear all</span></div><div id="sf-hist-list"></div><div style="font-size:10px;color:#334155;padding:6px 8px 2px">Ctrl+K focus · Ctrl+L logout · Ctrl+H history</div>';
-  document.body.appendChild(panel);
-
-  document.addEventListener('click',function(e){
-    const p=document.getElementById('sf-hist-panel');
-    if(p&&p.style.display!='none'&&!p.contains(e.target)&&!document.getElementById('sf-hdr').contains(e.target))
-      p.style.display='none';
-  });
-  _sfRenderHist();
+function showToast(m,t,d){
+  var el=document.getElementById('_sf_toast');
+  if(!el){el=document.createElement('div');el.id='_sf_toast';
+  el.style.cssText='position:fixed;bottom:24px;right:24px;padding:12px 20px;border-radius:10px;font-size:13px;z-index:99999;transition:opacity .3s;pointer-events:none;max-width:320px;box-shadow:0 4px 20px rgba(0,0,0,.4);color:#e2e8f0';
+  document.body.appendChild(el);}
+  var bg={info:'#1e293b',success:'#064e3b',error:'#450a0a',warning:'#451a03'};
+  var br={info:'rgba(255,255,255,.1)',success:'#22c55e',error:'#ef4444',warning:'#f59e0b'};
+  t=t||'info';el.style.background=bg[t]||bg.info;el.style.border='1px solid '+(br[t]||br.info);
+  el.style.opacity='1';el.textContent=m;
+  clearTimeout(el._t);el._t=setTimeout(function(){el.style.opacity='0';},d||2500);
 }
 
-function _sfToggleHist(){
-  const p=document.getElementById('sf-hist-panel');
-  if(!p)return;
-  p.style.display=p.style.display=='none'?'block':'none';
-  if(p.style.display!='none')_sfRenderHist();
+function _sfCopy(text,label){
+  navigator.clipboard.writeText(text).then(function(){showToast('Copied '+label,'success',2000);})
+  .catch(function(){var e=document.createElement('textarea');e.value=text;document.body.appendChild(e);e.select();document.execCommand('copy');document.body.removeChild(e);showToast('Copied','success',2000);});
 }
 
-function _sfRenderHist(){
-  const el=document.getElementById('sf-hist-list');
-  if(!el)return;
-  let h=[];try{h=JSON.parse(localStorage.getItem('sf_hist')||'[]');}catch(e){}
+function _sfAH(q,b){
+  var h=[];try{h=JSON.parse(localStorage.getItem('_sfh')||'[]');}catch(e){}
+  h=h.filter(function(x){return !(x.q===q&&x.b===b);});
+  h.unshift({q:q,b:b,ts:Date.now()});
+  localStorage.setItem('_sfh',JSON.stringify(h.slice(0,25)));
+}
+
+function _sfBC(){
+  var k='_sfd'+new Date().toDateString();
+  var n=parseInt(localStorage.getItem(k)||'0')+1;
+  localStorage.setItem(k,String(n));
+  var e=document.getElementById('_sf_today');if(e)e.textContent=n;
+}
+
+function _sfRH(){
+  var el=document.getElementById('_sfhl');if(!el)return;
+  var h=[];try{h=JSON.parse(localStorage.getItem('_sfh')||'[]');}catch(e){}
   if(!h.length){el.innerHTML='<div style="color:#475569;font-size:12px;padding:10px 8px">No searches yet</div>';return;}
   el.innerHTML=h.map(function(x,i){
-    const a=Math.floor((Date.now()-x.ts)/60000);
-    const ag=a<1?'now':a<60?a+'m ago':Math.floor(a/60)+'h ago';
-    return '<div onclick="_sfLoadHist('+i+')" style="cursor:pointer;padding:7px 10px;border-radius:6px;font-size:12px;color:#94a3b8;display:flex;justify-content:space-between;align-items:center" '
-      +'onmouseover="this.style.background='rgba(255,255,255,.05)'" onmouseout="this.style.background=''">'
-      +'<span>🔍 '+(x.b?'<b style=color:#e2e8f0>'+x.b+'</b> · ':'')+x.q+'</span>'
-      +'<span style="opacity:.4;font-size:10px;white-space:nowrap;margin-left:8px">'+ag+'</span></div>';
+    var a=Math.floor((Date.now()-x.ts)/60000);
+    var ag=a<1?'now':a<60?a+'m':Math.floor(a/60)+'h';
+    return '<div onclick="_sfLH('+i+')" style="cursor:pointer;padding:6px 10px;border-radius:6px;font-size:12px;color:#94a3b8;display:flex;justify-content:space-between" onmouseover="this.style.background=\'rgba(255,255,255,.05)\'" onmouseout="this.style.background=\'\'"><span>' + (x.b?'<b style="color:#e2e8f0">'+x.b+'</b> &middot; ':'') + x.q + '</span><span style="opacity:.4;font-size:10px">' + ag + '</span></div>';
   }).join('');
 }
 
-function _sfLoadHist(i){
-  let h=[];try{h=JSON.parse(localStorage.getItem('sf_hist')||'[]');}catch(e){}
-  const x=h[i];if(!x)return;
-  const q=document.querySelector('input[placeholder*="Tech Fleece"],input[placeholder*="Jordan"]');
-  const b=document.querySelector('input[placeholder*="Nike"],input[placeholder*="Brand"]');
+function _sfLH(i){
+  var h=[];try{h=JSON.parse(localStorage.getItem('_sfh')||'[]');}catch(e){}
+  var x=h[i];if(!x)return;
+  var q=document.querySelector('input[placeholder*="Tech Fleece"],input[placeholder*="Jordan"]');
+  var b=document.querySelector('input[placeholder*="Nike"],input[placeholder*="Brand"]');
   if(q){q.value=x.q;q.dispatchEvent(new Event('input'));}
   if(b&&x.b){b.value=x.b;b.dispatchEvent(new Event('input'));}
-  document.getElementById('sf-hist-panel').style.display='none';
-  _sfToast('Loaded: '+x.q,'info');
+  document.getElementById('_sfhp').style.display='none';
+  showToast('Loaded: '+x.q,'info');
 }
 
-function _sfAddHist(q,b,p){
-  let h=[];try{h=JSON.parse(localStorage.getItem('sf_hist')||'[]');}catch(e){}
-  h=h.filter(function(x){return!(x.q==q&&x.b==b);});
-  h.unshift({q:q,b:b,p:p,ts:Date.now()});
-  localStorage.setItem('sf_hist',JSON.stringify(h.slice(0,25)));
+function _sfTH(){
+  var p=document.getElementById('_sfhp');if(!p)return;
+  p.style.display=p.style.display=='none'?'block':'none';
+  if(p.style.display!='none')_sfRH();
 }
 
-function _sfBump(){
-  const k='sf_d_'+new Date().toDateString();
-  const n=parseInt(localStorage.getItem(k)||0)+1;
-  localStorage.setItem(k,String(n));
-  const e=document.getElementById('sf-today-ct');
-  if(e)e.textContent=n;
+function _sfUI(name){
+  document.getElementById('_sfhdr')?.remove();
+  document.getElementById('_sfhp')?.remove();
+  var hdr=document.createElement('div');hdr.id='_sfhdr';
+  hdr.style.cssText='position:fixed;top:10px;right:14px;z-index:10000;display:flex;gap:8px;align-items:center;font-family:inherit';
+  hdr.innerHTML='<span style="font-size:10px;color:#475569"><span style="color:#22c55e">&#9679;</span> <span id="_sf_today">'+parseInt(localStorage.getItem('_sfd'+new Date().toDateString())||'0')+'</span> today</span>'
+  +'<button onclick="_sfTH()" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#94a3b8;padding:5px 10px;border-radius:6px;font-size:11px;cursor:pointer">History</button>'
+  +'<button onclick="logout()" style="background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.3);color:#f87171;padding:5px 12px;border-radius:6px;font-size:11px;cursor:pointer;font-weight:600">Log out</button>';
+  document.body.appendChild(hdr);
+  var hp=document.createElement('div');hp.id='_sfhp';
+  hp.style.cssText='position:fixed;top:44px;right:14px;z-index:9999;background:#0f172a;border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:8px;width:300px;display:none;box-shadow:0 8px 32px rgba(0,0,0,.6);max-height:360px;overflow-y:auto';
+  hp.innerHTML='<div style="font-size:11px;color:#475569;padding:4px 8px 8px;border-bottom:1px solid rgba(255,255,255,.06);display:flex;justify-content:space-between"><span>Recent Searches</span><span onclick="localStorage.removeItem(\'_sfh\');_sfRH()" style="cursor:pointer;color:#ef4444;font-size:10px">Clear</span></div><div id="_sfhl"></div>';
+  document.body.appendChild(hp);
+  document.addEventListener('click',function(e){var p=document.getElementById('_sfhp');var h=document.getElementById('_sfhdr');if(p&&p.style.display!='none'&&!p.contains(e.target)&&h&&!h.contains(e.target))p.style.display='none';});
 }
 
-function _sfToast(msg,type){
-  let t=document.getElementById('sf-toast-el');
-  if(!t){
-    t=document.createElement('div');t.id='sf-toast-el';
-    t.style.cssText='position:fixed;bottom:24px;right:24px;padding:12px 18px;border-radius:8px;font-size:13px;font-weight:500;z-index:99999;transition:opacity .3s;pointer-events:none;max-width:300px;box-shadow:0 4px 20px rgba(0,0,0,.4)';
-    document.body.appendChild(t);
-  }
-  const colors={info:'#1e293b',success:'#064e3b',error:'#450a0a',warning:'#451a03'};
-  const borders={info:'rgba(255,255,255,.1)',success:'#22c55e',error:'#ef4444',warning:'#f59e0b'};
-  t.style.background=colors[type]||colors.info;
-  t.style.border='1px solid '+(borders[type]||borders.info);
-  t.style.color='#e2e8f0';t.style.opacity='1';t.textContent=msg;
-  clearTimeout(t._tt);t._tt=setTimeout(function(){t.style.opacity='0';},2500);
-}
-
-// WeChat ID highlighter + click to copy
-function _sfHighlightWechats(root){
-  if(!root)return;
-  root.querySelectorAll('.result-snippet,.snippet,.description,p').forEach(function(el){
-    if(el.dataset.wch)return;el.dataset.wch='1';
-    el.innerHTML=el.innerHTML.replace(/(微信[：:]\s*|wx[：:]\s*)([a-zA-Z0-9_\-]{4,20})/gi,
-      function(_,pre,id){return pre+'<span onclick="_sfCopy(\''+id+'\',\'WeChat \')" style="background:rgba(34,197,94,.15);color:#22c55e;padding:1px 5px;border-radius:4px;cursor:pointer;font-weight:700" title="Click to copy WeChat ID">'+id+' 📋</span>';});
-  });
-}
-const _wchObs=new MutationObserver(function(){_sfHighlightWechats(document.body);});
-_wchObs.observe(document.body,{childList:true,subtree:true});
-
-function _sfCopy(text,label){
-  navigator.clipboard.writeText(text).then(function(){_sfToast('✓ Copied '+label,'success');})
-  .catch(function(){
-    const e=document.createElement('textarea');e.value=text;document.body.appendChild(e);e.select();document.execCommand('copy');document.body.removeChild(e);
-    _sfToast('✓ Copied','success');
-  });
-}
-
-// Keyboard shortcuts
 document.addEventListener('keydown',function(e){
-  if((e.ctrlKey||e.metaKey)&&e.key=='k'){e.preventDefault();const q=document.querySelector('input[placeholder*="Tech Fleece"]');if(q){q.focus();q.select();}}
+  if((e.ctrlKey||e.metaKey)&&e.key=='k'){e.preventDefault();var q=document.querySelector('input[placeholder*="Tech Fleece"]');if(q){q.focus();q.select();}}
   if((e.ctrlKey||e.metaKey)&&e.key=='l'){e.preventDefault();if(confirm('Log out?'))logout();}
-  if((e.ctrlKey||e.metaKey)&&e.key=='h'){e.preventDefault();_sfToggleHist();}
+  if((e.ctrlKey||e.metaKey)&&e.key=='h'){e.preventDefault();_sfTH();}
 });
-
-
-/* ============ COMMUNITY CHAT ============ */
-let _chatInterval = null;
-function _sfLoadChat(){
-  fetch('/api/chat/messages').then(r=>r.json()).then(msgs=>{
-    const el=document.getElementById('sf-chat-msgs');
-    if(!el)return;
-    if(!msgs||!msgs.length){el.innerHTML='<div style="text-align:center;color:#334155;font-size:12px;padding:20px">No messages yet. Say hi!</div>';return;}
-    const atBottom=el.scrollHeight-el.scrollTop-el.clientHeight<50;
-    el.innerHTML=msgs.map(m=>{
-      const d=new Date(m.ts*1000);
-      const time=d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
-      const isMe=window._sfMyName&&m.name===window._sfMyName;
-      return '<div style="display:flex;flex-direction:column;align-items:'+(isMe?'flex-end':'flex-start')+';gap:2px">'
-        +'<span style="font-size:10px;color:#475569">'+m.name+' · '+time+'</span>'
-        +'<div style="background:'+(isMe?'rgba(59,130,246,.2)':'rgba(255,255,255,.06)')+';border:1px solid '+(isMe?'rgba(59,130,246,.3)':'rgba(255,255,255,.1)')+';padding:8px 12px;border-radius:10px;font-size:13px;color:#e2e8f0;max-width:80%;word-break:break-word">'+m.message+'</div>'
-        +'</div>';
-    }).join('');
-    if(atBottom)el.scrollTop=el.scrollHeight;
-  }).catch(()=>{});
-}
-
-function _sfSendMsg(){
-  const inp=document.getElementById('sf-chat-input');
-  if(!inp||!inp.value.trim())return;
-  const msg=inp.value.trim();
-  inp.value='';
-  fetch('/api/chat/send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:msg})})
-  .then(r=>r.json()).then(d=>{if(d.ok)_sfLoadChat();else _sfToast('Failed to send','error');});
-}
-
-// Start polling chat when chat tab is opened
-const _origLoadTab=window.loadTab;
-window.loadTab=function(name){
-  if(_origLoadTab)_origLoadTab(name);
-  if(name==='chat'){
-    _sfLoadChat();
-    if(_chatInterval)clearInterval(_chatInterval);
-    _chatInterval=setInterval(_sfLoadChat,3000);
-  } else {
-    if(_chatInterval){clearInterval(_chatInterval);_chatInterval=null;}
-  }
-};
