@@ -11,12 +11,12 @@ def _do_scrapingdog(query, max_results=10):
     api_key = os.getenv("SCRAPINGDOG_API_KEY", "")
     if not api_key: return None
     try:
-        r = _req.get("https://api.scrapingdog.com/baidu/search/",
+        r = _req.get("https://api.scrapingdog.com/baidu",
             params={"api_key": api_key, "query": query, "results": min(max_results*2,20), "country":"cn"},
             timeout=15)
         if r.status_code != 200: return None
         data = r.json()
-        organic = data.get("organic_data") or data.get("organic_results") or []
+        organic = data.get("Baidu_data") or data.get("organic_data") or data.get("organic_results") or []
         out = []
         for item in organic[:max_results]:
             t = item.get("title",""); l = item.get("link","") or item.get("url",""); s = item.get("snippet","") or item.get("description","")
