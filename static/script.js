@@ -1,4 +1,109 @@
 // Inject popup animations
+
+// ===== LOGOUT =====
+function logout(){fetch('/logout',{method:'POST'}).then(()=>location.href='/');}
+
+// ===== TOAST =====
+function showToast(msg,type,dur){
+  type=type||'info';dur=dur||3000;
+  let t=document.getElementById('sf-toast');
+  if(!t){t=document.createElement('div');t.id='sf-toast';
+    t.style.cssText='position:fixed;bottom:24px;right:24px;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:500;z-index:9999;transition:all .3s;pointer-events:none;max-width:320px;box-shadow:0 4px 20px rgba(0,0,0,.4)';
+    document.body.appendChild(t);}
+  const c={info:'#1e293b',success:'#064e3b',error:'#450a0a',warning:'#451a03'};
+  const b={info:'rgba(255,255,255,.1)',success:'#22c55e',error:'#ef4444',warning:'#f59e0b'};
+  t.style.background=c[type]||c.info;t.style.border='1px solid '+(b[type]||b.info);
+  t.style.color='#e2e8f0';t.style.opacity='1';t.textContent=msg;
+  clearTimeout(t._t);t._t=setTimeout(()=>t.style.opacity='0',dur);
+}
+
+// ===== COPY =====
+function copyToClipboard(text,label){
+  navigator.clipboard.writeText(text).then(()=>showToast('✓ Copied '+(label||text),'success',2000))
+  .catch(()=>{const e=document.createElement('textarea');e.value=text;document.body.appendChild(e);e.select();document.execCommand('copy');document.body.removeChild(e);showToast('✓ Copied','success',2000);});
+}
+
+// ===== SEARCH HISTORY =====
+const SF_HK='sf_search_history';
+function getHistory(){try{return JSON.parse(localStorage.getItem(SF_HK)||'[]');}catch(e){return[];}}
+function addToHistory(q,b,p){const h=getHistory().filter(x=>!(x.q===q&&x.b===b));h.unshift({q,b,p,ts:Date.now()});localStorage.setItem(SF_HK,JSON.stringify(h.slice(0,25)));}
+function timeAgo(ts){const s=Math.floor((Date.now()-ts)/1000);if(s<60)return s+'s ago';if(s<3600)return Math.floor(s/60)+'m ago';if(s<86400)return Math.floor(s/3600)+'h ago';return Math.floor(s/86400)+'d ago';}
+
+// ===== DAILY COUNTER =====
+function getTodayCount(){return parseInt(localStorage.getItem('sf_daily_'+new Date().toDateString())||'0');}
+function bumpCount(){const k='sf_daily_'+new Date().toDateString();const n=getTodayCount()+1;localStorage.setItem(k,n);const e=document.getElementById('sf-today');if(e)e.textContent=n;return n;}
+
+// ===== INJECT HEADER BUTTONS =====
+function injectHeaderBtns(){
+  document.getElementById('sf-hdr')?.remove();
+  const d=document.createElement('div');d.id='sf-hdr';
+  d.style.cssText='position:fixed;top:10px;right:14px;z-index:10000;display:flex;gap:8px;align-items:center';
+  d.innerHTML=`
+    <span style="font-size:10px;color:#475569"><span style="color:#22c55e">●</span> <span id="sf-today">${getTodayCount()}</span> today</span>
+    <button onclick="toggleHistory()" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#94a3b8;padding:5px 10px;border-radius:6px;font-size:11px;cursor:pointer">🕐 History</button>
+    <button onclick="logout()" style="background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.3);color:#f87171;padding:5px 12px;border-radius:6px;font-size:11px;cursor:pointer;font-weight:600">Log out</button>
+  `;
+  document.body.appendChild(d);
+
+  // History panel
+  document.getElementById('sf-hist-panel')?.remove();
+  const p=document.createElement('div');p.id='sf-hist-panel';
+  p.style.cssText='position:fixed;top:44px;right:14px;z-index:9999;background:#0f172a;border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:8px;width:310px;display:none;box-shadow:0 8px 32px rgba(0,0,0,.6);max-height:400px;overflow-y:auto';
+  p.innerHTML='<div style="font-size:11px;color:#475569;padding:4px 8px 8px;border-bottom:1px solid rgba(255,255,255,.05);display:flex;justify-content:space-between"><span>Recent Searches</span><span onclick="localStorage.removeItem(SF_HK);renderHistory()" style="cursor:pointer;color:#ef4444">Clear all</span></div><div id="sf-hist-list"></div><div style="font-size:10px;color:#334155;padding:6px 8px 2px">Ctrl+K = focus search &nbsp;·&nbsp; Ctrl+L = logout</div>';
+  document.body.appendChild(p);
+  
+  // Close on outside click
+  document.addEventListener('click',e=>{
+    const panel=document.getElementById('sf-hist-panel');
+    const btn=document.getElementById('sf-hdr');
+    if(panel&&!panel.contains(e.target)&&btn&&!btn.contains(e.target))panel.style.display='none';
+  });
+}
+
+function toggleHistory(){
+  const p=document.getElementById('sf-hist-panel');
+  if(!p)return;
+  const open=p.style.display!=='none';
+  p.style.display=open?'none':'block';
+  if(!open)renderHistory();
+}
+
+function renderHistory(){
+  const el=document.getElementById('sf-hist-list');if(!el)return;
+  const h=getHistory();
+  if(!h.length){el.innerHTML='<div style="color:#475569;font-size:12px;padding:10px 8px">No searches yet</div>';return;}
+  el.innerHTML=h.map((x,i)=>`<div onclick="rerunSearch(${i})" style="cursor:pointer;padding:7px 10px;border-radius:6px;font-size:12px;color:#94a3b8;display:flex;justify-content:space-between;align-items:center" onmouseover="this.style.background='rgba(255,255,255,.05)'" onmouseout="this.style.background=''"><span>🔍 ${x.b?x.b+' · ':''}${x.q} <span style="opacity:.4;font-size:10px">[${x.p||'baidu'}]</span></span><span style="opacity:.4;font-size:10px;white-space:nowrap">${timeAgo(x.ts)}</span></div>`).join('');
+}
+
+function rerunSearch(i){
+  const x=getHistory()[i];if(!x)return;
+  const qEl=document.querySelector('input[placeholder*="Tech Fleece"],input[placeholder*="Jordan"],input[placeholder*="keyword"]');
+  const bEl=document.querySelector('input[placeholder*="Nike"],input[placeholder*="Brand"],input[placeholder*="Jordan"]');
+  if(qEl){qEl.value=x.q;qEl.dispatchEvent(new Event('input'));}
+  if(bEl&&x.b){bEl.value=x.b;bEl.dispatchEvent(new Event('input'));}
+  document.getElementById('sf-hist-panel').style.display='none';
+  showToast('Loaded: '+x.q,'info');
+}
+
+// ===== KEYBOARD SHORTCUTS =====
+document.addEventListener('keydown',e=>{
+  if((e.ctrlKey||e.metaKey)&&e.key==='k'){e.preventDefault();const q=document.querySelector('input[placeholder*="Tech Fleece"],input[placeholder*="Jordan"]');if(q){q.focus();q.select();}}
+  if((e.ctrlKey||e.metaKey)&&e.key==='l'){e.preventDefault();if(confirm('Log out?'))logout();}
+  if((e.ctrlKey||e.metaKey)&&e.key==='h'){e.preventDefault();toggleHistory();}
+});
+
+// ===== WECHAT HIGHLIGHTER =====
+function highlightWeChats(root){
+  if(!root)return;
+  root.querySelectorAll('.snippet,.result-snippet,.description,p,.c-abstract').forEach(el=>{
+    if(el.dataset.wch)return;el.dataset.wch='1';
+    el.innerHTML=el.innerHTML.replace(/(微信[：:]s*|wx[：:]s*)([a-zA-Z0-9_-]{4,20})/gi,
+      (_,pre,id)=>`${pre}<span onclick="copyToClipboard('${id}','WeChat ${id}')" style="background:rgba(34,197,94,.15);color:#22c55e;padding:1px 5px;border-radius:4px;cursor:pointer;font-weight:700" title="Click to copy">${id} 📋</span>`);
+  });
+}
+const _wchObs=new MutationObserver(()=>highlightWeChats(document.body));
+_wchObs.observe(document.body,{childList:true,subtree:true});
+
 const _popStyle = document.createElement('style');
 _popStyle.textContent = `
   @keyframes popIn{from{opacity:0;transform:scale(.85) translateY(10px)}to{opacity:1;transform:scale(1) translateY(0)}}
@@ -8,7 +113,7 @@ _popStyle.textContent = `
 `;
 document.head.appendChild(_popStyle);
 
-// ── Session stats ─────────────────────────────────────────────────
+// ââ Session stats âââââââââââââââââââââââââââââââââââââââââââââââââ
 const sessionStats = {suppliers:0, wechats:0, deep:0, searches:0};
 function updateStats(results){
   sessionStats.searches++;
@@ -28,7 +133,7 @@ function updateStats(results){
   if(sr) sr.textContent = fmt(sessionStats.searches);
 }
 
-// ── BACKGROUND ───────────────────────────────────────────────────
+// ââ BACKGROUND âââââââââââââââââââââââââââââââââââââââââââââââââââ
 (function(){
   const cv = document.getElementById('bg');
   if(!cv) return;
@@ -109,11 +214,11 @@ function updateStats(results){
 
 "use strict";
 
-// ── Typing hero ───────────────────────────────────────────────────
+// ââ Typing hero âââââââââââââââââââââââââââââââââââââââââââââââââââ
 (function(){
   const el=document.getElementById("heroTitle");
   if(!el) return;
-  const text="Cade's SourceFinder";
+  injectHeaderBtns();const text="Cade's SourceFinder";
   let i=0;
   el.innerHTML='<span class="cursor"></span>';
   const type=()=>{
@@ -127,7 +232,7 @@ function updateStats(results){
 
 "use strict";
 
-// ── Typing hero ───────────────────────────────────────────────────
+// ââ Typing hero âââââââââââââââââââââââââââââââââââââââââââââââââââ
 (function(){
   const el=document.getElementById("heroTitle");
   if(!el) return;
@@ -141,12 +246,12 @@ function updateStats(results){
   setTimeout(type,300);
 })();
 
-// ── Platform hints ────────────────────────────────────────────────
-const SUPPLIER_INJECT={"baidu":"工厂 厂家 OEM ODM manufacturer","1688":"1688 厂家直销 批发","xianyu":"闲鱼 库存 尾货","xiaohongshu":"小红书 源头厂家","taobao":"淘宝 厂家店","made-in-china":"made-in-china.com OEM","globalsources":"globalsources.com supplier","wechat":"微信 一手货源"};
-const FF_INJECT={"baidu":"货代 freight forwarder FOB","1688":"1688 货代","globalsources":"globalsources freight"};
-const PASS_INJECT={"baidu":"passing NFC芯片 过货 莆田 1:1"};
+// ââ Platform hints ââââââââââââââââââââââââââââââââââââââââââââââââ
+const SUPPLIER_INJECT={"baidu":"å·¥å åå®¶ OEM ODM manufacturer","1688":"1688 åå®¶ç´é æ¹å","xianyu":"é²é±¼ åºå­ å°¾è´§","xiaohongshu":"å°çº¢ä¹¦ æºå¤´åå®¶","taobao":"æ·å® åå®¶åº","made-in-china":"made-in-china.com OEM","globalsources":"globalsources.com supplier","wechat":"å¾®ä¿¡ ä¸æè´§æº"};
+const FF_INJECT={"baidu":"è´§ä»£ freight forwarder FOB","1688":"1688 è´§ä»£","globalsources":"globalsources freight"};
+const PASS_INJECT={"baidu":"passing NFCè¯ç è¿è´§ èç° 1:1"};
 
-// ── State ─────────────────────────────────────────────────────────
+// ââ State âââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 const state={
   supplier:{pageNum:1,variation:0,seenLinks:new Set(),results:[],loading:false,lastParams:null},
   ff:{pageNum:1,variation:0,seenLinks:new Set(),results:[],loading:false,lastParams:null},
@@ -162,7 +267,7 @@ function saveNotes(){localStorage.setItem("sf_notes",JSON.stringify(notes))}
 function saveHistory(){localStorage.setItem("sf_history",JSON.stringify(history))}
 function saveLiked(){localStorage.setItem("sf_liked",JSON.stringify(likedFinds))}
 
-// ── Tabs ──────────────────────────────────────────────────────────
+// ââ Tabs ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 function switchTab(name){
   document.querySelectorAll(".tab-btn").forEach(b=>b.classList.remove("active"));
   document.querySelectorAll(".tab-panel").forEach(p=>p.classList.remove("active"));
@@ -180,7 +285,7 @@ document.querySelectorAll(".tab-btn").forEach(btn=>btn.addEventListener("click",
   switchTab(btn.dataset.tab);
 }));
 
-// ── Chips ─────────────────────────────────────────────────────────
+// ââ Chips âââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 function initChips(cid,hid){
   const c=document.getElementById(cid),h=document.getElementById(hid);
   if(!c||!h) return;
@@ -193,7 +298,7 @@ initChips("supplierChips","supplierPlatform");
 initChips("ffChips","ffPlatform");
 initChips("passingChips","passingPlatform");
 
-// ── Query hints ───────────────────────────────────────────────────
+// ââ Query hints âââââââââââââââââââââââââââââââââââââââââââââââââââ
 function updateHint(brand,query,platformEl,hintEl,injectMap){
   if(!hintEl) return;
   const q=query?.value.trim(),b=brand?.value.trim()||"";
@@ -215,7 +320,7 @@ document.getElementById("supplierChips")?.addEventListener("click",()=>setTimeou
 [ffQ,ffO].forEach(el=>el?.addEventListener("input",()=>updateHint(ffO,ffQ,ffP,ffH,FF_INJECT)));
 [pB,pQ].forEach(el=>el?.addEventListener("input",()=>updateHint(pB,pQ,pP,pH,PASS_INJECT)));
 
-// ── Status ────────────────────────────────────────────────────────
+// ââ Status ââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 function setStatus(dotId,txtId,msg,s="idle"){
   const d=document.getElementById(dotId),t=document.getElementById(txtId);
   if(!d||!t) return;
@@ -227,7 +332,7 @@ function showLoader(el,msg){
   el.innerHTML=`<div class="loader"><div class="loader-dots"><span></span><span></span><span></span></div>${msg||"Searching..."}</div>`;
 }
 
-// ── Toast ─────────────────────────────────────────────────────────
+// ââ Toast âââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 function toast(msg){
   const t=document.createElement("div");t.className="copy-toast";t.textContent=msg;
   document.body.appendChild(t);setTimeout(()=>t.remove(),2200);
@@ -237,11 +342,11 @@ function copyText(text,label=""){
   toast(label?`Copied: ${label}`:"Copied!");
 }
 
-// ── WeChat chip ───────────────────────────────────────────────────
+// ââ WeChat chip âââââââââââââââââââââââââââââââââââââââââââââââââââ
 function wcChip(w){
   const isQR=w.source==="qr", isOCR=w.source==="ocr";
   const cls=isQR?"wc-qr":isOCR?"wc-ocr":w.quality>=3?"wc-verified":w.quality===2?"wc-okay":"wc-weak";
-  const lbl=isQR?"QR":isOCR?"OCR":w.quality>=3?"✓":w.quality===2?"~":"?";
+  const lbl=isQR?"QR":isOCR?"OCR":w.quality>=3?"â":w.quality===2?"~":"?";
 
   const wrap = document.createElement("div");
   wrap.className = "wc-chip-wrap";
@@ -264,17 +369,17 @@ function wcChip(w){
       const r = await fetch("/verify-wechat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({wechat:w.id})});
       const data = await r.json();
       const s = data.status, score = data.score||0;
-      if(s==="verified"){ vbtn.textContent=`✓ ${score}pts`; vbtn.className="verify-btn verified"; }
+      if(s==="verified"){ vbtn.textContent=`â ${score}pts`; vbtn.className="verify-btn verified"; }
       else if(s==="likely"){ vbtn.textContent=`~ ${score}pts`; vbtn.className="verify-btn likely"; }
       else if(s==="weak"){ vbtn.textContent=`? weak`; vbtn.className="verify-btn weak"; }
-      else { vbtn.textContent="✗ none"; vbtn.className="verify-btn notfound"; }
+      else { vbtn.textContent="â none"; vbtn.className="verify-btn notfound"; }
     } catch { vbtn.textContent="err"; vbtn.disabled=false; }
   });
   wrap.appendChild(vbtn);
   return wrap;
 }
 
-// ── Card builder ──────────────────────────────────────────────────
+// ââ Card builder ââââââââââââââââââââââââââââââââââââââââââââââââââ
 function buildCard(item, index){
   const score   = item.factory_score ?? 0;
   const wechats = item.wechat_ids || [];
@@ -284,8 +389,8 @@ function buildCard(item, index){
   const cardNote= notes[item.link]||"";
   const confPct = Math.min(100, Math.round((score/12)*100));
   const confCol = score>=8?"var(--g)":score>=4?"var(--a)":"var(--r)";
-  const platIcons= {Yupoo:"🖼","All-in-One":"⚡",Baidu:"🔍","1688":"🏭",ImportYeti:"📦",Xianyu:"🏷",Weidian:"📦",Xiaohongshu:"📕",Weibo:"📢",Zhihu:"💬"};
-  const platIcon = platIcons[item.platform]||"🌐";
+  const platIcons= {Yupoo:"ð¼","All-in-One":"â¡",Baidu:"ð","1688":"ð­",ImportYeti:"ð¦",Xianyu:"ð·",Weidian:"ð¦",Xiaohongshu:"ð",Weibo:"ð¢",Zhihu:"ð¬"};
+  const platIcon = platIcons[item.platform]||"ð";
   let domain=""; try{domain=new URL(item.link||"https://x").hostname.replace("www.","");}catch{}
 
   const card = document.createElement("article");
@@ -296,7 +401,7 @@ function buildCard(item, index){
   card.dataset.hasContact=item.has_contact?"1":"0";
   card.dataset.factoryLike=item.is_factory_like?"1":"0";
 
-  // ── TOP BAR ──────────────────────────────────────────────────
+  // ââ TOP BAR ââââââââââââââââââââââââââââââââââââââââââââââââââ
   const top = document.createElement("div");
   top.className = "card-top";
   top.innerHTML = `
@@ -310,11 +415,11 @@ function buildCard(item, index){
         <svg width="12" height="12" viewBox="0 0 16 16" fill="${isSaved?"currentColor":"none"}"><path d="M8 1l2 4.5 5 .5-3.5 3.5 1 5L8 12l-4.5 2.5 1-5L1 6l5-.5z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
       </button>
     </div>
-    <a class="card-title" href="${item.link||"#"}" target="_blank">${(item.title||"Untitled").slice(0,90)}${(item.title||"").length>90?"…":""}</a>
+    <a class="card-title" href="${item.link||"#"}" target="_blank">${(item.title||"Untitled").slice(0,90)}${(item.title||"").length>90?"â¦":""}</a>
   `;
   card.appendChild(top);
 
-  // ── BODY ─────────────────────────────────────────────────────
+  // ââ BODY âââââââââââââââââââââââââââââââââââââââââââââââââââââ
   const body = document.createElement("div");
   body.className = "card-body";
 
@@ -324,7 +429,7 @@ function buildCard(item, index){
   const hasMore = snippetFull.length>200;
   const left = document.createElement("div");
   left.className = "card-left";
-  left.innerHTML = `<p class="card-snip">${snippetShort}${hasMore?`<button class="more-btn" onclick="this.parentElement.innerHTML=decodeURIComponent('${encodeURIComponent(snippetFull)}')">more →</button>`:""}</p>`;
+  left.innerHTML = `<p class="card-snip">${snippetShort}${hasMore?`<button class="more-btn" onclick="this.parentElement.innerHTML=decodeURIComponent('${encodeURIComponent(snippetFull)}')">more â</button>`:""}</p>`;
   body.appendChild(left);
 
   // Right stats
@@ -344,7 +449,7 @@ function buildCard(item, index){
   body.appendChild(right);
   card.appendChild(body);
 
-  // ── CONTACTS ─────────────────────────────────────────────────
+  // ââ CONTACTS âââââââââââââââââââââââââââââââââââââââââââââââââ
   const allContacts = [...wechats.slice(0,6), ...(item.phones||[]).slice(0,2)];
   if(allContacts.length){
     const cs = document.createElement("div");
@@ -355,7 +460,7 @@ function buildCard(item, index){
     (item.phones||[]).slice(0,2).forEach(p=>{
       const el=document.createElement("div");
       el.className="contact-chip contact-phone";
-      el.textContent=`📞 ${p}`; el.title="Copy";
+      el.textContent=`ð ${p}`; el.title="Copy";
       el.onclick=()=>copyText(p,p);
       chips.appendChild(el);
     });
@@ -363,14 +468,14 @@ function buildCard(item, index){
     card.appendChild(cs);
   }
 
-  // ── ACTIONS ──────────────────────────────────────────────────
+  // ââ ACTIONS ââââââââââââââââââââââââââââââââââââââââââââââââââ
   const acts = document.createElement("div");
   acts.className = "card-acts";
 
-  // Translate — calls backend
+  // Translate â calls backend
   const trBtn = document.createElement("button");
   trBtn.className = "act-btn act-translate";
-  trBtn.textContent = "🌐 EN";
+  trBtn.textContent = "ð EN";
   trBtn.title = "Translate to English";
   trBtn.onclick = async()=>{
     trBtn.textContent="..."; trBtn.disabled=true;
@@ -385,9 +490,9 @@ function buildCard(item, index){
         const snipEl  = card.querySelector(".card-snip");
         if(titleEl && parts[0]) titleEl.textContent = parts[0].slice(0,90);
         if(snipEl  && parts[1]) snipEl.textContent  = parts[1];
-        trBtn.textContent="✓ EN"; trBtn.style.color="var(--g)";
+        trBtn.textContent="â EN"; trBtn.style.color="var(--g)";
       } else { throw new Error("no translation"); }
-    } catch(e){ trBtn.textContent="🌐 EN"; trBtn.disabled=false; showToast("Translation failed — check connection"); }
+    } catch(e){ trBtn.textContent="ð EN"; trBtn.disabled=false; showToast("Translation failed â check connection"); }
   };
   acts.appendChild(trBtn);
 
@@ -395,11 +500,11 @@ function buildCard(item, index){
   if(wechats.length>0){
     const cpBtn = document.createElement("button");
     cpBtn.className="act-btn act-copy";
-    cpBtn.textContent=`📋 ${wechats.length} wx`;
+    cpBtn.textContent=`ð ${wechats.length} wx`;
     cpBtn.title="Copy all WeChat IDs";
     cpBtn.onclick=()=>{
       const ids=wechats.map(w=>w.id).join(", ");
-      navigator.clipboard.writeText(ids).then(()=>showToast(`✓ Copied ${wechats.length} WeChats`));
+      navigator.clipboard.writeText(ids).then(()=>showToast(`â Copied ${wechats.length} WeChats`));
     };
     acts.appendChild(cpBtn);
   }
@@ -414,7 +519,7 @@ function buildCard(item, index){
   // Post Find
   const findBtn = document.createElement("button");
   findBtn.className="act-btn act-find";
-  findBtn.textContent="★ Find";
+  findBtn.textContent="â Find";
   findBtn.onclick=()=>addToFinds(item);
   acts.appendChild(findBtn);
 
@@ -422,7 +527,7 @@ function buildCard(item, index){
   const flagBtn = document.createElement("button");
   const flagged = localStorage.getItem("flag_"+item.link);
   flagBtn.className="act-btn act-flag"+(flagged==="factory"?" act-flag-good":flagged==="middleman"?" act-flag-bad":"");
-  flagBtn.textContent=flagged==="factory"?"✓ Factory":flagged==="middleman"?"⚠ Middleman":"🏭 Flag";
+  flagBtn.textContent=flagged==="factory"?"â Factory":flagged==="middleman"?"â  Middleman":"ð­ Flag";
   flagBtn.title="Flag as factory or middleman";
   flagBtn.onclick=()=>{
     const cur=localStorage.getItem("flag_"+item.link);
@@ -430,7 +535,7 @@ function buildCard(item, index){
     if(next) localStorage.setItem("flag_"+item.link,next);
     else localStorage.removeItem("flag_"+item.link);
     flagBtn.className="act-btn act-flag"+(next==="factory"?" act-flag-good":next==="middleman"?" act-flag-bad":"");
-    flagBtn.textContent=next==="factory"?"✓ Factory":next==="middleman"?"⚠ Middleman":"🏭 Flag";
+    flagBtn.textContent=next==="factory"?"â Factory":next==="middleman"?"â  Middleman":"ð­ Flag";
     showToast(next?`Flagged: ${next}`:"Flag cleared");
   };
   acts.appendChild(flagBtn);
@@ -439,10 +544,10 @@ function buildCard(item, index){
   if(!item.deep_scanned){
     const scanBtn=document.createElement("button");
     scanBtn.className="act-btn act-scan";
-    scanBtn.textContent="🔍 Scan";
+    scanBtn.textContent="ð Scan";
     scanBtn.title="Deep scan page for more WeChats";
     scanBtn.onclick=async()=>{
-      scanBtn.disabled=true; scanBtn.textContent="Scanning…";
+      scanBtn.disabled=true; scanBtn.textContent="Scanningâ¦";
       try{
         const r=await fetch("/scan-page",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({url:item.link})});
         const data=await r.json();
@@ -462,7 +567,7 @@ function buildCard(item, index){
         if(numEl){numEl.textContent=wechats.length;numEl.style.color=wechats.length?"var(--g)":"var(--text3)";}
         showToast(added?`+${added} WeChat${added>1?"s":""}!`:"No new WeChats");
         scanBtn.remove();
-      }catch{scanBtn.disabled=false;scanBtn.textContent="🔍 Scan";}
+      }catch{scanBtn.disabled=false;scanBtn.textContent="ð Scan";}
     };
     acts.appendChild(scanBtn);
   }
@@ -471,7 +576,7 @@ function buildCard(item, index){
   if(item.link&&(item.link.includes("1688")||item.link.includes("weidian")||item.link.includes("taobao"))){
     const valBtn=document.createElement("button");
     valBtn.className="act-btn act-val";
-    valBtn.textContent="🏭 Validate";
+    valBtn.textContent="ð­ Validate";
     valBtn.onclick=()=>{
       switchTab("research");
       const ui=document.getElementById("validateUrl");
@@ -482,10 +587,10 @@ function buildCard(item, index){
 
   card.appendChild(acts);
 
-  // ── NOTE ─────────────────────────────────────────────────────
+  // ââ NOTE âââââââââââââââââââââââââââââââââââââââââââââââââââââ
   const noteEl=document.createElement("textarea");
   noteEl.className="card-note";
-  noteEl.placeholder="Add note…";
+  noteEl.placeholder="Add noteâ¦";
   noteEl.value=cardNote;
   noteEl.oninput=()=>{
     notes[item.link]=noteEl.value;
@@ -506,7 +611,7 @@ function buildCard(item, index){
     card.classList.toggle("saved",nowSaved);
     const starBtn=card.querySelector(".card-star");
     if(starBtn){starBtn.classList.toggle("saved",nowSaved);starBtn.querySelector("path")?.setAttribute("fill",nowSaved?"currentColor":"none");}
-    showToast(nowSaved?"⭐ Saved!":"Removed");
+    showToast(nowSaved?"â­ Saved!":"Removed");
     renderSavedTab();
   });
 
@@ -514,7 +619,7 @@ function buildCard(item, index){
 }
 
 
-// ── SAVED TAB ────────────────────────────────────────────────────
+// ââ SAVED TAB ââââââââââââââââââââââââââââââââââââââââââââââââââââ
 async function loadSavedFromServer(){
   try{
     const r = await fetch('/api/saved');
@@ -554,7 +659,7 @@ function clearAllSaved(){
   showToast('Cleared all saved results');
 }
 
-// ── CRM ──────────────────────────────────────────────────────────
+// ââ CRM ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 let crmData = JSON.parse(localStorage.getItem('sf_crm') || '[]');
 
 function saveCrm(){ localStorage.setItem('sf_crm', JSON.stringify(crmData)); renderCrm(); }
@@ -600,7 +705,7 @@ function deleteCrmEntry(id, e){
   saveCrm();
 }
 
-const STATUS_LABELS = {new:'🆕 New',contacted:'📨 Contacted',replied:'💬 Replied',sampling:'📦 Sampling',ordered:'✅ Ordered',passed:'❌ Passed'};
+const STATUS_LABELS = {new:'ð New',contacted:'ð¨ Contacted',replied:'ð¬ Replied',sampling:'ð¦ Sampling',ordered:'â Ordered',passed:'â Passed'};
 
 function renderCrm(){
   const rows = document.getElementById('crmRows');
@@ -621,12 +726,12 @@ function renderCrm(){
   rows.innerHTML = crmData.map(e=>`
     <div class="crm-row" onclick="openCrmModal(${JSON.stringify(e).replace(/"/g,'&quot;')})">
       <div class="crm-row-name">${e.name}</div>
-      <div class="crm-row-wc" onclick="copyText(event,e.wechat||'');event.stopPropagation()" title="Click to copy">${e.wechat||'—'}</div>
-      <div class="crm-row-product">${e.product||'—'}</div>
-      <div class="crm-row-price">${e.price||'—'}</div>
+      <div class="crm-row-wc" onclick="copyText(event,e.wechat||'');event.stopPropagation()" title="Click to copy">${e.wechat||'â'}</div>
+      <div class="crm-row-product">${e.product||'â'}</div>
+      <div class="crm-row-price">${e.price||'â'}</div>
       <div><span class="crm-status crm-status-${e.status}">${STATUS_LABELS[e.status]||e.status}</span></div>
       <div class="crm-row-date">${e.date}</div>
-      <div class="crm-row-del" onclick="deleteCrmEntry('${e.id}',event)">✕</div>
+      <div class="crm-row-del" onclick="deleteCrmEntry('${e.id}',event)">â</div>
     </div>
   `).join('');
 }
@@ -640,7 +745,7 @@ function addToCrm(item){
 
 renderCrm();
 
-// ── QR GENERATOR ─────────────────────────────────────────────────
+// ââ QR GENERATOR âââââââââââââââââââââââââââââââââââââââââââââââââ
 function genQR(){
   const id = document.getElementById('qrInput').value.trim();
   if(!id){ showToast('Enter a WeChat ID first'); return; }
@@ -649,13 +754,13 @@ function genQR(){
   const url = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent('weixin://dl/chat?'+id)}`;
   out.innerHTML = `
     <img src="${url}" class="qr-img" alt="WeChat QR for ${id}"/>
-    <br><div style="margin-top:8px;font-family:var(--mono);font-size:11px;color:var(--text2)">QR for <span style="color:var(--g)">${id}</span> — right-click to save</div>
+    <br><div style="margin-top:8px;font-family:var(--mono);font-size:11px;color:var(--text2)">QR for <span style="color:var(--g)">${id}</span> â right-click to save</div>
     <div style="font-size:10px;color:var(--text3);font-family:var(--mono);margin-top:4px">Screenshot this to add on mobile</div>
   `;
 }
 document.getElementById('qrInput')?.addEventListener('keydown',e=>{ if(e.key==='Enter') genQR(); });
 
-// ── AUTO-TRANSLATE ────────────────────────────────────────────────
+// ââ AUTO-TRANSLATE ââââââââââââââââââââââââââââââââââââââââââââââââ
 async function translateText(text, btn){
   btn.textContent = '...';
   btn.disabled = true;
@@ -665,7 +770,7 @@ async function translateText(text, btn){
     const translated = d[0]?.map(s=>s[0]).join('') || text;
     const snippet = btn.closest('.result-card')?.querySelector('.card-snippet');
     if(snippet){ snippet.textContent = translated; snippet.style.color='#f0abfc'; }
-    btn.textContent = '✓ EN';
+    btn.textContent = 'â EN';
     btn.style.color = 'var(--g)';
   } catch {
     btn.textContent = 'err';
@@ -673,14 +778,14 @@ async function translateText(text, btn){
   }
 }
 
-// Hook translate button into card builder — patch buildCard
+// Hook translate button into card builder â patch buildCard
 const _origBuildCard = window.buildCard;
 
-// ── CRM BUTTON IN CARDS ───────────────────────────────────────────
+// ââ CRM BUTTON IN CARDS âââââââââââââââââââââââââââââââââââââââââââ
 // patch card actions to include CRM + translate
 const _buildCardOrig = typeof buildCard !== 'undefined' ? buildCard : null;
 
-// ── ADMIN TAB ─────────────────────────────────────────────────────
+// ââ ADMIN TAB âââââââââââââââââââââââââââââââââââââââââââââââââââââ
 async function initAdminTab(){
   try{
     const r = await fetch('/me');
@@ -704,22 +809,22 @@ async function loadAdminRequests(){
     const r = await fetch('/admin/api/data');
     const d = await r.json();
     const pending = (d.requests||[]).filter(r=>r.status==='pending');
-    if(!pending.length){ el.innerHTML='<div class="crm-empty">No pending requests 🎉</div>'; return; }
+    if(!pending.length){ el.innerHTML='<div class="crm-empty">No pending requests ð</div>'; return; }
     el.innerHTML = pending.map(req=>`
       <div class="admin-req" id="req-${req.id}">
         <div class="admin-req-info">
           <div class="admin-req-name">${req.name}</div>
           <div class="admin-req-email">${req.email}</div>
           <div class="admin-req-meta">
-            ${req.discord?`Discord: ${req.discord} · `:''} 
-            ${req.wechat?`WeChat: ${req.wechat} · `:''}
+            ${req.discord?`Discord: ${req.discord} Â· `:''} 
+            ${req.wechat?`WeChat: ${req.wechat} Â· `:''}
             ${new Date(req.timestamp*1000).toLocaleDateString()}
           </div>
           ${req.reason?`<div class="admin-req-reason">"${req.reason}"</div>`:''}
         </div>
         <div class="admin-req-actions">
-          <button class="btn-approve" onclick="adminApprove('${req.id}','${req.name}')">✓ Approve</button>
-          <button class="btn-deny" onclick="adminDeny('${req.id}')">✕ Deny</button>
+          <button class="btn-approve" onclick="adminApprove('${req.id}','${req.name}')">â Approve</button>
+          <button class="btn-deny" onclick="adminDeny('${req.id}')">â Deny</button>
         </div>
       </div>
     `).join('');
@@ -804,7 +909,7 @@ async function loadAdminAnalytics(){
           <div style="font-family:var(--mono);font-size:11px;color:var(--text2)">${u.email}</div>
           <div style="font-family:var(--mono);font-size:13px;color:var(--c);font-weight:700">${u.searches}</div>
           <div style="font-family:var(--mono);font-size:10px;color:var(--text3)">${u.last_search||'never'}</div>
-          <div style="font-size:11px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${u.last_query||'—'}</div>
+          <div style="font-size:11px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${u.last_query||'â'}</div>
         </div>
       `).join('')}
     `;
@@ -814,7 +919,7 @@ async function loadAdminAnalytics(){
 // Load admin data when tab is clicked
 const _origTabSwitch = window.switchTab;
 
-// ── USER SESSION + ADMIN ──────────────────────────────────────────
+// ââ USER SESSION + ADMIN ââââââââââââââââââââââââââââââââââââââââââ
 let currentUser = null;
 
 async function initUser(){
@@ -832,7 +937,7 @@ async function initUser(){
       if(!d.is_admin){
         // Lock it for non-admins
         adminBtn.classList.add('tab-locked');
-        adminBtn.innerHTML = adminBtn.innerHTML.replace(/Admin/,'🔒 Admin');
+        adminBtn.innerHTML = adminBtn.innerHTML.replace(/Admin/,'ð Admin');
         adminBtn.addEventListener('click', e=>{
           e.stopPropagation();
           e.preventDefault();
@@ -844,7 +949,7 @@ async function initUser(){
 
     // Show user name
     const heroSub = document.querySelector('.hero-sub');
-    if(heroSub && d.name) heroSub.textContent = `Welcome back, ${d.name} · Chinese suppliers · Factory WeChats · Passing goods`;
+    if(heroSub && d.name) heroSub.textContent = `Welcome back, ${d.name} Â· Chinese suppliers Â· Factory WeChats Â· Passing goods`;
   } catch(e){ console.log('Could not load user info') }
 }
 initUser();
@@ -882,7 +987,7 @@ function showNoAccessPopup(){
       position:relative;
       animation:popIn .2s cubic-bezier(.34,1.56,.64,1);
     ">
-      <div style="font-size:48px;margin-bottom:12px">🔒</div>
+      <div style="font-size:48px;margin-bottom:12px">ð</div>
       <div style="font-family:'Rajdhani',sans-serif;font-size:22px;font-weight:700;color:#ff4466;margin-bottom:8px;letter-spacing:-.3px">Admin Only</div>
       <div style="font-size:13px;color:#8892a4;line-height:1.6;margin-bottom:20px">
         You don't have permission to access the admin panel.<br>
@@ -902,14 +1007,14 @@ function showNoAccessPopup(){
   setTimeout(()=>popup?.remove(), 4000);
 }
 
-// ── SET PASSWORD FLOW ─────────────────────────────────────────────
+// ââ SET PASSWORD FLOW âââââââââââââââââââââââââââââââââââââââââââââ
 // Called when login returns needs_password=true
 function showSetPassword(email){
   const overlay = document.createElement('div');
   overlay.className = 'setpw-overlay';
   overlay.innerHTML = `
     <div class="setpw-card">
-      <div class="setpw-title">🎉 You're Approved!</div>
+      <div class="setpw-title">ð You're Approved!</div>
       <div class="setpw-sub">Set your password to access Cade's SourceFinder.<br>You'll only need to do this once.</div>
       <label>Email</label>
       <input type="email" id="spEmail" value="${email}" readonly style="opacity:.5;cursor:not-allowed"/>
@@ -940,7 +1045,7 @@ async function doSetPassword(email){
   try{
     const r = await fetch('/set-password', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({email, password:pw1})});
     const d = await r.json();
-    if(d.ok){ msg.className='msg ok'; msg.textContent='✓ Password set! Loading...'; setTimeout(()=>location.reload(), 800); }
+    if(d.ok){ msg.className='msg ok'; msg.textContent='â Password set! Loading...'; setTimeout(()=>location.reload(), 800); }
     else{ msg.className='msg err'; msg.textContent=d.error||'Error.'; btn.disabled=false; btn.textContent='Set Password & Login'; }
   } catch{ msg.className='msg err'; msg.textContent='Network error.'; btn.disabled=false; btn.textContent='Set Password & Login'; }
 }
@@ -948,7 +1053,7 @@ async function doSetPassword(email){
 // Patch login response to handle needs_password
 const _origFetch = window.fetch;
 
-// ── ADMIN PANEL ───────────────────────────────────────────────────
+// ââ ADMIN PANEL âââââââââââââââââââââââââââââââââââââââââââââââââââ
 async function loadAdmin(){
   try{
     const r = await fetch('/api/admin/data');
@@ -980,7 +1085,7 @@ function renderPending(reqs){
   const ct = document.getElementById('pendingCount');
   if(!el) return;
   if(ct) ct.textContent = reqs.length;
-  if(!reqs.length){ el.innerHTML='<div class="admin-empty">No pending requests 🎉</div>'; return; }
+  if(!reqs.length){ el.innerHTML='<div class="admin-empty">No pending requests ð</div>'; return; }
   el.innerHTML = reqs.map(r=>`
     <div class="admin-req" id="req-${r.id}">
       <div>
@@ -988,11 +1093,11 @@ function renderPending(reqs){
         <div class="admin-req-email">${r.email}</div>
       </div>
       <div>
-        <div class="admin-req-contact">${r.discord||r.wechat||'—'}</div>
+        <div class="admin-req-contact">${r.discord||r.wechat||'â'}</div>
         <div class="admin-req-time">${r._time||''}</div>
       </div>
-      <button class="admin-btn abtn-approve" onclick="adminApprove('${r.id}','${r.email}')">✓ Approve</button>
-      <button class="admin-btn abtn-deny" onclick="adminDeny('${r.id}')">✕ Deny</button>
+      <button class="admin-btn abtn-approve" onclick="adminApprove('${r.id}','${r.email}')">â Approve</button>
+      <button class="admin-btn abtn-deny" onclick="adminDeny('${r.id}')">â Deny</button>
       <div></div>
       ${r.reason||r.why ? `<div class="admin-req-why">"${(r.reason||r.why||'').slice(0,120)}"</div>` : ''}
     </div>
@@ -1019,7 +1124,7 @@ function renderApproved(users){
       <div class="admin-user-searches">${u.search_count||0}<div style="font-size:8px;color:var(--text3);font-family:var(--mono);letter-spacing:.5px">SEARCHES</div></div>
       <div class="admin-user-last">${u._last_login||'never'}</div>
       <button class="admin-btn abtn-admin" onclick="adminToggleAdmin('${u.email}',${!u.is_admin})" title="${u.is_admin?'Remove admin':'Grant admin'}">
-        ${u.is_admin ? '★ Unadmin' : '☆ Admin'}
+        ${u.is_admin ? 'â Unadmin' : 'â Admin'}
       </button>
       ${u.revoked
         ? `<button class="admin-btn abtn-approve" onclick="adminRevoke('${u.email}',false)">Restore</button>`
@@ -1043,7 +1148,7 @@ function renderAnalytics(users){
         <div><div class="crm-row-name">${u.name}</div><div style="font-size:10px;color:var(--text3);font-family:var(--mono)">${u.email}</div></div>
         <div class="admin-user-searches">${u.search_count||0}</div>
         <div class="admin-user-last">${u.last_search||'never'}</div>
-        <div style="font-size:11px;color:var(--text2);font-family:var(--mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${u.last_query||'—'}</div>
+        <div style="font-size:11px;color:var(--text2);font-family:var(--mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${u.last_query||'â'}</div>
       </div>
     `).join('')}
   `;
@@ -1068,7 +1173,7 @@ async function adminApprove(reqId, email){
     const r = await fetch('/api/admin/approve', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({req_id:reqId})});
     const d = await r.json();
     if(d.status==='approved'||d.status==='already_approved'){
-      showToast('✓ Approved! They can now log in.');
+      showToast('â Approved! They can now log in.');
       loadAdmin();
     } else { showToast('Error: '+(d.error||d.status||'unknown')); }
   } catch(e){ showToast('Network error'); }
@@ -1077,7 +1182,7 @@ async function adminApprove(reqId, email){
 async function adminDeny(reqId){
   const r = await fetch('/api/admin/deny', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({req_id:reqId})});
   const d = await r.json();
-  showToast(d.status==='denied' ? '✓ Request denied' : 'Error');
+  showToast(d.status==='denied' ? 'â Request denied' : 'Error');
   loadAdmin();
 }
 
@@ -1090,11 +1195,11 @@ async function adminRevoke(email, revoke){
 async function adminToggleAdmin(email, makeAdmin){
   const r = await fetch('/api/admin/set-admin', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({email, is_admin:makeAdmin})});
   const d = await r.json();
-  showToast(makeAdmin ? `⚡ ${email} is now an admin` : `${email} admin removed`);
+  showToast(makeAdmin ? `â¡ ${email} is now an admin` : `${email} admin removed`);
   loadAdmin();
 }
 
-// Load admin when tab clicked — use event delegation so it works after DOM ready
+// Load admin when tab clicked â use event delegation so it works after DOM ready
 document.addEventListener('click', e=>{
   const btn = e.target.closest('.tab-btn');
   if(btn && btn.dataset.tab==='admin') setTimeout(loadAdmin, 100);
@@ -1102,10 +1207,10 @@ document.addEventListener('click', e=>{
   if(btn && btn.dataset.tab==='saved') renderSavedTab();
 });
 
-// Handle needs_password on login — intercept the fetch in access.html
+// Handle needs_password on login â intercept the fetch in access.html
 // The access.html already handles this but we also need it if session expires
 
-// ── RESEARCH TAB ──────────────────────────────────────────────────
+// ââ RESEARCH TAB ââââââââââââââââââââââââââââââââââââââââââââââââââ
 
 // Chinese Query Translator
 async function translateQuery(){
@@ -1118,8 +1223,8 @@ async function translateQuery(){
     const r = await fetch('/translate', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({text:q, target:'zh', source:'en'})});
     const d = await r.json();
     const zh = d.translated || q;
-    const factoryTerm = zh + ' 工厂';
-    const wholesaleTerm = zh + ' 批发商';
+    const factoryTerm = zh + ' å·¥å';
+    const wholesaleTerm = zh + ' æ¹åå';
     result.innerHTML = `
       <div class="translate-result">
         <div class="tr-row">
@@ -1138,7 +1243,7 @@ async function translateQuery(){
           <button class="tool-btn" onclick="navigator.clipboard.writeText('${wholesaleTerm}').then(()=>showToast('Copied!'))">Copy</button>
         </div>
         <div style="margin-top:12px;display:flex;gap:6px;flex-wrap:wrap">
-          <button class="btn-primary" style="height:36px;font-size:11px;padding:0 12px" onclick="autoSearchChinese('${zh}')">⚡ Search Cade's SourceFinder with this</button>
+          <button class="btn-primary" style="height:36px;font-size:11px;padding:0 12px" onclick="autoSearchChinese('${zh}')">â¡ Search Cade's SourceFinder with this</button>
           <button class="quick-btn" onclick="quickOpenWith('1688','${factoryTerm}')">Open on 1688</button>
           <button class="quick-btn" onclick="quickOpenWith('taobao','${zh}')">Open on Taobao</button>
         </div>
@@ -1168,10 +1273,10 @@ async function validateFactory(){
     const wc = d.wechat_ids||[];
     const score = Math.min(100, (wc.length * 15) + (d.has_contact ? 20 : 0) + (d.factory_score||0)*3);
     const scoreCol = score>=60?'var(--g)':score>=30?'var(--a)':'var(--r)';
-    const scoreLbl = score>=60?'✓ LOOKS LEGIT':score>=30?'~ UNCERTAIN':'⚠ SKETCHY';
+    const scoreLbl = score>=60?'â LOOKS LEGIT':score>=30?'~ UNCERTAIN':'â  SKETCHY';
     result.innerHTML = `
       <div class="validate-card">
-        <div class="validate-score" style="color:${scoreCol}">${scoreLbl} · ${score}/100</div>
+        <div class="validate-score" style="color:${scoreCol}">${scoreLbl} Â· ${score}/100</div>
         <div class="validate-bar-wrap"><div class="validate-bar" style="width:${score}%;background:${scoreCol}"></div></div>
         <div class="validate-grid">
           <div class="validate-item">
@@ -1194,7 +1299,7 @@ async function validateFactory(){
         ${wc.length>0?`
         <div class="validate-wechats">
           <div class="card-contact-label">WECHATS FOUND</div>
-          <div class="card-contacts">${wc.map(w=>`<div class="contact-chip wc-verified" onclick="navigator.clipboard.writeText('${w.id}').then(()=>showToast('Copied!'))" title="Click to copy">✓ ${w.id}</div>`).join('')}</div>
+          <div class="card-contacts">${wc.map(w=>`<div class="contact-chip wc-verified" onclick="navigator.clipboard.writeText('${w.id}').then(()=>showToast('Copied!'))" title="Click to copy">â ${w.id}</div>`).join('')}</div>
         </div>`:''}
         <div style="margin-top:12px;display:flex;gap:6px;flex-wrap:wrap">
           <button class="btn-primary" style="height:36px;font-size:11px;padding:0 12px" onclick="window.open('${url}','_blank')">Open Factory Page</button>
@@ -1202,10 +1307,10 @@ async function validateFactory(){
         </div>
       </div>
     `;
-  } catch(e){ result.innerHTML = '<p style="color:var(--r);font-family:var(--mono);font-size:11px">Validation failed — check the URL</p>'; }
+  } catch(e){ result.innerHTML = '<p style="color:var(--r);font-family:var(--mono);font-size:11px">Validation failed â check the URL</p>'; }
 }
 
-// Trend Checker — searches Taobao + XHS for demand signals
+// Trend Checker â searches Taobao + XHS for demand signals
 async function checkTrend(){
   const input = document.getElementById('trendInput');
   const result = document.getElementById('trendResult');
@@ -1223,7 +1328,7 @@ async function checkTrend(){
     const actionDiv = document.createElement('div');
     actionDiv.style.cssText='margin-top:12px;padding:12px;background:var(--card);border:1px solid var(--b);border-radius:var(--rad)';
     actionDiv.innerHTML=`<span style="font-family:var(--mono);font-size:10px;color:var(--text2)">Looks promising? </span>
-      <button class="btn-primary" style="height:32px;font-size:11px;padding:0 12px;margin-left:8px" onclick="switchTab('supplier');document.getElementById('queryInput').value='${q}';document.getElementById('supplierForm').dispatchEvent(new Event('submit'))">⚡ Find Suppliers for "${q}"</button>`;
+      <button class="btn-primary" style="height:32px;font-size:11px;padding:0 12px;margin-left:8px" onclick="switchTab('supplier');document.getElementById('queryInput').value='${q}';document.getElementById('supplierForm').dispatchEvent(new Event('submit'))">â¡ Find Suppliers for "${q}"</button>`;
     result.appendChild(actionDiv);
   } catch(e){ result.innerHTML = '<div class="empty">Trend check failed</div>'; }
 }
@@ -1236,10 +1341,10 @@ async function compareBatches(){
   if(!q){ showToast('Enter a product name'); return; }
   result.innerHTML = '<div class="loader"><div class="loader-dots"><span></span><span></span><span></span></div>Comparing batches on Weidian...</div>';
   try{
-    const r = await fetch('/search', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({query:q+' 批次 质量对比', brand:'', platform:'weidian', mode:'supplier', deep_scan:false, wechat_only:false, max_results:8})});
+    const r = await fetch('/search', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({query:q+' æ¹æ¬¡ è´¨éå¯¹æ¯', brand:'', platform:'weidian', mode:'supplier', deep_scan:false, wechat_only:false, max_results:8})});
     const d = await r.json();
     const results = d.results||[];
-    if(!results.length){ result.innerHTML = '<div class="empty">No batches found — try a more specific product name</div>'; return; }
+    if(!results.length){ result.innerHTML = '<div class="empty">No batches found â try a more specific product name</div>'; return; }
     result.innerHTML='';
     results.forEach((item,i)=>{ result.appendChild(buildCard(item,i)); });
   } catch(e){ result.innerHTML = '<div class="empty">Batch comparison failed</div>'; }
@@ -1268,24 +1373,24 @@ function quickOpenWith(platform, query){
   if(urlFn) window.open(urlFn(query), '_blank');
 }
 
-// ── FREIGHT TAB ───────────────────────────────────────────────────
+// ââ FREIGHT TAB âââââââââââââââââââââââââââââââââââââââââââââââââââ
 
 // Known rep-friendly forwarders directory
 const FF_DIRECTORY = [
   {
     name: "Sugargoo",
     tags: ["USA","UK","EU","REP","AGENT"],
-    desc: "Popular agent for rep buyers. Good QC photos, consolidation. Use for warehousing only — find your own FF for shipping.",
+    desc: "Popular agent for rep buyers. Good QC photos, consolidation. Use for warehousing only â find your own FF for shipping.",
     wechat: "",
-    price: "Agent fees apply — use own FF for int'l shipping",
+    price: "Agent fees apply â use own FF for int'l shipping",
     type: "agent",
   },
   {
     name: "Pandabuy",
     tags: ["USA","UK","EU","AGENT","REP"],
-    desc: "Most popular rep agent. Free warehousing, good QC. Never use their shipping rates — always choose cheaper line haul.",
+    desc: "Most popular rep agent. Free warehousing, good QC. Never use their shipping rates â always choose cheaper line haul.",
     wechat: "",
-    price: "Free storage 90 days — compare their shipping rates",
+    price: "Free storage 90 days â compare their shipping rates",
     type: "agent",
   },
   {
@@ -1297,17 +1402,17 @@ const FF_DIRECTORY = [
     type: "agent",
   },
   {
-    name: "Private Agents (私人货代)",
+    name: "Private Agents (ç§äººè´§ä»£)",
     tags: ["REP","PRIVATE","PUTIAN"],
-    desc: "Private agents specialize in sensitive/rep goods. They use custom packaging, no-inspection channels, and private shipping lines. Found via WeChat referrals — use the search above with 私人货代 to find them.",
+    desc: "Private agents specialize in sensitive/rep goods. They use custom packaging, no-inspection channels, and private shipping lines. Found via WeChat referrals â use the search above with ç§äººè´§ä»£ to find them.",
     wechat: "",
-    price: "~$3-8/kg — negotiate directly via WeChat",
+    price: "~$3-8/kg â negotiate directly via WeChat",
     type: "rep",
   },
   {
     name: "How to find Private Agents",
     tags: ["GUIDE","REP","PRIVATE"],
-    desc: "1) Ask your supplier — they often have a trusted private agent. 2) Search 私人货代 + your route on Weibo/XHS. 3) Ask in rep Discord servers. 4) Check fashionreps wiki. Never use agents you can't verify via WeChat.",
+    desc: "1) Ask your supplier â they often have a trusted private agent. 2) Search ç§äººè´§ä»£ + your route on Weibo/XHS. 3) Ask in rep Discord servers. 4) Check fashionreps wiki. Never use agents you can't verify via WeChat.",
     wechat: "",
     price: "Always negotiate before sending goods",
     type: "rep",
@@ -1325,7 +1430,7 @@ const FF_DIRECTORY = [
     tags: ["USA","UK","EU","REP","AGENT"],
     desc: "Rep-friendly agent. Good communication. Multiple shipping lines available.",
     wechat: "",
-    price: "Compare rates — line haul usually cheapest",
+    price: "Compare rates â line haul usually cheapest",
     type: "agent",
   },
 ];
@@ -1371,21 +1476,21 @@ function setFFMode(mode, btn){
 
   const q = document.getElementById('ffQuery');
   if(q){
-    if(mode==='rep') q.placeholder = '私人货代 private agent — e.g. Putian shoes to USA, rep bags China to UK…';
-    else if(mode==='agent') q.placeholder = 'consolidation, QC photos, warehousing — e.g. Pandabuy alternatives…';
-    else q.placeholder = 'standard freight — e.g. electronics China to USA…';
+    if(mode==='rep') q.placeholder = 'ç§äººè´§ä»£ private agent â e.g. Putian shoes to USA, rep bags China to UKâ¦';
+    else if(mode==='agent') q.placeholder = 'consolidation, QC photos, warehousing â e.g. Pandabuy alternativesâ¦';
+    else q.placeholder = 'standard freight â e.g. electronics China to USAâ¦';
   }
 
   const btn2 = document.getElementById('ffBtn');
   if(btn2) btn2.innerHTML = mode==='rep'
-    ? '🔒 Find Private Agents'
+    ? 'ð Find Private Agents'
     : mode==='agent'
-    ? '🏢 Find Agents'
-    : '📦 Find Forwarders';
+    ? 'ð¢ Find Agents'
+    : 'ð¦ Find Forwarders';
 
   // Pre-fill with private agent terms for rep mode
   if(mode==='rep' && q && !q.value){
-    q.value = '私人货代 private agent rep goods';
+    q.value = 'ç§äººè´§ä»£ private agent rep goods';
   }
 
   renderFFDirectory(mode);
@@ -1403,36 +1508,36 @@ document.addEventListener('DOMContentLoaded', ()=>{
   renderFFDirectory('rep');
 });
 
-// ═══════════════════════════════════════════════════════════════
-// ██████╗  ██████╗ ███╗   ██╗██╗   ██╗███████╗    ████████╗ ██████╗  ██████╗ ██╗     ███████╗
-// ██╔══██╗██╔═══██╗████╗  ██║██║   ██║██╔════╝    ╚══██╔══╝██╔═══██╗██╔═══██╗██║     ██╔════╝
-// ██████╔╝██║   ██║██╔██╗ ██║██║   ██║███████╗       ██║   ██║   ██║██║   ██║██║     ███████╗
-// ██╔══██╗██║   ██║██║╚██╗██║██║   ██║╚════██║       ██║   ██║   ██║██║   ██║██║     ╚════██║
-// ██████╔╝╚██████╔╝██║ ╚████║╚██████╔╝███████║       ██║   ╚██████╔╝╚██████╔╝███████╗███████║
-// ═══════════════════════════════════════════════════════════════
+// âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+// âââââââ  âââââââ ââââ   ââââââ   âââââââââââ    âââââââââ âââââââ  âââââââ âââ     ââââââââ
+// ââââââââââââââââââââââ  ââââââ   âââââââââââ    ââââââââââââââââââââââââââââââ     ââââââââ
+// âââââââââââ   âââââââââ ââââââ   âââââââââââ       âââ   âââ   ââââââ   ââââââ     ââââââââ
+// âââââââââââ   ââââââââââââââââ   âââââââââââ       âââ   âââ   ââââââ   ââââââ     ââââââââ
+// ââââââââââââââââââââ âââââââââââââââââââââââ       âââ   ââââââââââââââââââââââââââââââââââ
+// âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
-// ── SUPPLIER INTELLIGENCE ────────────────────────────────────────
+// ââ SUPPLIER INTELLIGENCE ââââââââââââââââââââââââââââââââââââââââ
 
 // Middleman Detection Score
 function detectMiddleman(item){
   let score = 0;
   const txt = ((item.title||'') + ' ' + (item.snippet||'')).toLowerCase();
-  // Bad signs — middleman indicators
-  if(txt.includes('代购')) score += 2;
-  if(txt.includes('代理')) score += 1;
-  if(txt.includes('分销')) score += 1;
-  if(txt.includes('零售')) score += 2;
-  if(txt.includes('专卖')) score += 1;
-  if(txt.includes('批发商')) score += 1;
-  if(/price|价格.*negotiable|面议/.test(txt)) score += 1;
-  // Good signs — factory indicators
-  if(txt.includes('工厂') || txt.includes('factory')) score -= 3;
-  if(txt.includes('厂家')) score -= 3;
+  // Bad signs â middleman indicators
+  if(txt.includes('ä»£è´­')) score += 2;
+  if(txt.includes('ä»£ç')) score += 1;
+  if(txt.includes('åé')) score += 1;
+  if(txt.includes('é¶å®')) score += 2;
+  if(txt.includes('ä¸å')) score += 1;
+  if(txt.includes('æ¹åå')) score += 1;
+  if(/price|ä»·æ ¼.*negotiable|é¢è®®/.test(txt)) score += 1;
+  // Good signs â factory indicators
+  if(txt.includes('å·¥å') || txt.includes('factory')) score -= 3;
+  if(txt.includes('åå®¶')) score -= 3;
   if(txt.includes('oem') || txt.includes('odm')) score -= 3;
-  if(txt.includes('源头')) score -= 2;
-  if(txt.includes('直销')) score -= 2;
-  if(txt.includes('moq') || txt.includes('最低起订')) score -= 2;
-  if(txt.includes('生产') || txt.includes('manufacture')) score -= 2;
+  if(txt.includes('æºå¤´')) score -= 2;
+  if(txt.includes('ç´é')) score -= 2;
+  if(txt.includes('moq') || txt.includes('æä½èµ·è®¢')) score -= 2;
+  if(txt.includes('çäº§') || txt.includes('manufacture')) score -= 2;
   if(item.is_factory_like) score -= 3;
   return Math.max(0, Math.min(10, score + 5));
 }
@@ -1440,7 +1545,7 @@ function detectMiddleman(item){
 // Auto-inject middleman score into cards
 const _origBuildCard2 = buildCard;
 
-// Price Estimator — estimates factory price vs retail
+// Price Estimator â estimates factory price vs retail
 function estimateMargin(retailPrice, currency='USD'){
   const rates = {USD:7.2, EUR:7.8, GBP:9.1, AUD:4.7, CAD:5.3};
   const rate = rates[currency] || 7.2;
@@ -1455,7 +1560,7 @@ function estimateMargin(retailPrice, currency='USD'){
   };
 }
 
-// ── PRICE MARGIN CALCULATOR (Research tab) ───────────────────────
+// ââ PRICE MARGIN CALCULATOR (Research tab) âââââââââââââââââââââââ
 function calcMargin(){
   const retail = parseFloat(document.getElementById('marginRetail')?.value || 0);
   const currency = document.getElementById('marginCurrency')?.value || 'USD';
@@ -1468,16 +1573,16 @@ function calcMargin(){
   const profit = totalRevenue - totalCost/7.2;
   result.innerHTML = `
     <div class="margin-grid">
-      <div class="margin-item"><div class="margin-val">¥${r.estimatedFactory}</div><div class="margin-lbl">Est. Factory Price</div></div>
+      <div class="margin-item"><div class="margin-val">Â¥${r.estimatedFactory}</div><div class="margin-lbl">Est. Factory Price</div></div>
       <div class="margin-item"><div class="margin-val" style="color:var(--g)">${r.margin}%</div><div class="margin-lbl">Est. Margin</div></div>
-      <div class="margin-item"><div class="margin-val" style="color:var(--a)">¥${r.moq10Cost}</div><div class="margin-lbl">MOQ 10 Cost</div></div>
+      <div class="margin-item"><div class="margin-val" style="color:var(--a)">Â¥${r.moq10Cost}</div><div class="margin-lbl">MOQ 10 Cost</div></div>
       <div class="margin-item"><div class="margin-val" style="color:var(--c)">$${profit.toFixed(0)}</div><div class="margin-lbl">Profit at qty ${qty}</div></div>
     </div>
-    <div style="font-size:10px;color:var(--text3);font-family:var(--mono);margin-top:8px">⚠ Estimates only — actual factory prices vary. Use as negotiation baseline.</div>
+    <div style="font-size:10px;color:var(--text3);font-family:var(--mono);margin-top:8px">â  Estimates only â actual factory prices vary. Use as negotiation baseline.</div>
   `;
 }
 
-// ── WECHAT BULK MANAGER ──────────────────────────────────────────
+// ââ WECHAT BULK MANAGER ââââââââââââââââââââââââââââââââââââââââââ
 let wcContacts = JSON.parse(localStorage.getItem('sf_wc_contacts') || '[]');
 
 function saveWCContacts(){ localStorage.setItem('sf_wc_contacts', JSON.stringify(wcContacts)); }
@@ -1495,26 +1600,26 @@ function renderWCManager(){
   const count = document.getElementById('wcManagerCount');
   if(!list) return;
   if(count) count.textContent = wcContacts.length;
-  if(!wcContacts.length){ list.innerHTML='<div class="admin-empty">No WeChats saved yet — they appear here when you copy from results</div>'; return; }
+  if(!wcContacts.length){ list.innerHTML='<div class="admin-empty">No WeChats saved yet â they appear here when you copy from results</div>'; return; }
   list.innerHTML = wcContacts.map((c,i)=>`
     <div class="wc-manager-row">
       <div class="wc-manager-id" onclick="navigator.clipboard.writeText('${c.id}').then(()=>showToast('Copied ${c.id}!'))">${c.id}</div>
-      <div class="wc-manager-src">${c.source||'—'}</div>
-      <div class="wc-manager-prod">${c.product||'—'}</div>
+      <div class="wc-manager-src">${c.source||'â'}</div>
+      <div class="wc-manager-prod">${c.product||'â'}</div>
       <select class="wc-status-select" onchange="wcContacts[${i}].status=this.value;saveWCContacts()" style="background:rgba(0,0,0,.4);border:1px solid var(--b);border-radius:5px;color:var(--text);font-family:var(--mono);font-size:9px;padding:2px 4px">
         <option value="new" ${c.status==='new'?'selected':''}>New</option>
         <option value="added" ${c.status==='added'?'selected':''}>Added</option>
         <option value="replied" ${c.status==='replied'?'selected':''}>Replied</option>
         <option value="dead" ${c.status==='dead'?'selected':''}>Dead</option>
       </select>
-      <div class="crm-row-del" onclick="wcContacts.splice(${i},1);saveWCContacts();renderWCManager()">✕</div>
+      <div class="crm-row-del" onclick="wcContacts.splice(${i},1);saveWCContacts();renderWCManager()">â</div>
     </div>
   `).join('');
 }
 
 function exportWCList(){
   const text = wcContacts.map(c=>`${c.id} | ${c.product||''} | ${c.source||''}`).join('\n');
-  navigator.clipboard.writeText(text).then(()=>showToast(`✓ Copied ${wcContacts.length} WeChats`));
+  navigator.clipboard.writeText(text).then(()=>showToast(`â Copied ${wcContacts.length} WeChats`));
 }
 
 // Auto-save WeChats when user copies one
@@ -1527,16 +1632,16 @@ function copyText(text, label){
   }
 }
 
-// ── KEYWORD BUILDER ──────────────────────────────────────────────
+// ââ KEYWORD BUILDER ââââââââââââââââââââââââââââââââââââââââââââââ
 const KEYWORD_TEMPLATES = {
-  'Factory Direct': '{product} 工厂 厂家直销 源头 微信号 联系方式',
-  'Rep/1:1': '{product} 复刻 1:1 高仿 莆田 微信 货源',
-  'Wholesale': '{product} 批发 代理 一件代发 微信 联系',
-  'Xianyu Overrun': '{product} 余单 尾货 工厂清仓 闲鱼 微信',
-  'WeChat Only': '{product} 微信 加微信 微信号 wx联系',
-  'Passing/NFC': '{product} 过验 NFC 1:1 通过验 防伪芯片 莆田',
-  'Weidian Batch': '{product} 批次 weidian 质量对比 微信',
-  'Zhihu Expert': '{product} 哪家工厂 质量好 推荐 知乎',
+  'Factory Direct': '{product} å·¥å åå®¶ç´é æºå¤´ å¾®ä¿¡å· èç³»æ¹å¼',
+  'Rep/1:1': '{product} å¤å» 1:1 é«ä»¿ èç° å¾®ä¿¡ è´§æº',
+  'Wholesale': '{product} æ¹å ä»£ç ä¸ä»¶ä»£å å¾®ä¿¡ èç³»',
+  'Xianyu Overrun': '{product} ä½å å°¾è´§ å·¥åæ¸ä» é²é±¼ å¾®ä¿¡',
+  'WeChat Only': '{product} å¾®ä¿¡ å å¾®ä¿¡ å¾®ä¿¡å· wxèç³»',
+  'Passing/NFC': '{product} è¿éª NFC 1:1 éè¿éª é²ä¼ªè¯ç èç°',
+  'Weidian Batch': '{product} æ¹æ¬¡ weidian è´¨éå¯¹æ¯ å¾®ä¿¡',
+  'Zhihu Expert': '{product} åªå®¶å·¥å è´¨éå¥½ æ¨è ç¥ä¹',
 };
 
 function buildKeyword(template){
@@ -1552,13 +1657,13 @@ function buildKeyword(template){
         <button class="tool-btn" onclick="navigator.clipboard.writeText('${kw.replace(/'/g,"\\'")}').then(()=>showToast('Copied!'))">Copy</button>
       </div>
       <div style="margin-top:8px;display:flex;gap:6px">
-        <button class="btn-primary" style="height:32px;font-size:11px;padding:0 12px" onclick="switchTab('supplier');document.getElementById('queryInput').value='${kw.replace(/'/g,"\\'")}';document.getElementById('supplierForm').dispatchEvent(new Event('submit'))">⚡ Search This</button>
+        <button class="btn-primary" style="height:32px;font-size:11px;padding:0 12px" onclick="switchTab('supplier');document.getElementById('queryInput').value='${kw.replace(/'/g,"\\'")}';document.getElementById('supplierForm').dispatchEvent(new Event('submit'))">â¡ Search This</button>
       </div>
     </div>
   `;
 }
 
-// ── SUPPLIER NOTES SYNC ──────────────────────────────────────────
+// ââ SUPPLIER NOTES SYNC ââââââââââââââââââââââââââââââââââââââââââ
 // Auto-save notes to server
 async function saveNoteToServer(link, note){
   try{
@@ -1566,7 +1671,7 @@ async function saveNoteToServer(link, note){
   } catch{}
 }
 
-// ── LIVE SEARCH SUGGESTIONS ──────────────────────────────────────
+// ââ LIVE SEARCH SUGGESTIONS ââââââââââââââââââââââââââââââââââââââ
 const SEARCH_SUGGESTIONS = [
   'Jordan 4 Putian factory', 'Alo yoga leggings supplier', 'Supreme hoodie rep',
   'LV belt factory WeChat', 'Nike tech fleece manufacturer', 'Yeezy 350 batch',
@@ -1595,7 +1700,7 @@ function initSearchSuggestions(){
   input.parentElement?.appendChild(wrap);
 }
 
-// ── SEARCH HISTORY ANALYTICS ─────────────────────────────────────
+// ââ SEARCH HISTORY ANALYTICS âââââââââââââââââââââââââââââââââââââ
 function getSearchStats(){
   const h = JSON.parse(localStorage.getItem('sf_history')||'[]');
   const terms = {};
@@ -1612,12 +1717,12 @@ function renderSearchStats(){
     <div class="wc-manager-row" style="cursor:pointer" onclick="switchTab('supplier');document.getElementById('queryInput').value='${term}';document.getElementById('supplierForm').dispatchEvent(new Event('submit'))">
       <div class="wc-manager-id">${term}</div>
       <div class="wc-manager-src" style="color:var(--c)">${count}x</div>
-      <div class="wc-manager-prod" style="color:var(--text3)">click to re-run →</div>
+      <div class="wc-manager-prod" style="color:var(--text3)">click to re-run â</div>
     </div>
   `).join('');
 }
 
-// ── INIT ALL TOOLS ────────────────────────────────────────────────
+// ââ INIT ALL TOOLS ââââââââââââââââââââââââââââââââââââââââââââââââ
 document.addEventListener('DOMContentLoaded', ()=>{
   initSearchSuggestions();
   renderWCManager();
@@ -1632,17 +1737,17 @@ document.addEventListener('DOMContentLoaded', ()=>{
   });
 });
 
-// ── SHIPPING CALCULATOR ───────────────────────────────────────────
-// Express-focused rates — what rep buyers actually use
+// ââ SHIPPING CALCULATOR âââââââââââââââââââââââââââââââââââââââââââ
+// Express-focused rates â what rep buyers actually use
 // All prices in USD per kg (approx from private agents)
 const SHIP_RATES = {
   usa: [
-    {name:'FedEx IP Express',   base:18, per:14,  days:'3-5',   risk:'high', rec:false, note:'Fastest — high customs scrutiny'},
-    {name:'DHL Express',        base:16, per:13,  days:'3-5',   risk:'high', rec:false, note:'Fast — declared value matters'},
+    {name:'FedEx IP Express',   base:18, per:14,  days:'3-5',   risk:'high', rec:false, note:'Fastest â high customs scrutiny'},
+    {name:'DHL Express',        base:16, per:13,  days:'3-5',   risk:'high', rec:false, note:'Fast â declared value matters'},
     {name:'UPS Express',        base:17, per:13,  days:'3-6',   risk:'high', rec:false, note:'Similar to DHL'},
-    {name:'SF Express Intl',  base:12, per:9,   days:'5-8',   risk:'med',  rec:true,  note:'Chinese express — lower scrutiny than DHL/FedEx'},
-    {name:'EMS (China Post)',   base:7,  per:5.5, days:'7-14',  risk:'med',  rec:true,  note:'Good balance — widely used for reps'},
-    {name:'Private Line Haul',  base:4,  per:3.5, days:'10-18', risk:'low',  rec:false, note:'Cheapest — slowest — find via private agent'},
+    {name:'SF Express Intl',  base:12, per:9,   days:'5-8',   risk:'med',  rec:true,  note:'Chinese express â lower scrutiny than DHL/FedEx'},
+    {name:'EMS (China Post)',   base:7,  per:5.5, days:'7-14',  risk:'med',  rec:true,  note:'Good balance â widely used for reps'},
+    {name:'Private Line Haul',  base:4,  per:3.5, days:'10-18', risk:'low',  rec:false, note:'Cheapest â slowest â find via private agent'},
   ],
   uk: [
     {name:'FedEx IP Express',   base:20, per:16,  days:'3-5',   risk:'high', rec:false, note:'Fast but UK customs aggressive'},
@@ -1687,7 +1792,7 @@ function calcShipping(){
         return `
           <div class="ship-row ${m.rec?'ship-row-rec':''}">
             <div class="ship-row-name">
-              ${m.rec?'<span class="ship-rec-badge">✓ REC</span>':''}
+              ${m.rec?'<span class="ship-rec-badge">â REC</span>':''}
               ${m.name}
             </div>
             <div class="ship-row-price">$${cost}</div>
@@ -1699,12 +1804,12 @@ function calcShipping(){
       }).join('')}
     </div>
     <div style="font-size:10px;color:var(--text3);font-family:var(--mono);margin-top:10px;padding:8px;background:rgba(0,0,0,.2);border-radius:6px;line-height:1.6">
-      ✓ REC = recommended for rep shipments · Prices are per kg estimates from private agents · Always confirm rates via WeChat before sending
+      â REC = recommended for rep shipments Â· Prices are per kg estimates from private agents Â· Always confirm rates via WeChat before sending
     </div>
   `;
 }
 
-// ── SEARCH SUGGESTIONS INIT ──────────────────────────────────────
+// ââ SEARCH SUGGESTIONS INIT ââââââââââââââââââââââââââââââââââââââ
 // Inject suggestion pills under search bar on load
 setTimeout(()=>{
   const input = document.getElementById('queryInput');
@@ -1723,7 +1828,7 @@ setTimeout(()=>{
   input.closest('.field')?.appendChild(wrap);
 }, 500);
 
-// ── NOTES API ────────────────────────────────────────────────────
+// ââ NOTES API ââââââââââââââââââââââââââââââââââââââââââââââââââââ
 async function saveNoteServer(link, note){
   try{ await fetch('/api/notes',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({link,note})}); }catch{}
 }
@@ -1742,7 +1847,7 @@ document.addEventListener('input', e=>{
   }
 });
 
-// ── QUICK SEARCH SHORTCUT ─────────────────────────────────────────
+// ââ QUICK SEARCH SHORTCUT âââââââââââââââââââââââââââââââââââââââââ
 document.addEventListener('keydown', e=>{
   if(e.key==='/' && !['INPUT','TEXTAREA'].includes(document.activeElement.tagName)){
     e.preventDefault();
@@ -1760,21 +1865,21 @@ document.addEventListener('keydown', e=>{
   if(e.altKey && e.key==='c') switchTab('crm');
 });
 
-// ── PRIVATE AGENT DEEP SEARCH ─────────────────────────────────────
+// ââ PRIVATE AGENT DEEP SEARCH âââââââââââââââââââââââââââââââââââââ
 async function runPrivateAgentSearch(){
-  const dest = document.getElementById('ffPrivateDest')?.value || '美国';
+  const dest = document.getElementById('ffPrivateDest')?.value || 'ç¾å½';
   const results = document.getElementById('ffPrivateResults');
   const hint = document.getElementById('ffPrivateHint');
   if(!results) return;
 
   // These are the actual coded terms private agents use on Chinese platforms
   const queries = [
-    `私人货代 ${dest} 微信 包税 不查验`,
-    `私人代理 敏感货 ${dest} 专线 微信联系`,
-    `特货专线 ${dest} 莆田发货 微信 私包`,
-    `仿牌货代 ${dest} 私人转运 包清关 联系`,
-    `莆田 私人货代 ${dest} 低调包装 微信`,
-    `敏感货 私人代理 ${dest} 专线 微信号`,
+    `ç§äººè´§ä»£ ${dest} å¾®ä¿¡ åç¨ ä¸æ¥éª`,
+    `ç§äººä»£ç ææè´§ ${dest} ä¸çº¿ å¾®ä¿¡èç³»`,
+    `ç¹è´§ä¸çº¿ ${dest} èç°åè´§ å¾®ä¿¡ ç§å`,
+    `ä»¿çè´§ä»£ ${dest} ç§äººè½¬è¿ åæ¸å³ èç³»`,
+    `èç° ç§äººè´§ä»£ ${dest} ä½è°åè£ å¾®ä¿¡`,
+    `ææè´§ ç§äººä»£ç ${dest} ä¸çº¿ å¾®ä¿¡å·`,
   ];
 
   results.innerHTML = '<div class="loader"><div class="loader-dots"><span></span><span></span><span></span></div>Running ' + queries.length + ' private agent queries...</div>';
@@ -1813,7 +1918,7 @@ async function runPrivateAgentSearch(){
   // Render all results
   results.innerHTML = '';
   if(!allResults.length){
-    results.innerHTML = '<div class="empty">No private agents found — they use very private channels. Try asking your supplier directly or checking rep Discord servers.</div>';
+    results.innerHTML = '<div class="empty">No private agents found â they use very private channels. Try asking your supplier directly or checking rep Discord servers.</div>';
     return;
   }
 
@@ -1825,7 +1930,7 @@ async function runPrivateAgentSearch(){
   showToast(`Found ${allResults.length} potential private agents`);
 }
 
-// ── FORM HANDLERS ────────────────────────────────────────────────
+// ââ FORM HANDLERS ââââââââââââââââââââââââââââââââââââââââââââââââ
 // Generic search runner
 async function runSearch({query, brand='', platform='all', mode='supplier', deepScan=false, wcOnly=false,
   btnId, dotId, statusId, resultsId, hintId, hintText}){
@@ -1835,10 +1940,10 @@ async function runSearch({query, brand='', platform='all', mode='supplier', deep
   const results = document.getElementById(resultsId);
   const hint = document.getElementById(hintId);
   if(!query){ showToast('Enter a search query'); return; }
-  if(btn){ btn.disabled=true; btn._orig=btn.innerHTML||btn.textContent; btn.textContent='Searching…'; }
+  if(btn){ btn.disabled=true; btn._orig=btn.innerHTML||btn.textContent; btn.textContent='Searchingâ¦'; }
   if(dot) dot.className='status-dot active';
-  if(status) status.textContent='Searching…';
-  if(results) results.innerHTML='<div class="loader"><div class="loader-dots"><span></span><span></span><span></span></div>Searching…</div>';
+  if(status) status.textContent='Searchingâ¦';
+  if(results) results.innerHTML='<div class="loader"><div class="loader-dots"><span></span><span></span><span></span></div>Searchingâ¦</div>';
   if(hint && hintText){ hint.style.display='block'; hint.textContent=hintText; }
 
   // 3 minute timeout
@@ -1863,7 +1968,7 @@ async function runSearch({query, brand='', platform='all', mode='supplier', deep
     if(status) status.textContent=`${res.length} found`;
     if(results){
       results.innerHTML='';
-      if(!res.length) results.innerHTML='<div class="empty">No results — try different keywords or disable Deep Scan</div>';
+      if(!res.length) results.innerHTML='<div class="empty">No results â try different keywords or disable Deep Scan</div>';
       else res.forEach((item,i)=>results.appendChild(buildCard(item,i)));
     }
     updateStats(res);
@@ -1874,7 +1979,7 @@ async function runSearch({query, brand='', platform='all', mode='supplier', deep
     clearTimeout(timer);
     if(dot) dot.className='status-dot error';
     if(status) status.textContent=e.name==='AbortError'?'Timed out':'Error';
-    if(results) results.innerHTML=`<div class="empty">${e.name==='AbortError'?'Search timed out — try disabling Deep Scan':'Search failed — please try again'}</div>`;
+    if(results) results.innerHTML=`<div class="empty">${e.name==='AbortError'?'Search timed out â try disabling Deep Scan':'Search failed â please try again'}</div>`;
   } finally {
     if(btn){ btn.disabled=false; if(btn._orig) btn.innerHTML=btn._orig; }
   }
@@ -1910,19 +2015,19 @@ document.getElementById('ffForm')?.addEventListener('submit', e=>{
 
 // Passing form handled by passingForm listener below
 
-// ── PASSING / NFC TAB ─────────────────────────────────────────────
+// ââ PASSING / NFC TAB âââââââââââââââââââââââââââââââââââââââââââââ
 
 let passingMode = 'supplier';
 
 const PASSING_INJECT = {
-  supplier: '过验 NFC芯片 防伪 同厂 纯原 同材质 1:1 莆田 工厂 微信号 联系方式',
-  batch:    '批次 哪个批次 质量对比 过验 通过验 推荐批次 weidian 小红书',
-  nfc:      'NFC芯片 NFC防伪 扫码验真 NFC过验 NFC chip 微信 联系方式 工厂',
+  supplier: 'è¿éª NFCè¯ç é²ä¼ª åå çº¯å åæè´¨ 1:1 èç° å·¥å å¾®ä¿¡å· èç³»æ¹å¼',
+  batch:    'æ¹æ¬¡ åªä¸ªæ¹æ¬¡ è´¨éå¯¹æ¯ è¿éª éè¿éª æ¨èæ¹æ¬¡ weidian å°çº¢ä¹¦',
+  nfc:      'NFCè¯ç NFCé²ä¼ª æ«ç éªç NFCè¿éª NFC chip å¾®ä¿¡ èç³»æ¹å¼ å·¥å',
 };
 
 const PASSING_VERDICT_WORDS = [
-  '过验','通过验','pass','passing','nfc','纯原','同厂','同材质',
-  '1:1','原厂','推荐','好评','值得买','完美','正品级'
+  'è¿éª','éè¿éª','pass','passing','nfc','çº¯å','åå','åæè´¨',
+  '1:1','åå','æ¨è','å¥½è¯','å¼å¾ä¹°','å®ç¾','æ­£åçº§'
 ];
 
 function setPassingMode(mode, btn){
@@ -1937,14 +2042,14 @@ function setPassingMode(mode, btn){
   const q = document.getElementById('passingQuery');
   const b = document.getElementById('passingBtn');
   if(mode==='supplier'){
-    if(q) q.placeholder='Jordan 4 bred, Yeezy 350 zebra…';
-    if(b) b.textContent='🏭 Find Passing Supplier';
+    if(q) q.placeholder='Jordan 4 bred, Yeezy 350 zebraâ¦';
+    if(b) b.textContent='ð­ Find Passing Supplier';
   } else if(mode==='batch'){
-    if(q) q.placeholder='Jordan 4 bred — which batch passes best?';
-    if(b) b.textContent='📦 Find Batch Intel';
+    if(q) q.placeholder='Jordan 4 bred â which batch passes best?';
+    if(b) b.textContent='ð¦ Find Batch Intel';
   } else if(mode==='nfc'){
-    if(q) q.placeholder='Jordan 4, Air Max — NFC chip version';
-    if(b) b.textContent='📱 Find NFC Factory';
+    if(q) q.placeholder='Jordan 4, Air Max â NFC chip version';
+    if(b) b.textContent='ð± Find NFC Factory';
   }
 }
 
@@ -1971,12 +2076,12 @@ function buildPassingCard(item, index){
 async function runBatchIntel(brand, query){
   const results = document.getElementById('batchIntelResults');
   if(!results) return;
-  results.innerHTML = '<div class="loader"><div class="loader-dots"><span></span><span></span><span></span></div>Searching Weidian + Xiaohongshu for batch reviews…</div>';
+  results.innerHTML = '<div class="loader"><div class="loader-dots"><span></span><span></span><span></span></div>Searching Weidian + Xiaohongshu for batch reviewsâ¦</div>';
 
   const queries = [
-    {q:`${brand} ${query} 批次 过验 推荐`.trim(), platform:'weidian', label:'Weidian Batches'},
-    {q:`${brand} ${query} 哪个批次好 测评 小红书`.trim(), platform:'xiaohongshu', label:'XHS Reviews'},
-    {q:`${brand} ${query} 过验 同厂 纯原`.trim(), platform:'zhihu', label:'Zhihu Expert'},
+    {q:`${brand} ${query} æ¹æ¬¡ è¿éª æ¨è`.trim(), platform:'weidian', label:'Weidian Batches'},
+    {q:`${brand} ${query} åªä¸ªæ¹æ¬¡å¥½ æµè¯ å°çº¢ä¹¦`.trim(), platform:'xiaohongshu', label:'XHS Reviews'},
+    {q:`${brand} ${query} è¿éª åå çº¯å`.trim(), platform:'zhihu', label:'Zhihu Expert'},
   ];
 
   const seen = new Set();
@@ -1993,7 +2098,7 @@ async function runBatchIntel(brand, query){
   }
 
   results.innerHTML = '';
-  if(!all.length){ results.innerHTML='<div class="empty">No batch intel found — try searching the product name in English and Chinese</div>'; return; }
+  if(!all.length){ results.innerHTML='<div class="empty">No batch intel found â try searching the product name in English and Chinese</div>'; return; }
   all.forEach((item,i)=>results.appendChild(buildPassingCard(item,i)));
 }
 
@@ -2023,10 +2128,10 @@ document.getElementById('passingForm')?.addEventListener('submit', async e=>{
   const hint = document.getElementById('passingHint');
   const btn = document.getElementById('passingBtn');
 
-  if(btn){ btn.disabled=true; btn._orig=btn.innerHTML; btn.innerHTML='Searching…'; }
+  if(btn){ btn.disabled=true; btn._orig=btn.innerHTML; btn.innerHTML='Searchingâ¦'; }
   if(dot) dot.className='status-dot active';
-  if(status) status.textContent='Searching…';
-  if(results) results.innerHTML='<div class="loader"><div class="loader-dots"><span></span><span></span><span></span></div>Searching for passing goods…</div>';
+  if(status) status.textContent='Searchingâ¦';
+  if(results) results.innerHTML='<div class="loader"><div class="loader-dots"><span></span><span></span><span></span></div>Searching for passing goodsâ¦</div>';
   if(hint){ hint.style.display='block'; hint.textContent=`Passing search: ${brand} ${query}`.trim(); }
 
   try{
@@ -2038,20 +2143,20 @@ document.getElementById('passingForm')?.addEventListener('submit', async e=>{
     if(status) status.textContent=`${res.length} found`;
     if(results){
       results.innerHTML='';
-      if(!res.length) results.innerHTML='<div class="empty">No results — try enabling Deep Scan or different keywords</div>';
+      if(!res.length) results.innerHTML='<div class="empty">No results â try enabling Deep Scan or different keywords</div>';
       else res.forEach((item,i)=>results.appendChild(buildPassingCard(item,i)));
     }
     updateStats(res);
   } catch(e){
     if(dot) dot.className='status-dot error';
     if(status) status.textContent='Error';
-    if(results) results.innerHTML='<div class="empty">Search failed — please try again</div>';
+    if(results) results.innerHTML='<div class="empty">Search failed â please try again</div>';
   } finally {
     if(btn){ btn.disabled=false; btn.innerHTML=btn._orig||'Search'; }
   }
 });
 
-// ── FINDS TAB ────────────────────────────────────────────────────
+// ââ FINDS TAB ââââââââââââââââââââââââââââââââââââââââââââââââââââ
 function openFindModal(){
   document.getElementById('findTitle').value='';
   document.getElementById('findProduct').value='';
@@ -2071,26 +2176,26 @@ async function submitFind(){
   const desc    = document.getElementById('findDesc')?.value.trim();
   const msg     = document.getElementById('findMsg');
   if(!title){ msg.className='msg error'; msg.textContent='Title required'; return; }
-  msg.className='msg'; msg.textContent='Posting…';
+  msg.className='msg'; msg.textContent='Postingâ¦';
   try{
     const r = await fetch('/finds',{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({title,product,wechat,price,desc})});
     const d = await r.json();
-    if(d.id !== undefined || d.title){ msg.className='msg success'; msg.textContent='✓ Posted!'; setTimeout(()=>{closeFindModal();loadFinds();},800); }
+    if(d.id !== undefined || d.title){ msg.className='msg success'; msg.textContent='â Posted!'; setTimeout(()=>{closeFindModal();loadFinds();},800); }
     else if(d.error){ msg.className='msg error'; msg.textContent=d.error; }
-    else { msg.className='msg success'; msg.textContent='✓ Posted!'; setTimeout(()=>{closeFindModal();loadFinds();},800); }
+    else { msg.className='msg success'; msg.textContent='â Posted!'; setTimeout(()=>{closeFindModal();loadFinds();},800); }
   } catch{ msg.className='msg error'; msg.textContent='Network error'; }
 }
 
 async function loadFinds(){
   const grid = document.getElementById('findsGrid');
   if(!grid) return;
-  grid.innerHTML='<div class="loader"><div class="loader-dots"><span></span><span></span><span></span></div>Loading finds…</div>';
+  grid.innerHTML='<div class="loader"><div class="loader-dots"><span></span><span></span><span></span></div>Loading findsâ¦</div>';
   try{
     const r = await fetch('/finds');
     const d = await r.json();
     const finds = Array.isArray(d) ? d : (d.finds||[]);
-    if(!finds.length){ grid.innerHTML='<div class="empty">No finds yet — be the first to post!</div>'; return; }
+    if(!finds.length){ grid.innerHTML='<div class="empty">No finds yet â be the first to post!</div>'; return; }
     grid.innerHTML='';
     finds.forEach(f=>grid.appendChild(buildFindCard(f)));
   } catch{ grid.innerHTML='<div class="empty">Could not load finds</div>'; }
@@ -2110,11 +2215,11 @@ function buildFindCard(f){
     <div class="find-title">${f.title||''}</div>
     ${f.product?`<div class="find-product">${f.product}</div>`:''}
     ${f.desc?`<div class="find-desc">${f.desc}</div>`:''}
-    ${f.wechat?`<div class="find-wechat" onclick="navigator.clipboard.writeText('${f.wechat}').then(()=>showToast('WeChat copied!'))">💬 ${f.wechat}</div>`:''}
-    ${f.price?`<div class="find-price">💰 ${f.price}</div>`:''}
+    ${f.wechat?`<div class="find-wechat" onclick="navigator.clipboard.writeText('${f.wechat}').then(()=>showToast('WeChat copied!'))">ð¬ ${f.wechat}</div>`:''}
+    ${f.price?`<div class="find-price">ð° ${f.price}</div>`:''}
     <div class="find-footer">
       <button class="like-btn ${liked?'liked':''}" onclick="likeFindCard('${f.id}',this)">
-        ${liked?'❤':'🤍'} ${(f.likes||0)+(liked?1:0)}
+        ${liked?'â¤':'ð¤'} ${(f.likes||0)+(liked?1:0)}
       </button>
     </div>
   `;
@@ -2128,7 +2233,7 @@ async function likeFindCard(id, btn){
   const countStr = btn.textContent.match(/\d+/)?.[0]||'0';
   const count = parseInt(countStr) + (liked?1:-1);
   btn.className='like-btn '+(liked?'liked':'');
-  btn.textContent=`${liked?'❤':'🤍'} ${count}`;
+  btn.textContent=`${liked?'â¤':'ð¤'} ${count}`;
   await fetch(`/finds/${id}/like`,{method:'POST',headers:{'Content-Type':'application/json'}}).catch(()=>{});
 }
 
