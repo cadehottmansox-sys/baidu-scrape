@@ -33,7 +33,7 @@ def create_app() -> Flask:
     app = Flask(__name__)
     logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s")
 
-    # Clear all session tokens on startup — forces re-login every deploy
+    # Clear all session tokens on startup â forces re-login every deploy
     try:
         import storage
         data = storage.read("sf_users", {"requests": [], "approved": []})
@@ -176,7 +176,7 @@ def create_app() -> Flask:
             p.write_text(json.dumps(data, indent=2))
         return f"<h2>Done!</h2><p>Email: cadehottmansox@gmail.com</p><p>Password: {pw}</p><p><a href='/'>Go to app</a></p>"
 
-    # ── Admin API endpoints ──────────────────────────────────────────
+    # ââ Admin API endpoints ââââââââââââââââââââââââââââââââââââââââââ
     @app.get("/api/admin/data")
     @require_admin
     def api_admin_data():
@@ -520,7 +520,7 @@ def create_app() -> Flask:
     @app.post("/scan-page")
     @require_auth
     def scan_page():
-        """Scan a single URL for WeChat IDs — used by per-card scan button."""
+        """Scan a single URL for WeChat IDs â used by per-card scan button."""
         data = request.get_json(silent=True) or {}
         url  = (data.get("url") or "").strip()
         if not url:
@@ -532,7 +532,7 @@ def create_app() -> Flask:
             app.logger.exception("Scan page failed: %s", exc)
             return jsonify({"error": "Scan failed. Try again."}), 500
 
-    # ── Debug endpoint ───────────────────────────────────────────────
+    # ââ Debug endpoint âââââââââââââââââââââââââââââââââââââââââââââââ
     @app.get("/debug/baidu-html")
     @require_admin
     def debug_baidu_html():
@@ -559,7 +559,7 @@ HTML length: {len(html)}
 {html[2000:4000]}
 </pre>"""
 
-    # ── Finds board ───────────────────────────────────────────────
+    # ââ Finds board âââââââââââââââââââââââââââââââââââââââââââââââ
     @app.get("/finds")
     def get_finds():
         finds = _load_finds()
@@ -613,7 +613,7 @@ HTML length: {len(html)}
         _save_finds(finds)
         return jsonify({"status": "deleted"}), 200
 
-    # ── Debug ────────────────────────────────────────────────────
+    # ââ Debug ââââââââââââââââââââââââââââââââââââââââââââââââââââ
     @app.get("/debug/html")
     @require_admin
     def debug_html():
@@ -641,7 +641,7 @@ FILE SIZE: {len(html)} chars
         </pre>
         """
 
-    # ── Admin ─────────────────────────────────────────────────────
+    # ââ Admin âââââââââââââââââââââââââââââââââââââââââââââââââââââ
     @app.get("/admin")
     @require_admin
     def admin_dashboard():
@@ -697,6 +697,25 @@ FILE SIZE: {len(html)} chars
 
 
 app = create_app()
+
+
+
+@app.route("/api/global-stats")
+def global_stats():
+    import storage
+    stats = storage.read("sf_global_stats", {"total_searches": 0, "total_wechats": 0})
+    return jsonify(stats)
+
+@app.route("/api/global-stats/bump", methods=["POST"])
+@require_auth
+def bump_global_stats():
+    import storage
+    data = request.get_json() or {}
+    stats = storage.read("sf_global_stats", {"total_searches": 0, "total_wechats": 0})
+    stats["total_searches"] = stats.get("total_searches", 0) + int(data.get("searches", 0))
+    stats["total_wechats"] = stats.get("total_wechats", 0) + int(data.get("wechats", 0))
+    storage.write("sf_global_stats", stats)
+    return jsonify(stats)
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5001))
