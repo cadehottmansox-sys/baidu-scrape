@@ -707,7 +707,6 @@ def global_stats():
     return jsonify(stats)
 
 @app.route("/api/global-stats/bump", methods=["POST"])
-@require_auth
 def bump_global_stats():
     import storage
     data = request.get_json() or {}
