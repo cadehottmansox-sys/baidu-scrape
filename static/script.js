@@ -5,6 +5,10 @@ _popStyle.textContent = `
   @keyframes fadeIn{from{opacity:0}to{opacity:1}}
   .tab-locked{cursor:not-allowed!important;opacity:.6}
   .tab-locked:hover{background:rgba(255,68,102,.04)!important;color:#ff4466!important}
+
+  .tab-btn { transition: color .2s, text-shadow .2s; }
+  .tab-btn:hover { color: #22d3ee !important; text-shadow: 0 0 12px rgba(34,211,238,.6); }
+  .tab-btn.active { color: #22d3ee !important; text-shadow: 0 0 16px rgba(34,211,238,.8); border-bottom-color: #22d3ee !important; }
 `;
 document.head.appendChild(_popStyle);
 
@@ -171,10 +175,12 @@ function switchTab(name){
   const panel = document.getElementById(`tab-${name}`);
   if(panel){ panel.classList.add("active"); panel.style.display="block"; }
   document.querySelectorAll(".tab-panel,.tab-content").forEach(p=>{ if(p!==panel){ p.style.display="none"; } });
-  if(name==="finds") loadFinds();
+  if(name==="finds"){loadFinds();setTimeout(_sfLoadComments,500);}
   if(name==="saved") renderSavedTab();
   if(name==="crm") renderCrm();
   if(name==="admin") loadAdmin();
+  if(name==="chat"){_sfLoadChat();if(_chatPoll)clearInterval(_chatPoll);_chatPoll=setInterval(_sfLoadChat,3000);}
+  else if(_chatPoll&&name!=="chat"){clearInterval(_chatPoll);_chatPoll=null;}
 }
 
 document.querySelectorAll(".tab-btn").forEach(btn=>btn.addEventListener("click",()=>{
@@ -2581,4 +2587,118 @@ async function _sfLoadMore(query,brand,platform,mode,deepScan,wcOnly,resultsEl,b
     (function(q,b,p,m,ds,wo,r){nb.onclick=function(){_sfLoadMore(q,b,p,m,ds,wo,r,this);};})(query,brand,platform,mode,deepScan,wcOnly,resultsEl);
     resultsEl.appendChild(nb);
   }catch(e){btn.textContent='Error - try again'; btn.disabled=false;}
+}
+async function _dySearch(){
+  var brand=document.getElementById('dy-brand')?.value?.trim()||'';
+  var product=document.getElementById('dy-product')?.value?.trim()||'';
+  if(!brand&&!product){showToast('Enter brand or product','error');return;}
+  var query=(brand+' '+product).trim();
+  var btn=document.getElementById('dy-search-btn');
+  var resEl=document.getElementById('dy-results');
+  if(btn){btn.disabled=true;btn.textContent='Searching...';}
+  if(resEl)resEl.innerHTML='<div style="text-align:center;padding:40px;color:#475569;font-size:13px">Searching Douyin...</div>';
+  try{
+    var r=await fetch('/search',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({query:query,brand:brand,platform:'douyin',mode:'supplier',deep_scan:false,wechat_only:false})});
+    var d=await r.json();
+    if(btn){btn.disabled=false;btn.textContent='Search Douyin';}
+    var results=d.results||[];
+    if(!resEl)return;
+    if(!results.length){resEl.innerHTML='<div style="text-align:center;padding:40px;color:#475569">No results. Try different keywords.</div>';return;}
+    resEl.innerHTML='';
+    results.forEach(function(item){
+      var card=document.createElement('div');
+      card.style.cssText='background:rgba(255,255,255,.04);border:1px solid rgba(34,211,238,.12);border-radius:12px;padding:16px;margin-bottom:10px';
+      var ta=document.createElement('a');ta.href=item.link||'#';ta.target='_blank';
+      ta.style.cssText='color:#e2e8f0;font-size:14px;font-weight:600;text-decoration:none;display:block;margin-bottom:6px';
+      ta.textContent=item.title||'No title';
+      var sn=document.createElement('p');
+      sn.style.cssText='color:#64748b;font-size:12px;margin:0 0 10px;line-height:1.5';
+      sn.textContent=(item.snippet||'').slice(0,150);
+      var chips=document.createElement('div');chips.style.cssText='display:flex;gap:6px;flex-wrap:wrap;align-items:center';
+      (item.wechat_ids||[]).slice(0,3).forEach(function(w){
+        var c=document.createElement('div');
+        c.style.cssText='background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.3);color:#22c55e;padding:3px 10px;border-radius:20px;font-size:11px;cursor:pointer;font-weight:700';
+        c.textContent='wx: '+w.id;
+        c.onclick=function(){navigator.clipboard.writeText(w.id).then(function(){c.textContent='✓ Copied!';setTimeout(function(){c.textContent='wx: '+w.id;},1800);});};
+        chips.appendChild(c);
+      });
+      if(item.douyin&&item.douyin!=='N/A'){
+        var dc=document.createElement('div');
+        dc.style.cssText='background:rgba(34,211,238,.1);border:1px solid rgba(34,211,238,.3);color:#22d3ee;padding:3px 10px;border-radius:20px;font-size:11px;cursor:pointer;font-weight:700';
+        dc.textContent='🎵 '+item.douyin;
+        dc.onclick=function(){navigator.clipboard.writeText(item.douyin).then(function(){dc.textContent='✓ Copied!';setTimeout(function(){dc.textContent='🎵 '+item.douyin;},1800);});};
+        chips.appendChild(dc);
+      }
+      if(item.link){
+        var ob=document.createElement('a');ob.href=item.link;ob.target='_blank';
+        ob.style.cssText='background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#94a3b8;padding:3px 10px;border-radius:20px;font-size:11px;text-decoration:none';
+        ob.textContent='Open';chips.appendChild(ob);
+      }
+      card.appendChild(ta);card.appendChild(sn);card.appendChild(chips);
+      resEl.appendChild(card);
+    });
+  }catch(e){
+    if(btn){btn.disabled=false;btn.textContent='Search Douyin';}
+    if(resEl)resEl.innerHTML='<div style="color:#ef4444;padding:20px;text-align:center">Error: '+e.message+'</div>';
+  }
+}
+var _chatPoll=null;
+function _sfLoadChat(){
+  fetch('/api/chat/messages',{credentials:'include'}).then(function(r){return r.json();}).then(function(msgs){
+    var el=document.getElementById('chat-msgs');if(!el)return;
+    if(!msgs||!msgs.length){el.innerHTML='<div style="text-align:center;color:#334155;font-size:12px;padding:20px">No messages yet. Say hi!</div>';return;}
+    var atBottom=el.scrollHeight-el.scrollTop-el.clientHeight<60;
+    el.innerHTML='';
+    msgs.forEach(function(m){
+      var wrap=document.createElement('div');
+      var isMe=window._sfUser&&m.name===window._sfUser;
+      wrap.style.cssText='display:flex;flex-direction:column;align-items:'+(isMe?'flex-end':'flex-start')+';gap:2px';
+      var nm=document.createElement('span');nm.style.cssText='font-size:10px;color:#475569';nm.textContent=m.name+' · '+new Date(m.ts*1000).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+      var bubble=document.createElement('div');
+      bubble.style.cssText='background:'+(isMe?'rgba(34,211,238,.15)':'rgba(255,255,255,.06)')+';border:1px solid '+(isMe?'rgba(34,211,238,.3)':'rgba(255,255,255,.1)')+';padding:8px 14px;border-radius:10px;font-size:13px;color:#e2e8f0;max-width:75%;word-break:break-word';
+      bubble.textContent=m.message;
+      wrap.appendChild(nm);wrap.appendChild(bubble);el.appendChild(wrap);
+    });
+    if(atBottom)el.scrollTop=el.scrollHeight;
+  }).catch(function(){});
+}
+function _sfSendChat(){
+  var inp=document.getElementById('chat-input');
+  if(!inp||!inp.value.trim())return;
+  var msg=inp.value.trim();inp.value='';
+  fetch('/api/chat/send',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:msg})})
+  .then(function(r){return r.json();}).then(function(d){if(d.ok)_sfLoadChat();else showToast('Failed to send','error');});
+}
+function _sfLoadComments(){
+  fetch('/api/chat/messages',{credentials:'include'}).then(function(r){return r.json();}).then(function(msgs){
+    var el=document.getElementById('finds-comments-list');if(!el)return;
+    var comments=(msgs||[]).filter(function(m){return m.type==='finds_comment';});
+    if(!comments.length){el.innerHTML='<div style="text-align:center;color:#475569;font-size:12px;padding:16px">No comments yet. Be first!</div>';return;}
+    el.innerHTML='';
+    comments.forEach(function(m){
+      var row=document.createElement('div');
+      row.style.cssText='background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:8px;padding:10px 14px;display:flex;gap:10px;align-items:flex-start';
+      var avatar=document.createElement('div');
+      avatar.style.cssText='width:28px;height:28px;border-radius:50%;background:rgba(34,211,238,.2);border:1px solid rgba(34,211,238,.3);display:flex;align-items:center;justify-content:center;font-size:11px;color:#22d3ee;font-weight:700;flex-shrink:0';
+      avatar.textContent=(m.name||'?')[0].toUpperCase();
+      var body=document.createElement('div');body.style.cssText='flex:1;min-width:0';
+      var header=document.createElement('div');header.style.cssText='display:flex;gap:8px;align-items:center;margin-bottom:3px';
+      var name=document.createElement('span');name.style.cssText='color:#e2e8f0;font-size:12px;font-weight:600';name.textContent=m.name;
+      var time=document.createElement('span');time.style.cssText='color:#475569;font-size:10px';
+      time.textContent=new Date(m.ts*1000).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+      header.appendChild(name);header.appendChild(time);
+      var text=document.createElement('p');text.style.cssText='color:#94a3b8;font-size:13px;margin:0';text.textContent=m.message;
+      body.appendChild(header);body.appendChild(text);
+      row.appendChild(avatar);row.appendChild(body);
+      el.appendChild(row);
+    });
+  }).catch(function(){});
+}
+function _sfPostComment(){
+  var inp=document.getElementById('finds-comment-input');
+  if(!inp||!inp.value.trim())return;
+  var msg=inp.value.trim();inp.value='';
+  fetch('/api/chat/send',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:msg,type:'finds_comment'})})
+  .then(function(r){return r.json();}).then(function(d){if(d.ok)_sfLoadComments();else showToast('Failed to post','error');});
 }
