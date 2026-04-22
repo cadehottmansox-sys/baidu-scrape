@@ -292,6 +292,11 @@ function buildCard(item, index){
   card.className = "result-card"+(isSaved?" saved":"");
   card.style.animationDelay=`${index*.04}s`;
   card.dataset.score=score; card.dataset.link=item.link||"";
+  const isDY=(item.link||"").includes("douyin.com");
+  const isXHS=(item.link||"").includes("xiaohongshu.com")||(item.link||"").includes("xhscdn");
+  const isYP=(item.link||"").includes("yupoo");
+  const isWB=(item.link||"").includes("weibo.com");
+  const isPDD=(item.link||"").includes("pinduoduo");
   card.dataset.hasWechat=(wechats.length>0)?"1":"0";
   card.dataset.hasContact=item.has_contact?"1":"0";
   card.dataset.factoryLike=item.is_factory_like?"1":"0";
@@ -359,8 +364,40 @@ function buildCard(item, index){
       el.onclick=()=>copyText(p,p);
       chips.appendChild(el);
     });
+    // Douyin chip
+    if(item.douyin && item.douyin!=="N/A"){
+      const dy=document.createElement("div");
+      dy.className="contact-chip contact-douyin";
+      dy.style.cssText="background:rgba(0,0,0,.4);border:1px solid #fe2c55;color:#fe2c55;cursor:pointer;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;display:flex;align-items:center;gap:4px";
+      dy.innerHTML=`🎵 ${item.douyin.startsWith('video:')?'Douyin Video':item.douyin}`;
+      dy.title="Click to copy Douyin account";
+      dy.onclick=()=>copyText(item.douyin.replace('video:',''),item.douyin.startsWith('video:')?'Douyin video ID':'Douyin account');
+      chips.appendChild(dy);
+    }
+    // XHS chip
+    if(item.xhs && item.xhs!=="N/A"){
+      const xh=document.createElement("div");
+      xh.className="contact-chip contact-xhs";
+      xh.style.cssText="background:rgba(255,60,60,.15);border:1px solid #ff4757;color:#ff6b7a;cursor:pointer;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;display:flex;align-items:center;gap:4px";
+      xh.innerHTML=`📕 ${item.xhs}`;
+      xh.title="Click to copy XHS account";
+      xh.onclick=()=>copyText(item.xhs,'RedNote account');
+      chips.appendChild(xh);
+    }
     cs.appendChild(chips);
     card.appendChild(cs);
+  }
+
+  // ── PLATFORM SOURCE BADGE ────────────────────────────────────
+  if(isDY||isXHS||isYP||isWB||isPDD){
+    const srcBadge=document.createElement("div");
+    srcBadge.style.cssText="display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700;margin-bottom:4px;";
+    if(isDY){srcBadge.style.background="rgba(254,44,85,.15)";srcBadge.style.color="#fe2c55";srcBadge.style.border="1px solid rgba(254,44,85,.3)";srcBadge.textContent="🎵 DOUYIN";}
+    else if(isXHS){srcBadge.style.background="rgba(255,71,87,.15)";srcBadge.style.color="#ff4757";srcBadge.style.border="1px solid rgba(255,71,87,.3)";srcBadge.textContent="📕 RED NOTE";}
+    else if(isYP){srcBadge.style.background="rgba(99,102,241,.15)";srcBadge.style.color="#818cf8";srcBadge.style.border="1px solid rgba(99,102,241,.3)";srcBadge.textContent="🖼️ YUPOO";}
+    else if(isWB){srcBadge.style.background="rgba(255,130,0,.15)";srcBadge.style.color="#fb923c";srcBadge.style.border="1px solid rgba(255,130,0,.3)";srcBadge.textContent="📢 WEIBO";}
+    else if(isPDD){srcBadge.style.background="rgba(236,72,153,.15)";srcBadge.style.color="#f472b6";srcBadge.style.border="1px solid rgba(236,72,153,.3)";srcBadge.textContent="🛒 PDD";}
+    card.insertBefore(srcBadge,card.firstChild);
   }
 
   // ── ACTIONS ──────────────────────────────────────────────────
