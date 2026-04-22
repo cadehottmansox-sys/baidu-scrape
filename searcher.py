@@ -273,12 +273,87 @@ def _merge(a,b):
         "phones":sorted(set(a["phones"])|set(b["phones"])),
     }
 
-def _score(title,snippet,link,mode):
-    text=f"{title} {snippet} {link}".lower()
-    terms=FF_TERMS if mode=="ff" else (PASSING_TERMS if mode=="passing" else SUPPLIER_TERMS)
-    s=sum(2 for t in terms if t in text)
-    s+=sum(1 for t in CONTACT_TERMS if t in text)
-    return s
+def _score(title, snippet, link, mode, brand="", product=""):
+    text = f"{title} {snippet} {link}".lower()
+    t_lower = title.lower()
+    s_lower = snippet.lower()
+
+    # ── 1. BRAND LOCK ────────────────────────────────────────────────────────
+    # If a brand was specified, the result MUST mention it somewhere
+    # Chinese brand aliases map
+    BRAND_ALIASES = {
+        "nike": ["nike","耐克","莆田鞋","aj","jordan","airmax","air max","air force"],
+        "adidas": ["adidas","阿迪达斯","阿迪","yeezy","boost"],
+        "lv": ["lv","louis vuitton","路易威登","lv包","lv带","lv皮带"],
+        "louis vuitton": ["lv","louis vuitton","路易威登"],
+        "gucci": ["gucci","古驰"],
+        "chanel": ["chanel","香奈儿"],
+        "supreme": ["supreme","潮牌"],
+        "jordan": ["jordan","乔丹","aj","air jordan","耐克"],
+        "balenciaga": ["balenciaga","巴黎世家"],
+        "off white": ["off white","off-white","ow"],
+        "stone island": ["stone island","石头岛"],
+        "chrome hearts": ["chrome hearts","克罗心"],
+        "moncler": ["moncler","盟可睐"],
+        "dior": ["dior","迪奥"],
+        "prada": ["prada","普拉达"],
+        "versace": ["versace","范思哲"],
+        "burberry": ["burberry","博柏利"],
+        "fendi": ["fendi","芬迪"],
+        "alo": ["alo","alo yoga"],
+        "lululemon": ["lululemon","露露乐蒙"],
+    }
+    if brand:
+        b = brand.strip().lower()
+        aliases = BRAND_ALIASES.get(b, [b])
+        brand_found = any(a in text for a in aliases)
+        if not brand_found:
+            return -99  # Hard reject — wrong brand entirely
+
+    # ── 2. PRODUCT RELEVANCE ─────────────────────────────────────────────────
+    # Split product into keywords and check at least half appear
+    prod_score = 0
+    if product:
+        prod_words = [w.lower() for w in product.split() if len(w) > 2]
+        if prod_words:
+            hits = sum(1 for w in prod_words if w in text)
+            prod_score = (hits / len(prod_words)) * 6  # up to 6 points
+
+    # ── 3. MODE TERMS ────────────────────────────────────────────────────────
+    terms = FF_TERMS if mode == "ff" else (PASSING_TERMS if mode == "passing" else SUPPLIER_TERMS)
+    s = sum(2 for t in terms if t in text)
+
+    # ── 4. CONTACT BONUS ─────────────────────────────────────────────────────
+    contact_bonus = sum(1 for t in CONTACT_TERMS if t in text)
+    # Extra big bonus if WeChat is in title specifically
+    if any(t in t_lower for t in ["微信", "wechat", "wx:", "wx："]):
+        contact_bonus += 5
+    # Bonus if WeChat ID pattern found (letters+numbers 6-20 chars after wx/微信)
+    import re
+    if re.search(r'(?:微信|wx)[：:]s*[a-zA-Z0-9_-]{5,20}', text):
+        contact_bonus += 8
+
+    # ── 5. FACTORY/DIRECT BONUS ──────────────────────────────────────────────
+    factory_bonus = 0
+    for kw in ["厂家直销","源头工厂","一手货源","工厂直销","厂家","工厂","原厂","直销"]:
+        if kw in text:
+            factory_bonus += 2
+            break
+
+    # ── 6. RETAILER PENALTY ──────────────────────────────────────────────────
+    # Big Chinese retail platforms = not what we want
+    RETAIL_SIGNALS = ["京东","淘宝","天猫","tmall","jd.com","taobao","amazon",
+                      "官网","official","官方","旗舰店","正品","brand new","全新正品"]
+    retail_penalty = sum(3 for r in RETAIL_SIGNALS if r in text)
+
+    # ── 7. DUPE/GENERIC PENALTY ──────────────────────────────────────────────
+    # Articles/listicles that just mention the brand aren't suppliers
+    GENERIC_SIGNALS = ["如何","怎么","什么是","介绍","推荐","排行","top10","best","review",
+                       "评测","攻略","教程","指南","百科","百度百科","wikipedia"]
+    generic_penalty = sum(2 for g in GENERIC_SIGNALS if g in text)
+
+    total = s + contact_bonus + factory_bonus + prod_score - retail_penalty - generic_penalty
+    return int(total)
 
 def _find_chromium():
     cache=Path.home()/"Library"/"Caches"/"ms-playwright"
