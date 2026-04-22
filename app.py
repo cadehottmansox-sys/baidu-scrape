@@ -693,6 +693,29 @@ FILE SIZE: {len(html)} chars
         data = request.get_json(silent=True) or {}
         return jsonify(auth.update_password(data.get("email", ""), data.get("password", "")))
 
+    # CHAT
+    @app.route("/api/chat/messages")
+    def get_chat_messages():
+        import storage,time
+        user=get_user()
+        if not user: return jsonify({"error":"Unauthorized"}),401
+        msgs=storage.read("sf_chat_v2",[])
+        return jsonify(msgs[-200:])
+
+    @app.route("/api/chat/send",methods=["POST"])
+    def send_chat():
+        import storage,time
+        user=get_user()
+        if not user: return jsonify({"error":"Unauthorized"}),401
+        data=request.get_json() or {}
+        msg=(data.get("message") or "").strip()[:500]
+        if not msg: return jsonify({"error":"Empty"}),400
+        msgs=storage.read("sf_chat_v2",[])
+        msgs.append({"id":int(time.time()*1000),"name":user.get("name",user.get("email","User")),"email":user.get("email",""),"message":msg,"type":data.get("type","chat"),"ts":time.time()})
+        storage.write("sf_chat_v2",msgs[-500:])
+        return jsonify({"ok":True})
+
+
     return app
 
 
@@ -859,29 +882,6 @@ def image_search():
     except Exception as e:
         app.logger.error("Image search error: %s", e)
         return jsonify({"error": str(e)}), 500
-
-
-# CHAT
-@app.route("/api/chat/messages")
-def get_chat_messages():
-    import storage,time
-    user=get_user()
-    if not user: return jsonify({"error":"Unauthorized"}),401
-    msgs=storage.read("sf_chat_v2",[])
-    return jsonify(msgs[-200:])
-
-@app.route("/api/chat/send",methods=["POST"])
-def send_chat():
-    import storage,time
-    user=get_user()
-    if not user: return jsonify({"error":"Unauthorized"}),401
-    data=request.get_json() or {}
-    msg=(data.get("message") or "").strip()[:500]
-    if not msg: return jsonify({"error":"Empty"}),400
-    msgs=storage.read("sf_chat_v2",[])
-    msgs.append({"id":int(time.time()*1000),"name":user.get("name",user.get("email","User")),"email":user.get("email",""),"message":msg,"type":data.get("type","chat"),"ts":time.time()})
-    storage.write("sf_chat_v2",msgs[-500:])
-    return jsonify({"ok":True})
 
 
 if __name__ == "__main__":
