@@ -62,7 +62,10 @@
           <button class="tab-btn" data-tab="crm">
         <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><circle cx="6" cy="5" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M2 13c0-2.2 1.8-4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M11 9v4M9 11h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
         CRM
-      </button>
+      </button
+      <button class="tab-btn" data-tab="guide" onclick="switchTab('guide')" style="color:#f59e0b">
+        📖 Guide
+      </button>>
     </nav>
 
     <!-- SUPPLIER -->
@@ -624,7 +627,72 @@
       </div>
     </section>
 
-  </main>
+  
+<div id="tab-guide" class="tab-content" style="display:none;padding:24px;max-width:860px;margin:0 auto">
+  <h2 style="color:#e2e8f0;font-size:22px;margin:0 0 4px;font-weight:700">📖 SourceFinder Complete Guide</h2>
+  <p style="color:#475569;font-size:13px;margin:0 0 24px">Everything you need to find real factory suppliers with WeChat contacts</p>
+  <div style="display:grid;gap:16px">
+    <div style="background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.2);border-radius:14px;padding:20px">
+      <h3 style="color:#22c55e;margin:0 0 10px;font-size:15px">🚀 Quick Start (30 seconds)</h3>
+      <ol style="color:#94a3b8;font-size:13px;line-height:2;margin:0;padding-left:20px">
+        <li>Type the <b style="color:#e2e8f0">Brand Name</b> — e.g. Nike, LV, Supreme</li>
+        <li>Type the <b style="color:#e2e8f0">Product Keywords</b> — e.g. Tech Fleece, belt, Dunk Low</li>
+        <li>Leave platform on <b style="color:#e2e8f0">All-in-One</b> and hit Search</li>
+        <li>Green WeChat IDs are factory contacts — click to copy instantly</li>
+        <li>Add them on WeChat, ask for catalog and pricing</li>
+      </ol>
+    </div>
+    <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:20px">
+      <h3 style="color:#3b82f6;margin:0 0 12px;font-size:15px">🎯 Platform Guide</h3>
+      <div style="display:grid;gap:8px;font-size:13px">
+        <div style="background:rgba(255,255,255,.04);border-radius:8px;padding:12px"><b style="color:#e2e8f0">⚡ All-in-One</b> — Best for beginners. Casts the widest net across all platforms.</div>
+        <div style="background:rgba(255,255,255,.04);border-radius:8px;padding:12px"><b style="color:#e2e8f0">🖼️ Yupoo</b> — Highest hit rate for reps. Suppliers post full catalogs, WeChat always in bio.</div>
+        <div style="background:rgba(255,255,255,.04);border-radius:8px;padding:12px"><b style="color:#e2e8f0">🎵 Douyin</b> — Chinese TikTok. Suppliers post product videos. WeChat in their bio.</div>
+        <div style="background:rgba(255,255,255,.04);border-radius:8px;padding:12px"><b style="color:#e2e8f0">🏭 1688</b> — Real wholesale/factory prices. No WeChat usually — chat through platform.</div>
+        <div style="background:rgba(255,255,255,.04);border-radius:8px;padding:12px"><b style="color:#e2e8f0">📱 Weidian</b> — WeChat-linked stores. Small sellers, low MOQ, easy to contact.</div>
+        <div style="background:rgba(255,255,255,.04);border-radius:8px;padding:12px"><b style="color:#e2e8f0">📕 XiaoHongShu</b> — Chinese Instagram. Fashion suppliers constantly posting here.</div>
+        <div style="background:rgba(255,255,255,.04);border-radius:8px;padding:12px"><b style="color:#e2e8f0">👟 Dewu/Poizon</b> — Best for passing quality sneakers. Putian factory contacts.</div>
+        <div style="background:rgba(255,255,255,.04);border-radius:8px;padding:12px"><b style="color:#e2e8f0">🛒 Pinduoduo</b> — Factory direct pricing. Some sellers have WeChat in shop description.</div>
+      </div>
+    </div>
+    <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:20px">
+      <h3 style="color:#f59e0b;margin:0 0 12px;font-size:15px">🔍 Pro Tips</h3>
+      <div style="display:grid;gap:8px;font-size:13px;color:#94a3b8">
+        <div style="background:rgba(255,255,255,.04);border-radius:8px;padding:10px 14px"><b style="color:#e2e8f0">Always fill Brand field</b> — activates brand-lock. "LV" in brand rejects any non-LV results automatically.</div>
+        <div style="background:rgba(255,255,255,.04);border-radius:8px;padding:10px 14px"><b style="color:#e2e8f0">Be specific</b> — "Jordan 4 Thunder" beats "Jordan shoes". Include colorway, model number.</div>
+        <div style="background:rgba(255,255,255,.04);border-radius:8px;padding:10px 14px"><b style="color:#e2e8f0">Load More</b> — best factory contacts are often on page 2-3. Always click Load More.</div>
+        <div style="background:rgba(255,255,255,.04);border-radius:8px;padding:10px 14px"><b style="color:#e2e8f0">WeChat Only toggle</b> — filters to only show results with confirmed WeChat IDs.</div>
+        <div style="background:rgba(255,255,255,.04);border-radius:8px;padding:10px 14px"><b style="color:#e2e8f0">Image Search</b> — upload any product photo and Baidu will find which factories make it.</div>
+        <div style="background:rgba(255,255,255,.04);border-radius:8px;padding:10px 14px"><b style="color:#e2e8f0">Deep Scan</b> — visits each page, reads QR codes and images to find hidden WeChats. Slow but thorough.</div>
+        <div style="background:rgba(255,255,255,.04);border-radius:8px;padding:10px 14px"><b style="color:#e2e8f0">Try multiple platforms</b> — same search on Yupoo vs Douyin returns completely different suppliers.</div>
+      </div>
+    </div>
+    <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:20px">
+      <h3 style="color:#a855f7;margin:0 0 12px;font-size:15px">✅ Passing Mode</h3>
+      <p style="color:#94a3b8;font-size:13px;line-height:1.7;margin:0 0 10px">Click Passing tab for NFC/passing quality. Uses Chinese keywords like 过验, NFC芯片, 1:1, 莆田 that target export-quality factories.</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px">
+        <div style="background:rgba(168,85,247,.08);border:1px solid rgba(168,85,247,.2);border-radius:8px;padding:10px;color:#c084fc"><b>过验</b> — Passes authentication</div>
+        <div style="background:rgba(168,85,247,.08);border:1px solid rgba(168,85,247,.2);border-radius:8px;padding:10px;color:#c084fc"><b>NFC芯片</b> — Has NFC chip</div>
+        <div style="background:rgba(168,85,247,.08);border:1px solid rgba(168,85,247,.2);border-radius:8px;padding:10px;color:#c084fc"><b>莆田</b> — Putian factories</div>
+        <div style="background:rgba(168,85,247,.08);border:1px solid rgba(168,85,247,.2);border-radius:8px;padding:10px;color:#c084fc"><b>1:1/同厂</b> — Same factory</div>
+      </div>
+    </div>
+    <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:20px">
+      <h3 style="color:#ef4444;margin:0 0 12px;font-size:15px">💬 Messaging Suppliers</h3>
+      <div style="background:rgba(0,0,0,.3);border-radius:8px;padding:12px;font-family:monospace;color:#94a3b8;font-size:13px;margin-bottom:8px">你好，我想买[品牌][产品]，能发图片和价格吗？谢谢</div>
+      <p style="color:#475569;font-size:12px;margin:0">"Hello, I want to buy [brand][product], can you send pictures and price? Thank you"</p>
+    </div>
+    <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:20px">
+      <h3 style="color:#06b6d4;margin:0 0 12px;font-size:15px">❌ Common Mistakes</h3>
+      <div style="display:grid;gap:8px;font-size:13px;color:#94a3b8">
+        <div style="background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.15);border-radius:8px;padding:10px 14px">Leaving Brand field empty — disables brand-lock, mixed irrelevant results</div>
+        <div style="background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.15);border-radius:8px;padding:10px 14px">Too generic keywords — "shoes" or "bag" gives useless results</div>
+        <div style="background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.15);border-radius:8px;padding:10px 14px">Only checking page 1 — click Load More, best contacts are deeper</div>
+        <div style="background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.15);border-radius:8px;padding:10px 14px">Ignoring Yupoo results — almost always have WeChat in bio</div>
+      </div>
+    </div>
+  </div>
+</div></main>
 
   <!-- MODALS -->
   <div class="modal-overlay" id="findModal" style="display:none" onclick="if(event.target===this)closeFindModal()">

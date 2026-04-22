@@ -753,7 +753,11 @@ def send_chat_message():
 # ============ BAIDU IMAGE SEARCH (Reverse Image Search) ============
 @app.route("/api/image-search", methods=["POST"])
 def image_search():
-    import base64, requests as req, tempfile, os, time
+    user = get_user()
+    if not user:
+        return jsonify({"error":"Unauthorized"}), 401
+    import base64, tempfile, os, time
+    req = __import__('requests')
     user = get_user()
     if not user:
         return jsonify({"error": "Unauthorized"}), 401
