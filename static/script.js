@@ -2282,7 +2282,7 @@ function showImgSearchModal(b64, filename) {
   modal.innerHTML = '<div id="img-search-inner" style="background:#0f172a;border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:24px;width:100%;max-width:700px;max-height:90vh;overflow-y:auto">'
     + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">'
     + '<h3 style="color:#e2e8f0;font-size:16px;margin:0">🔍 Reverse Image Search</h3>'
-    + '<button onclick="document.getElementById(&quot;img-search-modal&quot;).remove()" style="background:none;border:none;color:#475569;font-size:20px;cursor:pointer">✕</button>'
+    + '<button onclick="document.getElementById(\'img-search-modal\').remove()" style="background:none;border:none;color:#475569;font-size:20px;cursor:pointer">&times;</button>'
     + '</div>'
     + '<div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:16px">'
     + '<img src="' + b64 + '" style="width:120px;height:120px;object-fit:cover;border-radius:10px;border:1px solid rgba(255,255,255,.1)">'
@@ -2333,7 +2333,7 @@ async function runImageSearch(b64) {
           + '<div style="color:#475569;font-size:11px;margin-bottom:8px">' + (r.source||r.link?.split('/')[2]||'') + '</div>'
           + '<div style="display:flex;gap:6px;flex-wrap:wrap">'
           + '<a href="' + r.link + '" target="_blank" style="background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.3);color:#60a5fa;padding:3px 10px;border-radius:6px;font-size:11px;text-decoration:none">🔗 Open page</a>'
-          + '<button onclick="searchFromImage('' + (r.source||'').replace(/'/g,'') + '','' + (r.title||'').slice(0,30).replace(/'/g,'') + '')" style="background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.2);color:#22c55e;padding:3px 10px;border-radius:6px;font-size:11px;cursor:pointer">🔍 Find supplier</button>'
+    + '<button onclick="searchFromImage(\''+encodeURIComponent(r.source||'')+'\',\''+encodeURIComponent(r.title||'').slice(0,30)+'\')" style="background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.2);color:#22c55e;padding:3px 10px;border-radius:6px;font-size:11px;cursor:pointer">&#128269; Find supplier</button>'
           + '</div>'
           + '</div>'
           + '</div>').join('');
@@ -2350,6 +2350,8 @@ async function runImageSearch(b64) {
 }
 
 function searchFromImage(source, title) {
+  try { source=decodeURIComponent(source); } catch(e){}
+  try { title=decodeURIComponent(title); } catch(e){}
   // Pre-fill the search bar with the supplier info and close modal
   document.getElementById('img-search-modal')?.remove();
   const qEl = document.querySelector('input[placeholder*="Tech Fleece"],input[placeholder*="Jordan"]');
