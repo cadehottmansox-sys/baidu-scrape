@@ -179,7 +179,7 @@ function switchTab(name){
   if(name==="saved") renderSavedTab();
   if(name==="crm") renderCrm();
   if(name==="admin") loadAdmin();
-  if(name==="chat"){_sfLoadChat();if(_chatPoll)clearInterval(_chatPoll);_chatPoll=setInterval(_sfLoadChat,3000);}
+  if(name==="chat"){setTimeout(function(){_sfLoadChat();},100);if(_chatPoll)clearInterval(_chatPoll);_chatPoll=setInterval(_sfLoadChat,4000);}
   else if(_chatPoll&&name!=="chat"){clearInterval(_chatPoll);_chatPoll=null;}
 }
 
@@ -2599,7 +2599,7 @@ async function _dySearch(){
   if(resEl)resEl.innerHTML='<div style="text-align:center;padding:40px;color:#475569;font-size:13px">Searching Douyin...</div>';
   try{
     var r=await fetch('/search',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({query:query,brand:brand,platform:'douyin',mode:'supplier',deep_scan:false,wechat_only:false})});
+      body:JSON.stringify({query:query+' 抖音 微信 货源 厂家',brand:brand,platform:'douyin',mode:'supplier',deep_scan:false,wechat_only:false,page_num:1})});
     var d=await r.json();
     if(btn){btn.disabled=false;btn.textContent='Search Douyin';}
     var results=d.results||[];
@@ -2668,7 +2668,7 @@ function _sfSendChat(){
   if(!inp||!inp.value.trim())return;
   var msg=inp.value.trim();inp.value='';
   fetch('/api/chat/send',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:msg})})
-  .then(function(r){return r.json();}).then(function(d){if(d.ok)_sfLoadChat();else showToast('Failed to send','error');});
+  .then(function(r){return r.json();}).then(function(d){if(d.ok){setTimeout(_sfLoadChat,500);}else showToast('Failed to send','error');});
 }
 function _sfLoadComments(){
   fetch('/api/chat/messages',{credentials:'include'}).then(function(r){return r.json();}).then(function(msgs){
