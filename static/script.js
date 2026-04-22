@@ -2276,3 +2276,35 @@ document.addEventListener('keydown',function(e){
   if((e.ctrlKey||e.metaKey)&&e.key=='l'){e.preventDefault();if(confirm('Log out?'))logout();}
   if((e.ctrlKey||e.metaKey)&&e.key=='h'){e.preventDefault();_sfTH();}
 });
+
+
+/* ============ DOUYIN SUPPLIER SEARCH ============ */
+async function _dySearch(){
+  const brand=document.getElementById('dy-brand')?.value||'';
+  const product=document.getElementById('dy-product')?.value||'';
+  const q=(brand+' '+product).trim();
+  if(!q){alert('Enter a brand or product');return;}
+  const el=document.getElementById('dy-results');
+  if(el)el.innerHTML='<div style="text-align:center;color:#fe2c55;padding:20px">🎵 Searching Douyin...</div>';
+  try{
+    const r=await fetch('/search',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({query:q,brand:brand,product:product,platform:'douyin',mode:'supplier'})
+    });
+    const d=await r.json();
+    if(!d.results||!d.results.length){
+      el.innerHTML='<div style="text-align:center;color:#475569;padding:20px">No Douyin results found. Try different keywords.</div>';
+      return;
+    }
+    el.innerHTML=d.results.map(r=>{
+      const wx=r.wechat_ids&&r.wechat_ids.length?r.wechat_ids.map(w=>`<span onclick="copyText('${w.id}','${w.id}')" style="background:rgba(34,197,94,.15);color:#22c55e;padding:2px 8px;border-radius:12px;font-size:11px;cursor:pointer;font-weight:600">wx: ${w.id}</span>`).join(' '):'<span style="color:#475569;font-size:11px">No WeChat found</span>';
+      const dy=r.douyin&&r.douyin!=='N/A'?`<span style="background:rgba(254,44,85,.15);color:#fe2c55;padding:2px 8px;border-radius:12px;font-size:11px;cursor:pointer;font-weight:600" onclick="copyText('${r.douyin}','Douyin')">🎵 ${r.douyin}</span>`:'';
+      const isDyLink=(r.link||'').includes('douyin.com');
+      return `<div style="background:rgba(255,255,255,.03);border:1px solid ${isDyLink?'rgba(254,44,85,.3)':'rgba(255,255,255,.08)'};border-radius:10px;padding:14px;display:grid;gap:8px">
+        ${isDyLink?'<span style="background:rgba(254,44,85,.15);color:#fe2c55;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;width:fit-content">🎵 DOUYIN</span>':''}
+        <a href="${r.link}" target="_blank" style="color:#e2e8f0;font-size:13px;font-weight:600;text-decoration:none">${r.title}</a>
+        <p style="color:#475569;font-size:12px;margin:0">${(r.snippet||'').slice(0,150)}</p>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">${wx}${dy}</div>
+      </div>`;
+    }).join('');
+  }catch(e){if(el)el.innerHTML='<div style="color:#ef4444;padding:20px">Error: '+e.message+'</div>';}
+}
