@@ -2282,7 +2282,7 @@ function showImgSearchModal(b64, filename) {
   modal.innerHTML = '<div id="img-search-inner" style="background:#0f172a;border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:24px;width:100%;max-width:700px;max-height:90vh;overflow-y:auto">'
     + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">'
     + '<h3 style="color:#e2e8f0;font-size:16px;margin:0">🔍 Reverse Image Search</h3>'
-    + '<button onclick="document.getElementById('img-search-modal').remove()" style="background:none;border:none;color:#475569;font-size:20px;cursor:pointer">✕</button>'
+    + '<button onclick="document.getElementById(&quot;img-search-modal&quot;).remove()" style="background:none;border:none;color:#475569;font-size:20px;cursor:pointer">✕</button>'
     + '</div>'
     + '<div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:16px">'
     + '<img src="' + b64 + '" style="width:120px;height:120px;object-fit:cover;border-radius:10px;border:1px solid rgba(255,255,255,.1)">'
