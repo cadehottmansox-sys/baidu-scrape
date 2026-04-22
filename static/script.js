@@ -2308,3 +2308,105 @@ async function _dySearch(){
     }).join('');
   }catch(e){if(el)el.innerHTML='<div style="color:#ef4444;padding:20px">Error: '+e.message+'</div>';}
 }
+
+
+// ============ IMAGE SEARCH ============
+function handleImageSearch(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const b64 = e.target.result;
+    showImgSearchModal(b64, file.name);
+  };
+  reader.readAsDataURL(file);
+  input.value = ''; // reset so same file can be selected again
+}
+
+function showImgSearchModal(b64, filename) {
+  // Remove existing modal
+  document.getElementById('img-search-modal')?.remove();
+
+  const modal = document.createElement('div');
+  modal.id = 'img-search-modal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:50000;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;padding:20px';
+  modal.innerHTML = '<div id="img-search-inner" style="background:#0f172a;border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:24px;width:100%;max-width:700px;max-height:90vh;overflow-y:auto">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">'
+    + '<h3 style="color:#e2e8f0;font-size:16px;margin:0">🔍 Reverse Image Search</h3>'
+    + '<button onclick="document.getElementById('img-search-modal').remove()" style="background:none;border:none;color:#475569;font-size:20px;cursor:pointer">✕</button>'
+    + '</div>'
+    + '<div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:16px">'
+    + '<img src="' + b64 + '" style="width:120px;height:120px;object-fit:cover;border-radius:10px;border:1px solid rgba(255,255,255,.1)">'
+    + '<div style="flex:1">'
+    + '<p style="color:#94a3b8;font-size:13px;margin:0 0 12px">Searching Baidu for factories making this exact item...</p>'
+    + '<div id="img-search-status" style="color:#22c55e;font-size:12px">⏳ Uploading image to Baidu...</div>'
+    + '</div>'
+    + '</div>'
+    + '<div id="img-search-results" style="display:grid;gap:10px"></div>'
+    + '</div>';
+
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e => { if(e.target===modal) modal.remove(); });
+
+  // Run the search
+  runImageSearch(b64);
+}
+
+async function runImageSearch(b64) {
+  const statusEl = document.getElementById('img-search-status');
+  const resultsEl = document.getElementById('img-search-results');
+  if (!statusEl || !resultsEl) return;
+
+  try {
+    statusEl.textContent = '⏳ Searching Baidu...';
+    const resp = await fetch('/api/image-search', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({image: b64})
+    });
+    const data = await resp.json();
+
+    if (!data.ok) {
+      statusEl.style.color = '#ef4444';
+      statusEl.textContent = '❌ Error: ' + (data.error || 'Unknown error');
+      return;
+    }
+
+    statusEl.style.color = '#22c55e';
+    statusEl.textContent = '✓ Found ' + data.count + ' results from Baidu';
+
+    if (data.results && data.results.length > 0) {
+      resultsEl.innerHTML = '<p style="color:#475569;font-size:11px;margin:0 0 10px">Click a result to open, or search the supplier on SourceFinder</p>'
+        + data.results.map(r => '<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:12px;display:flex;gap:10px;align-items:flex-start">'
+          + (r.thumb ? '<img src="' + r.thumb + '" style="width:60px;height:60px;object-fit:cover;border-radius:6px;flex-shrink:0" onerror="this.style.display='none'">' : '')
+          + '<div style="flex:1;min-width:0">'
+          + '<div style="color:#e2e8f0;font-size:13px;font-weight:500;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + (r.title||'No title') + '</div>'
+          + '<div style="color:#475569;font-size:11px;margin-bottom:8px">' + (r.source||r.link?.split('/')[2]||'') + '</div>'
+          + '<div style="display:flex;gap:6px;flex-wrap:wrap">'
+          + '<a href="' + r.link + '" target="_blank" style="background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.3);color:#60a5fa;padding:3px 10px;border-radius:6px;font-size:11px;text-decoration:none">🔗 Open page</a>'
+          + '<button onclick="searchFromImage('' + (r.source||'').replace(/'/g,'') + '','' + (r.title||'').slice(0,30).replace(/'/g,'') + '')" style="background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.2);color:#22c55e;padding:3px 10px;border-radius:6px;font-size:11px;cursor:pointer">🔍 Find supplier</button>'
+          + '</div>'
+          + '</div>'
+          + '</div>').join('');
+    } else {
+      resultsEl.innerHTML = '<div style="color:#475569;font-size:13px;padding:20px;text-align:center">No direct results found.<br><a href="' + data.baidu_url + '" target="_blank" style="color:#60a5fa">Open in Baidu Image Search →</a></div>';
+    }
+
+    // Add "Open in Baidu" link at bottom
+    resultsEl.innerHTML += '<a href="' + data.baidu_url + '" target="_blank" style="display:block;text-align:center;color:#475569;font-size:12px;margin-top:10px;padding:8px;border:1px solid rgba(255,255,255,.06);border-radius:8px">Open full results in Baidu Image Search →</a>';
+
+  } catch(e) {
+    if (statusEl) { statusEl.style.color='#ef4444'; statusEl.textContent='❌ Error: '+e.message; }
+  }
+}
+
+function searchFromImage(source, title) {
+  // Pre-fill the search bar with the supplier info and close modal
+  document.getElementById('img-search-modal')?.remove();
+  const qEl = document.querySelector('input[placeholder*="Tech Fleece"],input[placeholder*="Jordan"]');
+  const bEl = document.querySelector('input[placeholder*="Nike"],input[placeholder*="Brand"]');
+  if (qEl && title) { qEl.value = title; qEl.dispatchEvent(new Event('input')); }
+  if (bEl && source) { bEl.value = source; bEl.dispatchEvent(new Event('input')); }
+  _sfToast && _sfToast('Search pre-filled from image result!', 'success');
+}
+
