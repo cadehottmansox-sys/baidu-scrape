@@ -201,8 +201,8 @@ BLOCKED_DOMAINS = {
     "stockx.com","goat.com","kickscrew.com","flightclub.com","soccer.com","footlocker.com","foot-locker.com","zalando.com","asos.com","farfetch.com","ssense.com","nordstrom.com","macys.com","zappos.com","sportsdirect.com","decathlon.com",
     "klarna.com","paypal.com","aliexpress.com",
     # Chinese retail (official)
-    "tmall.com","jd.com","pinduoduo.com",// "taobao.com", -- re-enabled for factory sellers
-    // 
+    "tmall.com","jd.com","pinduoduo.com",
+    "taobao.com",
     # Social/search/news
     "wikipedia.org","baidu.com","google.com","youtube.com",
     "instagram.com","facebook.com","twitter.com","x.com","tiktok.com",
