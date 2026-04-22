@@ -212,8 +212,30 @@ def create_app() -> Flask:
     @app.post("/api/admin/approve")
     @require_admin
     def api_approve():
+        import time as _time
         data = request.get_json(silent=True) or {}
-        result = auth.approve_request(data.get("req_id",""))
+        req_id = data.get("req_id","")
+        days = int(data.get("days", 0))  # 0 = permanent
+        result = auth.approve_request(req_id)
+        if result.get("ok") and days > 0:
+            # Find the email for this request and set expiry
+            try:
+                reqs = auth.list_requests()
+                email = next((r["email"] for r in reqs if r.get("id")==req_id), None)
+                if not email:
+                    # Try getting from storage directly
+                    import storage as _st
+                    users = _st.read("sf_users", {})
+                    for em, u in users.items():
+                        if u.get("status") == "approved":
+                            email = em
+                expires_at = _time.time() + days * 86400
+                if email:
+                    auth.set_expiry(email, expires_at)
+                    result["expires_at"] = expires_at
+                    result["expires_in_days"] = days
+            except Exception as ex:
+                app.logger.warning("Could not set expiry: %s", ex)
         return jsonify(result)
 
     @app.post("/api/admin/deny")
@@ -753,7 +775,8 @@ def send_chat_message():
 # ============ BAIDU IMAGE SEARCH (Reverse Image Search) ============
 @app.route("/api/image-search", methods=["POST"])
 def image_search():
-    import base64, requests as req, tempfile, os, time
+    import base64, tempfile, os, time
+        req = _requests_lib
     user = get_user()
     if not user:
         return jsonify({"error": "Unauthorized"}), 401
@@ -764,6 +787,8 @@ def image_search():
     if not image_b64:
         return jsonify({"error": "No image provided"}), 400
     
+    if not _requests_lib:
+        return jsonify({"error":"requests library not available"}),500
     try:
         # Decode base64 image
         if ',' in image_b64:

@@ -1100,91 +1100,40 @@ function showToast(msg, type){
 }
 
 async function adminApprove(reqId, email){
+  document.getElementById("_sfAM")?.remove();
+  var m=document.createElement("div");
+  m.id="_sfAM";
+  m.style.cssText="position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;font-family:inherit";
+  var opts=[[7,"7 days"],[30,"1 month"],[90,"3 months"],[180,"6 months"],[365,"1 year"],[0,"Permanent"]];
+  var btns=opts.map(function(o){
+    return "<button onclick=\"_sfDoApprove('"+reqId+"',"+o[0]+")\" style=\"padding:10px 8px;border-radius:8px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:#94a3b8;cursor:pointer;font-size:13px;font-weight:500\">"+o[1]+"</button>";
+  }).join("");
+  m.innerHTML="<div style=\"background:#0f172a;border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:28px;width:360px;box-shadow:0 20px 60px rgba(0,0,0,.7)\">"
+    +"<h3 style=\"color:#e2e8f0;margin:0 0 6px;font-size:16px\">Approve Access</h3>"
+    +"<p style=\"color:#64748b;font-size:13px;margin:0 0 16px\"><b style=\"color:#94a3b8\">"+email+"</b></p>"
+    +"<p style=\"color:#64748b;font-size:12px;margin:0 0 14px\">How long should they have access?</p>"
+    +"<div style=\"display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:18px\">"+btns+"</div>"
+    +"<button onclick=\"document.getElementById('_sfAM').remove()\" style=\"width:100%;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,.07);background:none;color:#475569;cursor:pointer;font-size:12px\">Cancel</button>"
+    +"</div>";
+  document.body.appendChild(m);
+  m.addEventListener("click",function(e){if(e.target===m)m.remove();});
+}
+
+async function _sfDoApprove(reqId,days){
+  document.getElementById("_sfAM")?.remove();
   try{
-    showToast('Approving...');
-    const r = await fetch('/api/admin/approve', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({req_id:reqId})});
-    const d = await r.json();
-    if(d.status==='approved'||d.status==='already_approved'){
-      showToast('✓ Approved! They can now log in.');
-      loadAdmin();
-    } else { showToast('Error: '+(d.error||d.status||'unknown')); }
-  } catch(e){ showToast('Network error'); }
+    showToast("Approving...","info");
+    var r=await fetch("/api/admin/approve",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({req_id:reqId,days:days})});
+    var d=await r.json();
+    if(d.status==="approved"||d.status==="already_approved"||d.ok){
+      var msg=days===0?"Approved permanently!":("Approved for "+(days<30?days+" days":days<365?Math.round(days/30)+" months":"1 year")+"!");
+      showToast(msg,"success");
+      if(typeof loadAdminRequests==="function")loadAdminRequests();
+    } else showToast(d.error||"Failed","error");
+  }catch(e){showToast("Error: "+e.message,"error");}
 }
 
-async function adminDeny(reqId){
-  const r = await fetch('/api/admin/deny', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({req_id:reqId})});
-  const d = await r.json();
-  showToast(d.status==='denied' ? '✓ Request denied' : 'Error');
-  loadAdmin();
-}
 
-async function adminRevoke(email, revoke){
-  const r = await fetch('/api/admin/revoke', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({email})});
-  showToast(revoke ? `Access revoked for ${email}` : `Access restored for ${email}`);
-  loadAdmin();
-}
-
-async function adminToggleAdmin(email, makeAdmin){
-  const r = await fetch('/api/admin/set-admin', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({email, is_admin:makeAdmin})});
-  const d = await r.json();
-  showToast(makeAdmin ? `⚡ ${email} is now an admin` : `${email} admin removed`);
-  loadAdmin();
-}
-
-// Load admin when tab clicked — use event delegation so it works after DOM ready
-document.addEventListener('click', e=>{
-  const btn = e.target.closest('.tab-btn');
-  if(btn && btn.dataset.tab==='admin') setTimeout(loadAdmin, 100);
-  if(btn && btn.dataset.tab==='crm') setTimeout(renderCrm, 100);
-  if(btn && btn.dataset.tab==='saved') renderSavedTab();
-});
-
-// Handle needs_password on login — intercept the fetch in access.html
-// The access.html already handles this but we also need it if session expires
-
-// ── RESEARCH TAB ──────────────────────────────────────────────────
-
-// Chinese Query Translator
-async function translateQuery(){
-  const input = document.getElementById('translateQueryInput');
-  const result = document.getElementById('translateQueryResult');
-  const q = input?.value.trim();
-  if(!q){ showToast('Enter a product name first'); return; }
-  result.innerHTML = '<div class="loader"><div class="loader-dots"><span></span><span></span><span></span></div>Translating...</div>';
-  try{
-    const r = await fetch('/translate', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({text:q, target:'zh', source:'en'})});
-    const d = await r.json();
-    const zh = d.translated || q;
-    const factoryTerm = zh + ' 工厂';
-    const wholesaleTerm = zh + ' 批发商';
-    result.innerHTML = `
-      <div class="translate-result">
-        <div class="tr-row">
-          <span class="tr-label">Chinese</span>
-          <span class="tr-val">${zh}</span>
-          <button class="tool-btn" onclick="navigator.clipboard.writeText('${zh}').then(()=>showToast('Copied!'))">Copy</button>
-        </div>
-        <div class="tr-row">
-          <span class="tr-label">Factory Search</span>
-          <span class="tr-val">${factoryTerm}</span>
-          <button class="tool-btn" onclick="navigator.clipboard.writeText('${factoryTerm}').then(()=>showToast('Copied!'))">Copy</button>
-        </div>
-        <div class="tr-row">
-          <span class="tr-label">Wholesale Search</span>
-          <span class="tr-val">${wholesaleTerm}</span>
-          <button class="tool-btn" onclick="navigator.clipboard.writeText('${wholesaleTerm}').then(()=>showToast('Copied!'))">Copy</button>
-        </div>
-        <div style="margin-top:12px;display:flex;gap:6px;flex-wrap:wrap">
-          <button class="btn-primary" style="height:36px;font-size:11px;padding:0 12px" onclick="autoSearchChinese('${zh}')">⚡ Search Cade's SourceFinder with this</button>
-          <button class="quick-btn" onclick="quickOpenWith('1688','${factoryTerm}')">Open on 1688</button>
-          <button class="quick-btn" onclick="quickOpenWith('taobao','${zh}')">Open on Taobao</button>
-        </div>
-      </div>
-    `;
-  } catch(e){ result.innerHTML = '<p style="color:var(--r);font-family:var(--mono);font-size:11px">Translation failed</p>'; }
-}
-
-// Auto-search with Chinese query on supplier tab
 function autoSearchChinese(zhQuery){
   switchTab('supplier');
   const qInput = document.getElementById('queryInput');
