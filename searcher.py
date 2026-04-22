@@ -108,7 +108,7 @@ PASSING_NFC_INJECT = (
 
 REP_INJECT = "复刻 高仿 1:1 莆田 代工 原单 余单 工厂货 rep replica fashionreps"
 FACTORY_INJECT = "厂家直销 源头工厂 一手货源 微信号 联系方式 批发 代理 工厂"
-ALL_Q2_INJECT_BASE = "yupoo 1688 微店 weidian 厂家直销 微信 源头工厂"
+ALL_Q2_INJECT_BASE = "yupoo 1688 微店 weidian 抖音 厂家直销 微信 源头工厂 联系方式"
 REP_KEYWORDS = {
     "jordan","nike","aj","yeezy","dunk","air force","travis","off white","sacai",
     "new balance","nb","asics","samba","adidas","puma","reebok","vans","converse",
@@ -201,12 +201,13 @@ BLOCKED_DOMAINS = {
     "stockx.com","goat.com","kickscrew.com","flightclub.com","soccer.com","footlocker.com","foot-locker.com","zalando.com","asos.com","farfetch.com","ssense.com","nordstrom.com","macys.com","zappos.com","sportsdirect.com","decathlon.com",
     "klarna.com","paypal.com","aliexpress.com",
     # Chinese retail (official)
-    "tmall.com","jd.com","pinduoduo.com",// "taobao.com", -- re-enabled for factory sellers
-    // 
+    "tmall.com","jd.com","pinduoduo.com",
+    "taobao.com",
+    
     # Social/search/news
     "wikipedia.org","baidu.com","google.com","youtube.com",
     "instagram.com","facebook.com","twitter.com","x.com","tiktok.com",
-    // douyin.com allowed - suppliers post here
+    # douyin.com allowed - suppliers post catalog videos
     "alibaba.com","amazon.com","amazon.co.uk","amazon.de","chinagoods.com","hktdc.com","global.1688.com","chinese.alibaba.com","stockx.com","goat.com","grailed.com","depop.com","farfetch.com","ssense.com","mrporter.com","net-a-porter.com",
     "163.com","sohu.com","sina.com.cn","qq.com","ifeng.com",
     # Maps/directories
@@ -258,20 +259,41 @@ def _conf(w):
 
 
 def _extract_douyin(text, link=""):
-    """Extract Douyin account from text or link. Returns account string or 'N/A'."""
-    import re
-    if not text and not link: return "N/A"
+    """Extract Douyin account from text or link. Returns account string or 'N/A'. No guessing."""
+    if not text and not link:
+        return "N/A"
     combined = (text or "") + " " + (link or "")
-    # Direct douyin.com URL
-    url_match = re.search(r'douyin\.com/(?:user/)?([a-zA-Z0-9_\-\.]{4,30})', combined)
-    if url_match:
-        return url_match.group(1)
-    # Text mentions like "抖音号:xxx" or "抖音:xxx"
-    text_match = re.search(r'(?:抖音号?|douyin)[：:号@\s]+([a-zA-Z0-9_\-\.\u4e00-\u9fff]{4,30})', combined, re.IGNORECASE)
-    if text_match:
-        acct = text_match.group(1).strip()
-        if len(acct) >= 4:
-            return acct
+    # Direct douyin.com URL - most reliable
+    import re as _re
+    url_m = _re.search(r'douyin\.com/user/([A-Za-z0-9_\-\.]{4,30})', combined)
+    if url_m:
+        return url_m.group(1)
+    # Video URL - extract from douyin.com/video/ links too
+    vid_m = _re.search(r'douyin\.com/(?:video/)?([0-9]{15,20})', combined)
+    if vid_m:
+        return 'video:' + vid_m.group(1)
+    # Explicit text mention: 抖音号/抖音ID followed by the account
+    txt_m = _re.search(r'(?:抖音号?|抖音ID|douyin)[\s：:号]+([A-Za-z0-9_\-\.]{4,30})', combined, _re.IGNORECASE)
+    if txt_m:
+        return txt_m.group(1).strip()
+    # If the result link IS a douyin link, extract just the domain context
+    if 'douyin.com' in (link or ''):
+        return link.split('douyin.com/')[-1].split('?')[0][:30] or "N/A"
+    return "N/A"
+
+
+def _extract_xhs(text, link=""):
+    """Extract Xiaohongshu (RedNote) account. Returns account or 'N/A'."""
+    combined = (text or "") + " " + (link or "")
+    import re as _re
+    # xiaohongshu.com URL
+    url_m = _re.search(r'xiaohongshu\.com/user/profile/([a-f0-9]{24})', combined)
+    if url_m:
+        return url_m.group(1)
+    # Text mention
+    txt_m = _re.search(r'(?:小红书号?|RED)[\s：:]+([A-Za-z0-9_]{4,30})', combined, _re.IGNORECASE)
+    if txt_m:
+        return txt_m.group(1)
     return "N/A"
 
 def _extract_wc(text):
@@ -532,6 +554,7 @@ def _parse_baidu_html(html, full_q, platform_label, mode, seen_links, max_r, pag
             "title":title,"link":href,"snippet":snippet,
             "wechat_ids":c["wechat_ids"],"emails":c["emails"],"phones":c["phones"],
             "douyin":_extract_douyin(combined,href),
+            "xhs":_extract_xhs(combined,href),
             "factory_score":sc,"wechat_quality":best_wq,
             "has_contact":bool(c["wechat_ids"] or c["emails"] or c["phones"]),
             "has_verified_wechat":best_wq>=3,"is_factory_like":sc>=3,
