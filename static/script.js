@@ -1119,38 +1119,65 @@ function showToast(msg, type){
 }
 
 async function adminApprove(reqId, email){
-  document.getElementById("_sfAM")?.remove();
-  var m=document.createElement("div");
-  m.id="_sfAM";
-  m.style.cssText="position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;font-family:inherit";
-  var opts=[[7,"7 days"],[30,"1 month"],[90,"3 months"],[180,"6 months"],[365,"1 year"],[0,"Permanent"]];
-  var btns=opts.map(function(o){
-    return "<button onclick=\"_sfDoApprove('"+reqId+"',"+o[0]+")\" style=\"padding:10px 8px;border-radius:8px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:#94a3b8;cursor:pointer;font-size:13px;font-weight:500\">"+o[1]+"</button>";
-  }).join("");
-  m.innerHTML="<div style=\"background:#0f172a;border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:28px;width:360px;box-shadow:0 20px 60px rgba(0,0,0,.7)\">"
-    +"<h3 style=\"color:#e2e8f0;margin:0 0 6px;font-size:16px\">Approve Access</h3>"
-    +"<p style=\"color:#64748b;font-size:13px;margin:0 0 16px\"><b style=\"color:#94a3b8\">"+email+"</b></p>"
-    +"<p style=\"color:#64748b;font-size:12px;margin:0 0 14px\">How long should they have access?</p>"
-    +"<div style=\"display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:18px\">"+btns+"</div>"
-    +"<button onclick=\"document.getElementById('_sfAM').remove()\" style=\"width:100%;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,.07);background:none;color:#475569;cursor:pointer;font-size:12px\">Cancel</button>"
-    +"</div>";
-  document.body.appendChild(m);
-  m.addEventListener("click",function(e){if(e.target===m)m.remove();});
+  document.getElementById('_sfAM')?.remove();
+  var ov=document.createElement('div');
+  ov.id='_sfAM';
+  ov.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center';
+  ov.onclick=function(e){if(e.target===ov)ov.remove();};
+  var bx=document.createElement('div');
+  bx.style.cssText='background:#0f172a;border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:28px;width:380px;box-shadow:0 20px 60px rgba(0,0,0,.7)';
+  var t=document.createElement('h3');t.style.cssText='color:#e2e8f0;margin:0 0 6px;font-size:16px';t.textContent='Approve Access';
+  var ep=document.createElement('p');ep.style.cssText='color:#64748b;font-size:13px;margin:0 0 16px';
+  var eb=document.createElement('b');eb.style.color='#94a3b8';eb.textContent=email;ep.appendChild(eb);
+  var lp=document.createElement('p');lp.style.cssText='color:#64748b;font-size:12px;margin:0 0 14px';lp.textContent='How long should they have access?';
+  var gr=document.createElement('div');gr.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px';
+  [[7,'7 days'],[30,'1 month'],[90,'3 months'],[180,'6 months'],[365,'1 year'],[0,'Permanent'],[-1,'Custom']].forEach(function(o){
+    var b=document.createElement('button');
+    b.style.cssText=o[0]===-1?'padding:10px 8px;border-radius:8px;border:1px solid rgba(99,102,241,.3);background:rgba(99,102,241,.08);color:#818cf8;cursor:pointer;font-size:13px;font-weight:500;grid-column:1/-1':'padding:10px 8px;border-radius:8px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:#94a3b8;cursor:pointer;font-size:13px;font-weight:500';
+    b.textContent=o[1];
+    (function(d){b.onclick=function(){_sfPickDur(reqId,d);};})(o[0]);
+    gr.appendChild(b);
+  });
+  var cw=document.createElement('div');cw.id='_sfCW';cw.style.cssText='display:none;margin-bottom:12px';
+  var cl=document.createElement('p');cl.style.cssText='color:#64748b;font-size:12px;margin:0 0 6px';cl.textContent='Custom duration:';
+  var cr=document.createElement('div');cr.style.cssText='display:flex;gap:8px;align-items:center';
+  var ni=document.createElement('input');ni.type='number';ni.min='1';ni.value='10';ni.id='_sfCV';
+  ni.style.cssText='width:80px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:#e2e8f0;padding:6px 10px;border-radius:8px;font-size:14px;text-align:center';
+  var us=document.createElement('select');us.id='_sfCU';
+  us.style.cssText='flex:1;background:#0f172a;border:1px solid rgba(255,255,255,.15);color:#e2e8f0;padding:6px 10px;border-radius:8px;font-size:13px';
+  ['Minutes','Hours','Days','Weeks'].forEach(function(u){var op=document.createElement('option');op.value=u.toLowerCase();op.textContent=u;if(u==='Days')op.selected=true;us.appendChild(op);});
+  var ab=document.createElement('button');ab.style.cssText='background:rgba(99,102,241,.2);border:1px solid rgba(99,102,241,.4);color:#818cf8;padding:6px 14px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600';ab.textContent='Apply';
+  ab.onclick=function(){
+    var v=parseInt(document.getElementById('_sfCV')?.value||'0');
+    var u=document.getElementById('_sfCU')?.value||'days';
+    if(!v||v<1){if(typeof showToast==='function')showToast('Enter a valid number','error');return;}
+    var d=u==='minutes'?v/1440:u==='hours'?v/24:u==='weeks'?v*7:v;
+    _sfDoApprove(reqId,d);
+  };
+  cr.appendChild(ni);cr.appendChild(us);cr.appendChild(ab);
+  cw.appendChild(cl);cw.appendChild(cr);
+  var cb=document.createElement('button');cb.style.cssText='width:100%;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,.07);background:none;color:#475569;cursor:pointer;font-size:12px;margin-top:4px';cb.textContent='Cancel';cb.onclick=function(){ov.remove();};
+  bx.appendChild(t);bx.appendChild(ep);bx.appendChild(lp);bx.appendChild(gr);bx.appendChild(cw);bx.appendChild(cb);
+  ov.appendChild(bx);document.body.appendChild(ov);
+}
+function _sfPickDur(reqId,days){
+  if(days===-1){var w=document.getElementById('_sfCW');if(w)w.style.display='block';return;}
+  _sfDoApprove(reqId,days);
+}
+async function _sfDoApprove(reqId,days){
+  document.getElementById('_sfAM')?.remove();
+  try{
+    if(typeof showToast==='function')showToast('Approving...','info');
+    var r=await fetch('/api/admin/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({req_id:reqId,days:days})});
+    var d=await r.json();
+    if(d.status==='approved'||d.status==='already_approved'||d.ok){
+      var msg=days===0?'Approved permanently!':days<1?'Approved for '+Math.round(days*1440)+' min!':days<30?'Approved for '+Math.round(days)+' days!':days<365?'Approved for '+Math.round(days/30)+' months!':'Approved for 1 year!';
+      if(typeof showToast==='function')showToast(msg,'success');
+      if(typeof loadAdminRequests==='function')loadAdminRequests();
+    }else{if(typeof showToast==='function')showToast(d.error||'Failed','error');}
+  }catch(e){if(typeof showToast==='function')showToast('Error: '+e.message,'error');}
 }
 
-async function _sfDoApprove(reqId,days){
-  document.getElementById("_sfAM")?.remove();
-  try{
-    showToast("Approving...","info");
-    var r=await fetch("/api/admin/approve",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({req_id:reqId,days:days})});
-    var d=await r.json();
-    if(d.status==="approved"||d.status==="already_approved"||d.ok){
-      var msg=days===0?"Approved permanently!":("Approved for "+(days<30?days+" days":days<365?Math.round(days/30)+" months":"1 year")+"!");
-      showToast(msg,"success");
-      if(typeof loadAdminRequests==="function")loadAdminRequests();
-    } else showToast(d.error||"Failed","error");
-  }catch(e){showToast("Error: "+e.message,"error");}
-}
 
 
 function autoSearchChinese(zhQuery){
