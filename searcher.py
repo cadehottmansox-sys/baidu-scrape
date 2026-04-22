@@ -183,6 +183,8 @@ BLOCKED_DOMAINS = {
     "balenciaga.com","supreme.com","off-white.com","bape.com",
     "underarmour.com","asics.com","salomon.com","dior.com","fendi.com",
     "apple.com","apple.com.cn","samsung.com","sony.com","huawei.com",
+    # 1688 - wholesale only, no WeChat, filter from all non-1688 searches
+    "1688.com","m.1688.com","s.1688.com","detail.1688.com","offer.1688.com",
     # Western retail
     "amazon.com","amazon.cn","ebay.com","target.com","walmart.com",
     "bestbuy.com","costco.com","etsy.com","shopify.com",
@@ -339,6 +341,10 @@ def _score(title, snippet, link, mode, brand="", product=""):
         if kw in text:
             factory_bonus += 2
             break
+
+    # ── 5b. 1688 PENALTY (wholesale, never has WeChat)
+    if "1688.com" in text:
+        return -99  # Hard reject 1688 results in non-1688 searches
 
     # ── 6. RETAILER PENALTY ──────────────────────────────────────────────────
     # Big Chinese retail platforms = not what we want
