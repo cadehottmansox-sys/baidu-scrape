@@ -509,7 +509,7 @@ def _parse_baidu_html(html, full_q, platform_label, mode, seen_links, max_r, pag
     return results
 
 
-async def _baidu_search(page, full_q, max_r, timeout, delay, seen_links, platform_label, mode, page_num=1):
+async def _baidu_search(page, full_q, max_r, timeout, delay, seen_links, platform_label, mode, page_num=1, brand="", product=""):
     """Search Baidu — uses official AI Search API if key set, else Playwright."""
     results = []
     pn  = (page_num - 1) * 10
@@ -555,7 +555,7 @@ async def _baidu_search(page, full_q, max_r, timeout, delay, seen_links, platfor
                 snippet = ref.get("snippet","")
                 combined = " ".join(filter(None,[title,snippet,href]))
                 c  = _contacts(combined)
-                sc = _score(title,snippet,href,mode)
+                sc = _score(title,snippet,href,mode,brand=brand,product=product)
                 best_wq = max((w["quality"] for w in c["wechat_ids"]),default=0)
                 results.append({
                     "title":title,"link":href or url,"snippet":snippet,
@@ -688,6 +688,8 @@ async def _baidu_search(page, full_q, max_r, timeout, delay, seen_links, platfor
     except Exception as e:
         logger.warning("Baidu search error: %s", e)
 
+    results=[r for r in results if r.get("factory_score",-99)>-99]
+    results.sort(key=lambda r:(-r.get("wechat_quality",0)*3-len(r.get("wechat_ids",[]))*2,-r.get("factory_score",0)))
     return results
 
 
@@ -958,10 +960,10 @@ async def search_platform(
                 q3 = f"site:zhihu.com {base} 工厂 推荐 哪家好"
                 # Add Weidian batch query
                 q4 = f"weidian {base} {build_weidian_inject(base)}"
-                r1=await _baidu_search(page,q1,max_r,timeout,delay,seen_all,"All-in-One",mode)
+                r1=await _baidu_search(page,q1,max_r,timeout,delay,seen_all,"All-in-One",mode,brand=brand,product=product)
                 for r in r1: seen_all.add(r["link"])
                 results.extend(r1)
-                r2=await _baidu_search(page,q2,max_r,timeout,delay,seen_all,"All-in-One",mode)
+                r2=await _baidu_search(page,q2,max_r,timeout,delay,seen_all,"All-in-One",mode,brand=brand,product=product)
                 for r in r2: seen_all.add(r["link"])
                 results.extend(r2)
             else:
@@ -1118,7 +1120,7 @@ async def _scrape_yupoo(query, brand, page, timeout=25000, max_results=6):
                     continue
                 title_el = page.locator("h1, .album-title, .username, title").first
                 title = (await title_el.inner_text()).strip() if await title_el.count() > 0 else link
-                sc = _score(title, text[:300], link, "supplier")
+                sc = _score(title, text[:300], link, "supplier", brand=brand, product=product)
                 best_wq = max((w["quality"] for w in c["wechat_ids"]), default=0)
                 results.append({
                     "title": title, "link": link, "snippet": text[:200],
