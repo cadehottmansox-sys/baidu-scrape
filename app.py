@@ -694,10 +694,87 @@ FILE SIZE: {len(html)} chars
         return jsonify(auth.update_password(data.get("email", ""), data.get("password", "")))
 
     return app
+    # ── COMMUNITY CHAT ──────────────────────────────────────────────────────
+    @app.route("/api/chat/messages")
+    def get_chat_messages():
+        import storage
+        user = get_user()
+        if not user:
+            return jsonify({"error": "Unauthorized"}), 401
+        msgs = storage.read("sf_chat_v2", [])
+        return jsonify(msgs[-200:] if msgs else [])
+
+    @app.route("/api/chat/send", methods=["POST"])
+    def send_chat():
+        import storage, time as _t
+        user = get_user()
+        if not user:
+            return jsonify({"error": "Unauthorized"}), 401
+        data = request.get_json() or {}
+        msg = (data.get("message") or "").strip()[:500]
+        if not msg:
+            return jsonify({"error": "Empty"}), 400
+        msgs = storage.read("sf_chat_v2", [])
+        msgs.append({
+            "id": int(_t.time()*1000),
+            "name": user.get("name", user.get("email", "User")),
+            "email": user.get("email", ""),
+            "message": msg,
+            "type": data.get("type", "chat"),
+            "ts": _t.time()
+        })
+        storage.write("sf_chat_v2", msgs[-500:])
+        return jsonify({"ok": True})
+
+
+    # ── IMAGE SEARCH ────────────────────────────────────────────────────────
+    @app.route("/api/image-search", methods=["POST"])
+    def image_search():
+        user = get_user()
+        if not user:
+            return jsonify({"error": "Unauthorized"}), 401
+        import base64, tempfile, os, time as _t
+        try:
+            import requests as _req
+        except ImportError:
+            return jsonify({"error": "requests not available"}), 500
+        data = request.get_json(silent=True) or {}
+        image_b64 = data.get("image", "")
+        if not image_b64:
+            return jsonify({"error": "No image provided"}), 400
+        try:
+            if ',' in image_b64:
+                image_b64 = image_b64.split(',')[1]
+            img_bytes = base64.b64decode(image_b64)
+            with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as f:
+                f.write(img_bytes)
+                tmp = f.name
+            try:
+                hdrs = {"User-Agent": "Mozilla/5.0", "Referer": "https://image.baidu.com/"}
+                with open(tmp, 'rb') as f:
+                    r = _req.post("https://graph.baidu.com/upload", files={"image": ("img.jpg", f, "image/jpeg")}, headers=hdrs, timeout=15)
+                rd = r.json()
+                sign = rd.get("sign", "")
+                if not sign:
+                    return jsonify({"error": "Baidu upload failed", "detail": str(rd)[:200]}), 500
+                sr = _req.get(f"https://graph.baidu.com/details?sign={sign}&tn=pc&from=pc", headers=hdrs, timeout=15)
+                sd = sr.json() if sr.status_code==200 else {}
+                items = sd.get("data", {})
+                if isinstance(items, dict): items = items.get("list", [])
+                results = [{"title": x.get("fromPageTitleEnc",""), "link": x.get("fromUrl",""), "thumb": x.get("middleURL",""), "source": x.get("fromURLHost","")} for x in (items or [])[:15] if x.get("fromUrl")]
+                return jsonify({"ok": True, "sign": sign, "results": results, "count": len(results), "baidu_url": f"https://image.baidu.com/search/detail?sign={sign}"})
+            finally:
+                try: os.unlink(tmp)
+                except: pass
+        except Exception as e:
+            app.logger.error("Image search error: %s", e)
+            return jsonify({"error": str(e)}), 500
+
+
+    return app
 
 
 app = create_app()
-
 
 
 @app.route("/api/global-stats")
@@ -717,286 +794,6 @@ def bump_global_stats():
     return jsonify(stats)
 
 
-# ============ COMMUNITY CHAT ============
-@app.route("/api/chat/messages")
-def get_chat_messages():
-    import storage
-    user = get_user()
-    if not user:
-        return jsonify({"error": "Unauthorized"}), 401
-    msgs = storage.read("sf_chat", [])
-    return jsonify(msgs[-100:] if msgs else [])
-
-@app.route("/api/chat/send", methods=["POST"])
-def send_chat_message():
-    import storage, time
-    user = get_user()
-    if not user:
-        return jsonify({"error": "Unauthorized"}), 401
-    data = request.get_json() or {}
-    msg = (data.get("message") or "").strip()[:500]
-    if not msg:
-        return jsonify({"error": "Empty message"}), 400
-    msgs = storage.read("sf_chat", [])
-    msgs.append({
-        "id": int(time.time()*1000),
-        "name": user["name"],
-        "email": user["email"],
-        "message": msg,
-        "ts": time.time()
-    })
-    storage.write("sf_chat", msgs[-500:])
-    return jsonify({"ok": True})
-
-
-
-# ============ BAIDU IMAGE SEARCH (Reverse Image Search) ============
-@app.route("/api/image-search", methods=["POST"])
-def image_search():
-    user = get_user()
-    if not user:
-        return jsonify({"error":"Unauthorized"}), 401
-    import base64, tempfile, os, time
-    req = __import__('requests')
-    user = get_user()
-    if not user:
-        return jsonify({"error": "Unauthorized"}), 401
-    
-    # Get image from request
-    data = request.get_json(silent=True) or {}
-    image_b64 = data.get("image")  # base64 encoded image
-    if not image_b64:
-        return jsonify({"error": "No image provided"}), 400
-    
-    try:
-        # Decode base64 image
-        if ',' in image_b64:
-            image_b64 = image_b64.split(',')[1]
-        img_bytes = base64.b64decode(image_b64)
-        
-        # Save to temp file
-        with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as f:
-            f.write(img_bytes)
-            tmp_path = f.name
-        
-        try:
-            # Upload to Baidu image search
-            upload_url = "https://graph.baidu.com/upload"
-            headers = {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-                "Referer": "https://image.baidu.com/",
-            }
-            with open(tmp_path, 'rb') as f:
-                files = {"image": ("image.jpg", f, "image/jpeg")}
-                resp = req.post(upload_url, files=files, headers=headers, timeout=15)
-            
-            if resp.status_code != 200:
-                return jsonify({"error": "Baidu upload failed", "status": resp.status_code}), 500
-            
-            resp_data = resp.json()
-            sign = resp_data.get("sign", "")
-            cont_sign = resp_data.get("cont_sign", "")
-            
-            if not sign:
-                return jsonify({"error": "No sign from Baidu", "raw": str(resp_data)[:200]}), 500
-            
-            # Get search results
-            search_url = f"https://graph.baidu.com/details?isfromtusoupc=1&tn=pc&carousel=0&promotion_name=pc_image_shitu&extUiData%5BisLogoShow%5D=1&sign={sign}&cont_sign={cont_sign}"
-            search_resp = req.get(search_url, headers=headers, timeout=15)
-            search_data = search_resp.json() if search_resp.status_code == 200 else {}
-            
-            # Also get similar image results
-            similar_url = f"https://graph.baidu.com/ajax/pcsimi?carousel=0&tn=pc&from=pc&image=&promote=0&sign={sign}&cont_sign={cont_sign}&same_url="
-            similar_resp = req.get(similar_url, headers=headers, timeout=15)
-            similar_data = similar_resp.json() if similar_resp.status_code == 200 else {}
-            
-            results = []
-            # Parse search results
-            data_list = search_data.get("data", {})
-            if isinstance(data_list, dict):
-                items = data_list.get("list", []) or data_list.get("result", [])
-            else:
-                items = data_list or []
-            
-            for item in items[:15]:
-                result = {
-                    "title": item.get("fromPageTitleEnc", "") or item.get("title", ""),
-                    "link": item.get("fromUrl", "") or item.get("url", ""),
-                    "thumb": item.get("middleURL", "") or item.get("thumbURL", ""),
-                    "source": item.get("fromURLHost", ""),
-                }
-                if result["link"]:
-                    results.append(result)
-            
-            # Parse similar images
-            sim_list = similar_data.get("data", {})
-            if isinstance(sim_list, dict):
-                sim_items = sim_list.get("list", []) or []
-            else:
-                sim_items = []
-            
-            similar = []
-            for item in sim_items[:10]:
-                similar.append({
-                    "thumb": item.get("middleURL", "") or item.get("objURL", ""),
-                    "link": item.get("fromUrl", "") or item.get("pageUrl", ""),
-                    "title": item.get("fromPageTitleEnc", ""),
-                })
-            
-            return jsonify({
-                "ok": True,
-                "sign": sign,
-                "results": results,
-                "similar": similar,
-                "baidu_url": f"https://image.baidu.com/search/detail?sign={sign}",
-                "count": len(results)
-            })
-            
-        finally:
-            try: os.unlink(tmp_path)
-            except: pass
-            
-    except Exception as e:
-        app.logger.error("Image search error: %s", e)
-        return jsonify({"error": str(e)}), 500
-
-
-# CHAT
-
-# ============ BAIDU IMAGE SEARCH (Reverse Image Search) ============
-@app.route("/api/image-search", methods=["POST"])
-def image_search():
-    user = get_user()
-    if not user:
-        return jsonify({"error":"Unauthorized"}), 401
-    import base64, tempfile, os, time
-    req = __import__('requests')
-    user = get_user()
-    if not user:
-        return jsonify({"error": "Unauthorized"}), 401
-    
-    # Get image from request
-    data = request.get_json(silent=True) or {}
-    image_b64 = data.get("image")  # base64 encoded image
-    if not image_b64:
-        return jsonify({"error": "No image provided"}), 400
-    
-    try:
-        # Decode base64 image
-        if ',' in image_b64:
-            image_b64 = image_b64.split(',')[1]
-        img_bytes = base64.b64decode(image_b64)
-        
-        # Save to temp file
-        with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as f:
-            f.write(img_bytes)
-            tmp_path = f.name
-        
-        try:
-            # Upload to Baidu image search
-            upload_url = "https://graph.baidu.com/upload"
-            headers = {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-                "Referer": "https://image.baidu.com/",
-            }
-            with open(tmp_path, 'rb') as f:
-                files = {"image": ("image.jpg", f, "image/jpeg")}
-                resp = req.post(upload_url, files=files, headers=headers, timeout=15)
-            
-            if resp.status_code != 200:
-                return jsonify({"error": "Baidu upload failed", "status": resp.status_code}), 500
-            
-            resp_data = resp.json()
-            sign = resp_data.get("sign", "")
-            cont_sign = resp_data.get("cont_sign", "")
-            
-            if not sign:
-                return jsonify({"error": "No sign from Baidu", "raw": str(resp_data)[:200]}), 500
-            
-            # Get search results
-            search_url = f"https://graph.baidu.com/details?isfromtusoupc=1&tn=pc&carousel=0&promotion_name=pc_image_shitu&extUiData%5BisLogoShow%5D=1&sign={sign}&cont_sign={cont_sign}"
-            search_resp = req.get(search_url, headers=headers, timeout=15)
-            search_data = search_resp.json() if search_resp.status_code == 200 else {}
-            
-            # Also get similar image results
-            similar_url = f"https://graph.baidu.com/ajax/pcsimi?carousel=0&tn=pc&from=pc&image=&promote=0&sign={sign}&cont_sign={cont_sign}&same_url="
-            similar_resp = req.get(similar_url, headers=headers, timeout=15)
-            similar_data = similar_resp.json() if similar_resp.status_code == 200 else {}
-            
-            results = []
-            # Parse search results
-            data_list = search_data.get("data", {})
-            if isinstance(data_list, dict):
-                items = data_list.get("list", []) or data_list.get("result", [])
-            else:
-                items = data_list or []
-            
-            for item in items[:15]:
-                result = {
-                    "title": item.get("fromPageTitleEnc", "") or item.get("title", ""),
-                    "link": item.get("fromUrl", "") or item.get("url", ""),
-                    "thumb": item.get("middleURL", "") or item.get("thumbURL", ""),
-                    "source": item.get("fromURLHost", ""),
-                }
-                if result["link"]:
-                    results.append(result)
-            
-            # Parse similar images
-            sim_list = similar_data.get("data", {})
-            if isinstance(sim_list, dict):
-                sim_items = sim_list.get("list", []) or []
-            else:
-                sim_items = []
-            
-            similar = []
-            for item in sim_items[:10]:
-                similar.append({
-                    "thumb": item.get("middleURL", "") or item.get("objURL", ""),
-                    "link": item.get("fromUrl", "") or item.get("pageUrl", ""),
-                    "title": item.get("fromPageTitleEnc", ""),
-                })
-            
-            return jsonify({
-                "ok": True,
-                "sign": sign,
-                "results": results,
-                "similar": similar,
-                "baidu_url": f"https://image.baidu.com/search/detail?sign={sign}",
-                "count": len(results)
-            })
-            
-        finally:
-            try: os.unlink(tmp_path)
-            except: pass
-            
-    except Exception as e:
-        app.logger.error("Image search error: %s", e)
-        return jsonify({"error": str(e)}), 500
-
-
-# CHAT
-@app.route("/api/chat/messages")
-def get_chat_messages():
-    import storage,time
-    user=get_user()
-    if not user: return jsonify({"error":"Unauthorized"}),401
-    msgs=storage.read("sf_chat_v2",[])
-    return jsonify(msgs[-200:])
-
-@app.route("/api/chat/send",methods=["POST"])
-def send_chat():
-    import storage,time
-    user=get_user()
-    if not user: return jsonify({"error":"Unauthorized"}),401
-    data=request.get_json() or {}
-    msg=(data.get("message") or "").strip()[:500]
-    if not msg: return jsonify({"error":"Empty"}),400
-    msgs=storage.read("sf_chat_v2",[])
-    msgs.append({"id":int(time.time()*1000),"name":user.get("name",user.get("email","User")),"email":user.get("email",""),"message":msg,"type":data.get("type","chat"),"ts":time.time()})
-    storage.write("sf_chat_v2",msgs[-500:])
-    return jsonify({"ok":True})
-
-
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5001))
-    app.run(host="0.0.0.0", port=port, debug=os.getenv("FLASK_DEBUG", "false").lower() == "true")
+    app.run(host="0.0.0.0", port=port, debug=os.getenv("FLASK_DEBUG","false").lower()=="true")
