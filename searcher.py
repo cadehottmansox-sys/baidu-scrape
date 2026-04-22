@@ -121,6 +121,16 @@ REP_KEYWORDS = {
 # Auto-translate common English product terms to Chinese for better Baidu results
 EN_ZH_MAP = {
     "soccer cleats":"足球鞋","soccer shoes":"足球鞋","football boots":"足球鞋",
+    "slides":"拖鞋","sandals":"凉鞋","loafers":"乐福鞋","mules":"穆勒鞋",
+    "belt":"皮带","belts":"皮带","wallet":"钱包","bag":"包包","bags":"包包",
+    "hoodie":"卫衣","sweatshirt":"卫衣","tee":"T恤","t-shirt":"T恤","shirt":"衬衫",
+    "pants":"裤子","jeans":"牛仔裤","shorts":"短裤","jacket":"外套","coat":"大衣",
+    "puffer":"羽绒服","down jacket":"羽绒服","vest":"背心",
+    "socks":"袜子","hat":"帽子","cap":"帽子","beanie":"毛线帽",
+    "sunglasses":"墨镜","glasses":"眼镜","watch":"手表","bracelet":"手链",
+    "necklace":"项链","ring":"戒指","earrings":"耳环","jewelry":"饰品",
+    "keychain":"钥匙扣","card holder":"卡夹","phone case":"手机壳",
+    "backpack":"双肩包","tote":"托特包","clutch":"手拿包","crossbody":"斜挎包",
     "sneakers":"运动鞋","shoes":"鞋子","boots":"靴子","sandals":"凉鞋",
     "hoodie":"卫衣","t-shirt":"T恤","jacket":"夹克","coat":"大衣",
     "pants":"裤子","leggings":"打底裤","shorts":"短裤","dress":"连衣裙",
@@ -191,7 +201,8 @@ BLOCKED_DOMAINS = {
     "stockx.com","goat.com","kickscrew.com","flightclub.com","soccer.com","footlocker.com","foot-locker.com","zalando.com","asos.com","farfetch.com","ssense.com","nordstrom.com","macys.com","zappos.com","sportsdirect.com","decathlon.com",
     "klarna.com","paypal.com","aliexpress.com",
     # Chinese retail (official)
-    "tmall.com","jd.com","pinduoduo.com","taobao.com",
+    "tmall.com","jd.com","pinduoduo.com",// "taobao.com", -- re-enabled for factory sellers
+    // 
     # Social/search/news
     "wikipedia.org","baidu.com","google.com","youtube.com",
     "instagram.com","facebook.com","twitter.com","x.com","tiktok.com",
@@ -509,7 +520,7 @@ def _parse_baidu_html(html, full_q, platform_label, mode, seen_links, max_r, pag
     return results
 
 
-async def _baidu_search(page, full_q, max_r, timeout, delay, seen_links, platform_label, mode, page_num=1, brand="", product=""):
+async def _baidu_search(page, full_q, max_r, timeout, delay, seen_links, platform_label, mode, page_num=1):
     """Search Baidu — uses official AI Search API if key set, else Playwright."""
     results = []
     pn  = (page_num - 1) * 10
@@ -555,7 +566,7 @@ async def _baidu_search(page, full_q, max_r, timeout, delay, seen_links, platfor
                 snippet = ref.get("snippet","")
                 combined = " ".join(filter(None,[title,snippet,href]))
                 c  = _contacts(combined)
-                sc = _score(title,snippet,href,mode,brand=brand,product=product)
+                sc = _score(title,snippet,href,mode)
                 best_wq = max((w["quality"] for w in c["wechat_ids"]),default=0)
                 results.append({
                     "title":title,"link":href or url,"snippet":snippet,
@@ -688,8 +699,6 @@ async def _baidu_search(page, full_q, max_r, timeout, delay, seen_links, platfor
     except Exception as e:
         logger.warning("Baidu search error: %s", e)
 
-    results=[r for r in results if r.get("factory_score",-99)>-99]
-    results.sort(key=lambda r:(-r.get("wechat_quality",0)*3-len(r.get("wechat_ids",[]))*2,-r.get("factory_score",0)))
     return results
 
 
@@ -960,10 +969,10 @@ async def search_platform(
                 q3 = f"site:zhihu.com {base} 工厂 推荐 哪家好"
                 # Add Weidian batch query
                 q4 = f"weidian {base} {build_weidian_inject(base)}"
-                r1=await _baidu_search(page,q1,max_r,timeout,delay,seen_all,"All-in-One",mode,brand=brand,product=product)
+                r1=await _baidu_search(page,q1,max_r,timeout,delay,seen_all,"All-in-One",mode)
                 for r in r1: seen_all.add(r["link"])
                 results.extend(r1)
-                r2=await _baidu_search(page,q2,max_r,timeout,delay,seen_all,"All-in-One",mode,brand=brand,product=product)
+                r2=await _baidu_search(page,q2,max_r,timeout,delay,seen_all,"All-in-One",mode)
                 for r in r2: seen_all.add(r["link"])
                 results.extend(r2)
             else:
@@ -978,6 +987,12 @@ async def search_platform(
                         "xiaohongshu": f"小红书 {build_xiaohongshu_inject(base)}",
                         "zhihu": f"知乎 {build_zhihu_inject(base)}",
                         "weibo": f"微博 工厂 {base} 微信 联系方式 厂家",
+                        "douyin": f"抖音 {base} 厂家 微信 联系方式 工厂直播 货源",
+                        "pinduoduo": f"拼多多 {base} 工厂直营 微信 厂家 批发 一件代发",
+                        "dewu": f"得物 {base} 莆田 1:1 复刻 高仿 微信 厂家 同款",
+                        "poizon": f"得物 {base} 莆田 1:1 复刻 高仿 微信 厂家 同款",
+                        "taobao": f"淘宝 {base} 工厂直营 微信 店主 货源 厂家",
+                        "xhs": f"小红书 {base} 厂家 微信 代购 货源",
                     }
                     _pi1, _ = build_inject(base)
                     inject = injects.get(platform, _pi1)
@@ -1120,7 +1135,7 @@ async def _scrape_yupoo(query, brand, page, timeout=25000, max_results=6):
                     continue
                 title_el = page.locator("h1, .album-title, .username, title").first
                 title = (await title_el.inner_text()).strip() if await title_el.count() > 0 else link
-                sc = _score(title, text[:300], link, "supplier", brand=brand, product=product)
+                sc = _score(title, text[:300], link, "supplier")
                 best_wq = max((w["quality"] for w in c["wechat_ids"]), default=0)
                 results.append({
                     "title": title, "link": link, "snippet": text[:200],
