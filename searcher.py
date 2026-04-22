@@ -201,12 +201,13 @@ BLOCKED_DOMAINS = {
     "stockx.com","goat.com","kickscrew.com","flightclub.com","soccer.com","footlocker.com","foot-locker.com","zalando.com","asos.com","farfetch.com","ssense.com","nordstrom.com","macys.com","zappos.com","sportsdirect.com","decathlon.com",
     "klarna.com","paypal.com","aliexpress.com",
     # Chinese retail (official)
-    "tmall.com","jd.com","pinduoduo.com",
-    "taobao.com",
+    "tmall.com","jd.com","pinduoduo.com",// "taobao.com", -- re-enabled for factory sellers
+    // 
     # Social/search/news
     "wikipedia.org","baidu.com","google.com","youtube.com",
     "instagram.com","facebook.com","twitter.com","x.com","tiktok.com",
-    "douyin.com","alibaba.com","amazon.com","amazon.co.uk","amazon.de","chinagoods.com","hktdc.com","global.1688.com","chinese.alibaba.com","stockx.com","goat.com","grailed.com","depop.com","farfetch.com","ssense.com","mrporter.com","net-a-porter.com",
+    // douyin.com allowed - suppliers post here
+    "alibaba.com","amazon.com","amazon.co.uk","amazon.de","chinagoods.com","hktdc.com","global.1688.com","chinese.alibaba.com","stockx.com","goat.com","grailed.com","depop.com","farfetch.com","ssense.com","mrporter.com","net-a-porter.com",
     "163.com","sohu.com","sina.com.cn","qq.com","ifeng.com",
     # Maps/directories
     "mapbar.com","amap.com","dianping.com","yelp.com","maps.google.com",
@@ -254,6 +255,24 @@ def _conf(w):
     base={3:0.85,2:0.60,1:0.25,0:0.0}.get(w.get("quality",0),0.0)
     bonus={"qr":0.15,"ocr":0.10,"text":0.0}.get(w.get("source","text"),0.0)
     return min(round(base+bonus,2),1.0)
+
+
+def _extract_douyin(text, link=""):
+    """Extract Douyin account from text or link. Returns account string or 'N/A'."""
+    import re
+    if not text and not link: return "N/A"
+    combined = (text or "") + " " + (link or "")
+    # Direct douyin.com URL
+    url_match = re.search(r'douyin\.com/(?:user/)?([a-zA-Z0-9_\-\.]{4,30})', combined)
+    if url_match:
+        return url_match.group(1)
+    # Text mentions like "抖音号:xxx" or "抖音:xxx"
+    text_match = re.search(r'(?:抖音号?|douyin)[：:号@\s]+([a-zA-Z0-9_\-\.\u4e00-\u9fff]{4,30})', combined, re.IGNORECASE)
+    if text_match:
+        acct = text_match.group(1).strip()
+        if len(acct) >= 4:
+            return acct
+    return "N/A"
 
 def _extract_wc(text):
     found=set()
@@ -367,7 +386,9 @@ def _score(title, snippet, link, mode, brand="", product=""):
     # Articles/listicles that just mention the brand aren't suppliers
     GENERIC_SIGNALS = ["如何","怎么","什么是","介绍","推荐","排行","top10","best","review",
                        "评测","攻略","教程","指南","百科","百度百科","wikipedia"]
-    generic_penalty = sum(2 for g in GENERIC_SIGNALS if g in text)
+    # Lighter penalty for generic articles - douyin/weibo supplier posts often look like articles
+    is_social = any(d in (link.lower() if link else "") for d in ["douyin","weibo","xiaohongshu","xhs"])
+    generic_penalty = sum(1 for g in GENERIC_SIGNALS if g in text) if not is_social else 0
 
     total = s + contact_bonus + factory_bonus + prod_score - retail_penalty - generic_penalty
     return int(total)
@@ -510,6 +531,7 @@ def _parse_baidu_html(html, full_q, platform_label, mode, seen_links, max_r, pag
         results.append({
             "title":title,"link":href,"snippet":snippet,
             "wechat_ids":c["wechat_ids"],"emails":c["emails"],"phones":c["phones"],
+            "douyin":_extract_douyin(combined,href),
             "factory_score":sc,"wechat_quality":best_wq,
             "has_contact":bool(c["wechat_ids"] or c["emails"] or c["phones"]),
             "has_verified_wechat":best_wq>=3,"is_factory_like":sc>=3,
