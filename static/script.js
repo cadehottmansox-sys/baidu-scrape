@@ -165,15 +165,12 @@ function saveLiked(){localStorage.setItem("sf_liked",JSON.stringify(likedFinds))
 // ── Tabs ──────────────────────────────────────────────────────────
 function switchTab(name){
   document.querySelectorAll(".tab-btn").forEach(b=>b.classList.remove("active"));
-  // Hide ALL panels - both tab-panel and tab-content classes
-  document.querySelectorAll(".tab-panel, .tab-content").forEach(p=>{
-    p.classList.remove("active");
-    p.style.display="none";
-  });
-  const btn = document.querySelector('[data-tab="'+name+'"]');
+  document.querySelectorAll(".tab-panel").forEach(p=>p.classList.remove("active"));
+  const btn = document.querySelector(`[data-tab="${name}"]`);
   if(btn) btn.classList.add("active");
-  const panel = document.getElementById("tab-"+name);
+  const panel = document.getElementById(`tab-${name}`);
   if(panel){ panel.classList.add("active"); panel.style.display="block"; }
+  document.querySelectorAll(".tab-panel,.tab-content").forEach(p=>{ if(p!==panel){ p.style.display="none"; } });
   if(name==="finds") loadFinds();
   if(name==="saved") renderSavedTab();
   if(name==="crm") renderCrm();
