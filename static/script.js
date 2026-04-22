@@ -740,7 +740,7 @@ async function loadAdminRequests(){
   try{
     const r = await fetch('/admin/api/data');
     const d = await r.json();
-    const pending = (d.requests||[]).filter(r=>r.status==='pending');
+    const pending = (d.requests||[]).filter(r=>r.status!=='approved'&&r.status!=='denied');
     if(!pending.length){ el.innerHTML='<div class="crm-empty">No pending requests 🎉</div>'; return; }
     el.innerHTML = pending.map(req=>`
       <div class="admin-req" id="req-${req.id}">
@@ -772,6 +772,40 @@ async function adminDeny(id){
   showToast('Request denied');
 }
 
+
+function _fmtExpiry(ts){
+  if(!ts)return'Permanent';
+  var left=ts-(Date.now()/1000);
+  if(left<=0)return'EXPIRED';
+  if(left<60)return Math.floor(left)+'s left';
+  if(left<3600)return Math.floor(left/60)+'m '+Math.floor(left%60)+'s left';
+  if(left<86400)return Math.floor(left/3600)+'h '+Math.floor((left%3600)/60)+'m left';
+  if(left<604800)return Math.floor(left/86400)+'d '+Math.floor((left%86400)/3600)+'h left';
+  return Math.floor(left/86400)+' days left';
+}
+function _renderUsersHtml(el,users){
+  var rows=users.map(function(u){
+    var expColor=u.expires_at?(Date.now()/1000>u.expires_at?'#ef4444':(u.expires_at-Date.now()/1000<3600?'#f59e0b':'#22c55e')):'#475569';
+    var expText=u.expires_at?_fmtExpiry(u.expires_at):'Permanent';
+    var expId='_exp_'+u.email.replace(/[^a-z0-9]/gi,'_');
+    var statusHtml=u.revoked?'<span style="color:#ef4444;font-size:11px">Revoked</span>':
+      (u.needs_password||!u.password)?'<span style="color:#f59e0b;font-size:11px">Awaiting PW</span>':
+      '<span style="color:#22c55e;font-size:11px">Active</span>';
+    return '<div class="admin-user-row" style="'+(u.revoked?'opacity:.4':'')+'">'
+      +'<div><div style="font-weight:700;color:var(--text)">'+u.name+'</div>'
+      +'<div style="font-family:var(--mono);font-size:10px;color:var(--text2)">'+u.email+'</div></div>'
+      +'<div>'+statusHtml+'</div>'
+      +'<div><span class="'+(u.is_admin?'badge-admin':'badge-user')+'">'+(u.is_admin?'ADMIN':'USER')+'</span></div>'
+      +'<div style="font-family:var(--mono);font-size:12px;color:var(--c)">'+(u.search_count||0)+'</div>'
+      +'<div style="font-size:11px"><span id="'+expId+'" style="color:'+expColor+';font-family:var(--mono);font-size:10px">'+expText+'</span></div>'
+      +'<div class="admin-actions">'
+      +(!u.is_admin?'<button class="btn-sm btn-sm-cyan" onclick="makeAdmin(''+u.email+'')">Make Admin</button>':'')
+      +(u.is_admin?'<button class="btn-sm btn-sm-red" onclick="removeAdmin(''+u.email+'')">Remove Admin</button>':'')
+      +(!u.revoked?'<button class="btn-sm btn-sm-red" onclick="revokeUser(''+u.email+'')">Revoke</button>':'')
+      +'</div></div>';
+  }).join('');
+  el.innerHTML='<div class="admin-user-head"><span>Name / Email</span><span>Status</span><span>Role</span><span>Searches</span><span>Expires</span><span>Actions</span></div>'+rows;
+}
 async function loadAdminUsers(){
   const el = document.getElementById('adminUsers');
   if(!el) return;
@@ -780,32 +814,17 @@ async function loadAdminUsers(){
     const d = await r.json();
     const users = (d.approved||[]);
     if(!users.length){ el.innerHTML='<div class="crm-empty">No users yet</div>'; return; }
-    el.innerHTML = `
-      <div class="admin-user-head">
-        <span>Name / Email</span><span>Status</span><span>Role</span><span>Searches</span><span>Last Active</span><span>Actions</span>
-      </div>
-      ${users.map(u=>`
-        <div class="admin-user-row" style="${u.revoked?'opacity:.4':''}">
-          <div>
-            <div style="font-weight:700;color:var(--text)">${u.name}</div>
-            <div style="font-family:var(--mono);font-size:10px;color:var(--text2)">${u.email}</div>
-          </div>
-          <div>
-            ${u.revoked?'<span style="color:var(--r);font-size:11px">Revoked</span>':
-              u.needs_password||!u.password?'<span style="color:var(--a);font-size:11px;font-family:var(--mono)">Awaiting PW</span>':
-              '<span style="color:var(--g);font-size:11px">Active</span>'}
-          </div>
-          <div><span class="${u.is_admin?'badge-admin':'badge-user'}">${u.is_admin?'ADMIN':'USER'}</span></div>
-          <div style="font-family:var(--mono);font-size:12px;color:var(--c)">${u.search_count||0}</div>
-          <div style="font-family:var(--mono);font-size:10px;color:var(--text3)">${u.last_search||'never'}</div>
-          <div class="admin-actions">
-            ${!u.is_admin?`<button class="btn-sm btn-sm-cyan" onclick="makeAdmin('${u.email}')">Make Admin</button>`:''}
-            ${u.is_admin?`<button class="btn-sm btn-sm-red" onclick="removeAdmin('${u.email}')">Remove Admin</button>`:''}
-            ${!u.revoked?`<button class="btn-sm btn-sm-red" onclick="revokeUser('${u.email}')">Revoke</button>`:''}
-          </div>
-        </div>
-      `).join('')}
-    `;
+    window._adminUsers=users;
+    _renderUsersHtml(el,users);
+    // Start/restart countdown timer
+    if(window._userTimer)clearInterval(window._userTimer);
+    window._userTimer=setInterval(function(){
+      users.forEach(function(u){
+        if(!u.expires_at)return;
+        var el2=document.getElementById('_exp_'+u.email.replace(/[^a-z0-9]/gi,'_'));
+        if(el2)el2.textContent=_fmtExpiry(u.expires_at);
+      });
+    },1000);
   }catch(e){ el.innerHTML='<div class="crm-empty">Error loading users</div>'; }
 }
 
@@ -1104,75 +1123,33 @@ async function adminApprove(reqId, email){
   var m=document.createElement("div");
   m.id="_sfAM";
   m.style.cssText="position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;font-family:inherit";
-  var opts=[[7,"7 days"],[30,"1 month"],[90,"3 months"],[180,"6 months"],[365,"1 year"],[0,"Permanent"],[-1,"Custom"]];
+  var opts=[[7,"7 days"],[30,"1 month"],[90,"3 months"],[180,"6 months"],[365,"1 year"],[0,"Permanent"]];
   var btns=opts.map(function(o){
-    var days=o[0],label=o[1];
-    var style="padding:10px 8px;border-radius:8px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:#94a3b8;cursor:pointer;font-size:13px;font-weight:500";
-    if(days===-1) style="padding:10px 8px;border-radius:8px;border:1px solid rgba(99,102,241,.3);background:rgba(99,102,241,.08);color:#818cf8;cursor:pointer;font-size:13px;font-weight:500";
-    return "<button data-days=\""+days+"\" onclick=\"_sfPickDuration('"+reqId+"',"+days+")\" style=\""+style+"\">"+label+"</button>";
+    return "<button onclick=\"_sfDoApprove('"+reqId+"',"+o[0]+")\" style=\"padding:10px 8px;border-radius:8px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:#94a3b8;cursor:pointer;font-size:13px;font-weight:500\">"+o[1]+"</button>";
   }).join("");
-  m.innerHTML="<div style=\"background:#0f172a;border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:28px;width:380px;box-shadow:0 20px 60px rgba(0,0,0,.7)\">"
+  m.innerHTML="<div style=\"background:#0f172a;border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:28px;width:360px;box-shadow:0 20px 60px rgba(0,0,0,.7)\">"
     +"<h3 style=\"color:#e2e8f0;margin:0 0 6px;font-size:16px\">Approve Access</h3>"
     +"<p style=\"color:#64748b;font-size:13px;margin:0 0 16px\"><b style=\"color:#94a3b8\">"+email+"</b></p>"
     +"<p style=\"color:#64748b;font-size:12px;margin:0 0 14px\">How long should they have access?</p>"
-    +"<div id=\"_sfDurGrid\" style=\"display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px\">"+btns+"</div>"
-    +"<div id=\"_sfCustomWrap\" style=\"display:none;margin-bottom:12px\">"
-    +"<p style=\"color:#64748b;font-size:12px;margin:0 0 6px\">Enter custom duration:</p>"
-    +"<div style=\"display:flex;gap:8px;align-items:center\">"
-    +"<input id=\"_sfCustomVal\" type=\"number\" min=\"1\" value=\"10\" style=\"width:80px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:#e2e8f0;padding:6px 10px;border-radius:8px;font-size:14px;text-align:center\">"
-    +"<select id=\"_sfCustomUnit\" style=\"flex:1;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:#e2e8f0;padding:6px 10px;border-radius:8px;font-size:13px\">"
-    +"<option value=\"minutes\">Minutes</option>"
-    +"<option value=\"hours\">Hours</option>"
-    +"<option value=\"days\" selected>Days</option>"
-    +"<option value=\"weeks\">Weeks</option>"
-    +"</select>"
-    +"<button onclick=\"_sfSubmitCustom('"+reqId+"')\" style=\"background:rgba(99,102,241,.2);border:1px solid rgba(99,102,241,.4);color:#818cf8;padding:6px 14px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600\">Apply</button>"
-    +"</div></div>"
+    +"<div style=\"display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:18px\">"+btns+"</div>"
     +"<button onclick=\"document.getElementById('_sfAM').remove()\" style=\"width:100%;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,.07);background:none;color:#475569;cursor:pointer;font-size:12px\">Cancel</button>"
     +"</div>";
   document.body.appendChild(m);
   m.addEventListener("click",function(e){if(e.target===m)m.remove();});
 }
-function _sfPickDuration(reqId,days){
-  if(days===-1){
-    // Show custom input
-    var wrap=document.getElementById("_sfCustomWrap");
-    if(wrap){wrap.style.display="block";document.getElementById("_sfCustomVal")?.focus();}
-    return;
-  }
-  _sfDoApprove(reqId,days);
-}
-function _sfSubmitCustom(reqId){
-  var val=parseInt(document.getElementById("_sfCustomVal")?.value||"0");
-  var unit=document.getElementById("_sfCustomUnit")?.value||"days";
-  if(!val||val<1){if(typeof showToast==="function")showToast("Enter a valid number","error");return;}
-  var days;
-  if(unit==="minutes") days=val/1440;
-  else if(unit==="hours") days=val/24;
-  else if(unit==="weeks") days=val*7;
-  else days=val;
-  _sfDoApprove(reqId,days);
-}
+
 async function _sfDoApprove(reqId,days){
   document.getElementById("_sfAM")?.remove();
   try{
-    if(typeof showToast==="function")showToast("Approving...","info");
+    showToast("Approving...","info");
     var r=await fetch("/api/admin/approve",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({req_id:reqId,days:days})});
     var d=await r.json();
     if(d.status==="approved"||d.status==="already_approved"||d.ok){
-      var msg;
-      if(days===0) msg="Approved permanently!";
-      else if(days<1) msg="Approved for "+Math.round(days*1440)+" minutes!";
-      else if(days<1) msg="Approved for "+Math.round(days*24)+" hours!";
-      else if(days<30) msg="Approved for "+Math.round(days)+" days!";
-      else if(days<365) msg="Approved for "+Math.round(days/30)+" months!";
-      else msg="Approved for 1 year!";
-      if(typeof showToast==="function")showToast(msg,"success");
+      var msg=days===0?"Approved permanently!":("Approved for "+(days<30?days+" days":days<365?Math.round(days/30)+" months":"1 year")+"!");
+      showToast(msg,"success");
       if(typeof loadAdminRequests==="function")loadAdminRequests();
-    } else {
-      if(typeof showToast==="function")showToast(d.error||"Failed","error");
-    }
-  }catch(e){if(typeof showToast==="function")showToast("Error: "+e.message,"error");}
+    } else showToast(d.error||"Failed","error");
+  }catch(e){showToast("Error: "+e.message,"error");}
 }
 
 
