@@ -93,13 +93,16 @@ FF_PRIVATE_AGENT_QUERIES = [
     "仿牌货代 私人转运 包清关 微信号",
     "敏感货专线 私人货代 微信 报价",
 ]
-PASSING_TERMS  = ["passing","nfc","芯片","过货","验货","防伪","莆田","1:1","高仿","复刻"]
+PASSING_TERMS  = ["passing","nfc","芯片","过货","验货","防伪","莆田","1:1","高仿","复刻","原单","外贸","出口","同厂","纯原","过机场","专柜验","真标"]
 
 # How passing suppliers actually advertise on Chinese platforms
 PASSING_INJECT = (
     "过验 passing NFC芯片 防伪芯片 1:1 同厂 纯原 同材质 "
     "莆田 高仿 复刻 工厂 微信号 联系方式 "
-    "过机场 通过验 专柜验 真标 过检"
+    "过机场 通过验 专柜验 真标 过检 "
+    "原厂出品 出口转内销 外贸原单 原单货 纯原版 "
+    "验货无忧 品控 工厂直出 一比一 专柜同款 "
+    "rep supplier wechat factory passing quality nfc chip"
 )
 PASSING_NFC_INJECT = (
     "NFC芯片 NFC防伪 扫码验真 NFC过验 NFC chip "
@@ -356,6 +359,19 @@ def _score(title, snippet, link, mode, brand="", product=""):
         "fendi": ["fendi","芬迪"],
         "alo": ["alo","alo yoga"],
         "lululemon": ["lululemon","露露乐蒙"],
+        "stone island": ["stone island","石头岛","si"],
+        "moncler": ["moncler","盟可睐","蒙口"],
+        "trapstar": ["trapstar","陷阱星"],
+        "corteiz": ["corteiz","crtz"],
+        "rhude": ["rhude"],
+        "represent": ["represent","代表"],
+        "fear of god": ["fog","fear of god","恐惧上帝"],
+        "essentials": ["essentials","fog essentials"],
+        "new balance": ["new balance","nb","纽巴伦","新百伦"],
+        "asics": ["asics","亚瑟士"],
+        "samba": ["samba","桑巴"],
+        "cp company": ["cp company","cp"],
+        "arc teryx": ["arc teryx","始祖鸟","arcteryx"],
     }
     if brand:
         b = brand.strip().lower()
@@ -382,6 +398,12 @@ def _score(title, snippet, link, mode, brand="", product=""):
     # Extra big bonus if WeChat is in title specifically
     if any(t in t_lower for t in ["微信", "wechat", "wx:", "wx："]):
         contact_bonus += 5
+    # Passing mode extra bonus for NFC/over terms
+    if mode == "passing":
+        for kw in ["过验","nfc","芯片","真标","同厂","纯原","原单","外贸原单","出口转内销"]:
+            if kw in text:
+                s += 3
+                break
     # Bonus if WeChat ID pattern found (letters+numbers 6-20 chars after wx/微信)
     import re
     if re.search(r'(?:微信|wx)[：:]s*[a-zA-Z0-9_-]{5,20}', text):
@@ -1036,8 +1058,9 @@ async def search_platform(
                         "xiaohongshu": f"小红书 {build_xiaohongshu_inject(base)}",
                         "zhihu": f"知乎 {build_zhihu_inject(base)}",
                         "weibo": f"微博 工厂 {base} 微信 联系方式 厂家",
-                        "douyin": f"抖音 {base} 厂家 微信 联系方式 工厂直播 货源",
+                        "douyin": f"site:douyin.com {base} 微信 OR 抖音 {base} 厂家直销 微信 货源 联系方式 工厂直播",
                         "pinduoduo": f"拼多多 {base} 工厂直营 微信 厂家 批发 一件代发",
+                        "douyin2": f"抖音号 {base} 工厂 微信 货源 厂家直销 代理",
                         "dewu": f"得物 {base} 莆田 1:1 复刻 高仿 微信 厂家 同款",
                         "poizon": f"得物 {base} 莆田 1:1 复刻 高仿 微信 厂家 同款",
                         "taobao": f"淘宝 {base} 工厂直营 微信 店主 货源 厂家",

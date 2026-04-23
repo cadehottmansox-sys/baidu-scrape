@@ -2592,56 +2592,39 @@ async function _dySearch(){
   var brand=document.getElementById('dy-brand')?.value?.trim()||'';
   var product=document.getElementById('dy-product')?.value?.trim()||'';
   if(!brand&&!product){showToast('Enter brand or product','error');return;}
-  var query=(brand+' '+product).trim();
+  var base=(brand+' '+product).trim();
+  var query=base+' 抖音 微信 货源 厂家直销 联系方式';
   var btn=document.getElementById('dy-search-btn');
   var resEl=document.getElementById('dy-results');
   if(btn){btn.disabled=true;btn.textContent='Searching...';}
-  if(resEl)resEl.innerHTML='<div style="text-align:center;padding:40px;color:#475569;font-size:13px">Searching Douyin...</div>';
+  if(resEl)resEl.innerHTML='<div style="text-align:center;padding:40px;color:#475569;font-size:13px">Searching Baidu for Douyin suppliers...</div>';
   try{
     var r=await fetch('/search',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({query:query+' 抖音 微信 货源 厂家',brand:brand,platform:'douyin',mode:'supplier',deep_scan:false,wechat_only:false,page_num:1})});
+      body:JSON.stringify({query:query,brand:brand,platform:'douyin',mode:'supplier',deep_scan:false,wechat_only:false,page_num:1})});
     var d=await r.json();
     if(btn){btn.disabled=false;btn.textContent='Search Douyin';}
     var results=d.results||[];
     if(!resEl)return;
-    if(!results.length){resEl.innerHTML='<div style="text-align:center;padding:40px;color:#475569">No results. Try different keywords.</div>';return;}
-    resEl.innerHTML='';
+    if(!results.length){resEl.innerHTML='<div style="text-align:center;padding:40px;color:#475569">No results found. Try just the brand name.</div>';return;}
+    resEl.innerHTML='<p style="color:#475569;font-size:11px;margin:0 0 12px">'+results.length+' results from Baidu (Douyin suppliers)</p>';
     results.forEach(function(item){
       var card=document.createElement('div');
-      card.style.cssText='background:rgba(255,255,255,.04);border:1px solid rgba(34,211,238,.12);border-radius:12px;padding:16px;margin-bottom:10px';
+      card.style.cssText='background:rgba(255,255,255,.04);border:1px solid rgba(34,211,238,.12);border-radius:12px;padding:14px;margin-bottom:10px';
+      var isDY=(item.link||'').includes('douyin.com');
+      if(isDY){var badge=document.createElement('div');badge.style.cssText='display:inline-block;background:rgba(34,211,238,.1);border:1px solid rgba(34,211,238,.3);color:#22d3ee;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;margin-bottom:6px';badge.textContent='🎵 DOUYIN';card.appendChild(badge);}
       var ta=document.createElement('a');ta.href=item.link||'#';ta.target='_blank';
-      ta.style.cssText='color:#e2e8f0;font-size:14px;font-weight:600;text-decoration:none;display:block;margin-bottom:6px';
-      ta.textContent=item.title||'No title';
-      var sn=document.createElement('p');
-      sn.style.cssText='color:#64748b;font-size:12px;margin:0 0 10px;line-height:1.5';
-      sn.textContent=(item.snippet||'').slice(0,150);
-      var chips=document.createElement('div');chips.style.cssText='display:flex;gap:6px;flex-wrap:wrap;align-items:center';
-      (item.wechat_ids||[]).slice(0,3).forEach(function(w){
-        var c=document.createElement('div');
-        c.style.cssText='background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.3);color:#22c55e;padding:3px 10px;border-radius:20px;font-size:11px;cursor:pointer;font-weight:700';
-        c.textContent='wx: '+w.id;
-        c.onclick=function(){navigator.clipboard.writeText(w.id).then(function(){c.textContent='✓ Copied!';setTimeout(function(){c.textContent='wx: '+w.id;},1800);});};
-        chips.appendChild(c);
+      ta.style.cssText='color:#e2e8f0;font-size:13px;font-weight:600;text-decoration:none;display:block;margin-bottom:5px';ta.textContent=item.title||'No title';
+      var sn=document.createElement('p');sn.style.cssText='color:#64748b;font-size:12px;margin:0 0 10px;line-height:1.5';sn.textContent=(item.snippet||'').slice(0,180);
+      var chips=document.createElement('div');chips.style.cssText='display:flex;gap:6px;flex-wrap:wrap';
+      (item.wechat_ids||[]).slice(0,4).forEach(function(w){
+        var c=document.createElement('div');c.style.cssText='background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.3);color:#22c55e;padding:4px 12px;border-radius:20px;font-size:12px;cursor:pointer;font-weight:700';
+        c.textContent='wx: '+w.id;c.onclick=function(){navigator.clipboard.writeText(w.id).then(function(){c.textContent='Copied!';setTimeout(function(){c.textContent='wx: '+w.id;},2000);});};chips.appendChild(c);
       });
-      if(item.douyin&&item.douyin!=='N/A'){
-        var dc=document.createElement('div');
-        dc.style.cssText='background:rgba(34,211,238,.1);border:1px solid rgba(34,211,238,.3);color:#22d3ee;padding:3px 10px;border-radius:20px;font-size:11px;cursor:pointer;font-weight:700';
-        dc.textContent='🎵 '+item.douyin;
-        dc.onclick=function(){navigator.clipboard.writeText(item.douyin).then(function(){dc.textContent='✓ Copied!';setTimeout(function(){dc.textContent='🎵 '+item.douyin;},1800);});};
-        chips.appendChild(dc);
-      }
-      if(item.link){
-        var ob=document.createElement('a');ob.href=item.link;ob.target='_blank';
-        ob.style.cssText='background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#94a3b8;padding:3px 10px;border-radius:20px;font-size:11px;text-decoration:none';
-        ob.textContent='Open';chips.appendChild(ob);
-      }
-      card.appendChild(ta);card.appendChild(sn);card.appendChild(chips);
-      resEl.appendChild(card);
+      if(item.douyin&&item.douyin!=='N/A'){var dc=document.createElement('div');dc.style.cssText='background:rgba(34,211,238,.1);border:1px solid rgba(34,211,238,.3);color:#22d3ee;padding:4px 12px;border-radius:20px;font-size:12px;cursor:pointer;font-weight:700';dc.textContent='🎵 '+item.douyin;dc.onclick=function(){navigator.clipboard.writeText(item.douyin).then(function(){dc.textContent='Copied!';setTimeout(function(){dc.textContent='🎵 '+item.douyin;},2000);});};chips.appendChild(dc);}
+      var ob=document.createElement('a');ob.href=item.link||'#';ob.target='_blank';ob.style.cssText='background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#94a3b8;padding:3px 10px;border-radius:20px;font-size:11px;text-decoration:none';ob.textContent='Open';chips.appendChild(ob);
+      card.appendChild(ta);card.appendChild(sn);card.appendChild(chips);resEl.appendChild(card);
     });
-  }catch(e){
-    if(btn){btn.disabled=false;btn.textContent='Search Douyin';}
-    if(resEl)resEl.innerHTML='<div style="color:#ef4444;padding:20px;text-align:center">Error: '+e.message+'</div>';
-  }
+  }catch(e){if(btn){btn.disabled=false;btn.textContent='Search Douyin';}if(resEl)resEl.innerHTML='<div style="color:#ef4444;padding:20px;text-align:center">Error: '+e.message+'</div>';}
 }
 var _chatPoll=null;
 function _sfLoadChat(){
