@@ -96,17 +96,41 @@ FF_PRIVATE_AGENT_QUERIES = [
 PASSING_TERMS  = ["passing","nfc","芯片","过货","验货","防伪","莆田","1:1","高仿","复刻","原单","外贸","出口","同厂","纯原","过机场","专柜验","真标"]
 
 # How passing suppliers actually advertise on Chinese platforms
+
+# Batch-specific search terms for passing mode
+BATCH_INJECT = {
+    "pk":  "PK版 PK纯原 莆田PK",
+    "og":  "OG版 OG纯原 莆田OG",
+    "ljr": "LJR版 L版 莞顶 LJR纯原",
+    "h12": "H12版 H12纯原",
+    "g":   "G版 G纯原 G5版",
+    "bc":  "BC版 BC纯原",
+    "any": "纯原 公司级 原单 外贸原单",
+}
+
+# Quality tier search terms  
+TIER_INJECT = {
+    "tonghuO":   "通货 超A 高仿",
+    "zhenbiao":  "真标 真标版",
+    "gongsiji":  "公司级 公司货",
+    "chunyuan":  "纯原 顶级纯原 原单 外贸原单",
+}
+
 PASSING_INJECT = (
-    "过验 passing NFC芯片 防伪芯片 1:1 同厂 纯原 同材质 "
-    "莆田 高仿 复刻 工厂 微信号 联系方式 "
-    "过机场 通过验 专柜验 真标 过检 "
-    "原厂出品 出口转内销 外贸原单 原单货 纯原版 "
-    "验货无忧 品控 工厂直出 一比一 专柜同款 "
-    "rep supplier wechat factory passing quality nfc chip"
-)
-PASSING_NFC_INJECT = (
-    "NFC芯片 NFC防伪 扫码验真 NFC过验 NFC chip "
-    "防伪芯片 工厂 微信 联系方式 莆田 过验"
+    # Core passing/NFC terms
+    "过验 NFC芯片 防伪芯片 1:1 纯原 同厂出品 原厂 "
+    # Quality tiers - what real factories say
+    "纯原版 公司级 真标 原单 外贸原单 出口转内销 "
+    # Batch codes used by actual factories
+    "PK版 OG版 LJR版 H12版 G版 BC版 DT版 M9版 "
+    # Factory direct terms
+    "莆田工厂 福建工厂 莆田直发 一手货源 工厂直出 "
+    # Authentication / passing terms
+    "过机场 专柜验货 真标同材质 品控 验货无忧 "
+    # Contact/order terms
+    "微信号 工厂微信 货源微信 代理加盟 批发价格 "
+    # English rep community terms
+    "passing quality factory direct same materials wechat supplier rep"
 )
 
 REP_INJECT = "复刻 高仿 1:1 莆田 代工 原单 余单 工厂货 rep replica fashionreps"
@@ -398,12 +422,13 @@ def _score(title, snippet, link, mode, brand="", product=""):
     # Extra big bonus if WeChat is in title specifically
     if any(t in t_lower for t in ["微信", "wechat", "wx:", "wx："]):
         contact_bonus += 5
-    # Passing mode extra bonus for NFC/over terms
+    # Passing mode - score based on quality tier keywords found
     if mode == "passing":
-        for kw in ["过验","nfc","芯片","真标","同厂","纯原","原单","外贸原单","出口转内销"]:
+        tier_hits = 0
+        for kw in ["过验","nfc","nfc芯片","芯片","真标","同厂","纯原","原单","外贸原单","出口转内销","公司级","pk版","og版","ljr","h12","莆田","工厂直发","一手货源"]:
             if kw in text:
-                s += 3
-                break
+                tier_hits += 1
+        s += min(tier_hits * 2, 12)  # Up to +12 bonus for passing results
     # Bonus if WeChat ID pattern found (letters+numbers 6-20 chars after wx/微信)
     import re
     if re.search(r'(?:微信|wx)[：:]s*[a-zA-Z0-9_-]{5,20}', text):

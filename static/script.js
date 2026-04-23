@@ -1,3 +1,4 @@
+var _passingTier='any';var _passingBatch='any';
 // Inject popup animations
 const _popStyle = document.createElement('style');
 _popStyle.textContent = `
@@ -1999,7 +2000,7 @@ async function runBatchIntel(brand, query){
   for(const {q, platform, label} of queries){
     try{
       const r = await fetch('/search',{method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({query:q, brand:'', platform, mode:'passing', deep_scan:false, wechat_only:false})});
+        body:JSON.stringify({query:(q+' '+(_passingTier!=='any'?{'chunyuan':'纯原 顶级原单','gongsiji':'公司级','zhenbiao':'真标'}[_passingTier]||'':'')+' '+(_passingBatch!=='any'?{'pk':'PK版','og':'OG版','ljr':'LJR版','h12':'H12版','g':'G版','bc':'BC版'}[_passingBatch]||'':'')).trim(), brand:'', platform, mode:'passing', deep_scan:false, wechat_only:false, tier:_passingTier, batch:_passingBatch})});
       const d = await r.json();
       (d.results||[]).forEach(item=>{
         if(!seen.has(item.link)){ seen.add(item.link); all.push({...item, _label:label}); }
@@ -2684,4 +2685,18 @@ function _sfPostComment(){
   var msg=inp.value.trim();inp.value='';
   fetch('/api/chat/send',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:msg,type:'finds_comment'})})
   .then(function(r){return r.json();}).then(function(d){if(d.ok)_sfLoadComments();else showToast('Failed to post','error');});
+}
+function setPassingTier(tier,btn){
+  _passingTier=tier;
+  document.querySelectorAll('.passing-tier-btn').forEach(b=>{
+    b.style.background='rgba(255,255,255,.04)';b.style.borderColor='rgba(255,255,255,.1)';b.style.color='#94a3b8';b.classList.remove('active');
+  });
+  btn.style.background='rgba(168,85,247,.2)';btn.style.borderColor='rgba(168,85,247,.4)';btn.style.color='#c084fc';btn.classList.add('active');
+}
+function setPassingBatch(batch,btn){
+  _passingBatch=batch;
+  document.querySelectorAll('.passing-batch-btn').forEach(b=>{
+    b.style.background='rgba(255,255,255,.04)';b.style.borderColor='rgba(255,255,255,.1)';b.style.color='#94a3b8';b.classList.remove('active');
+  });
+  btn.style.background='rgba(34,211,238,.15)';btn.style.borderColor='rgba(34,211,238,.3)';btn.style.color='#22d3ee';btn.classList.add('active');
 }

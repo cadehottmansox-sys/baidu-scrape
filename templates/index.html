@@ -271,7 +271,43 @@
 
     <!-- PASSING -->
     <section class="tab-panel" id="tab-passing">
-      <div class="passing-banner">⚡ Passing / NFC — find 1:1 suppliers with NFC chips, same factory materials, and verified passing quality</div>
+      <div class="passing-banner">⚡ Passing / NFC — find factory-direct passing quality suppliers: 纯原, 公司级, NFC chips, batch-specific</div>
+
+      <!-- QUALITY TIER SELECTOR -->
+      <div style="margin-bottom:14px">
+        <p style="color:#64748b;font-size:11px;margin:0 0 8px;text-transform:uppercase;letter-spacing:.05em">Quality Tier</p>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button onclick="setPassingTier('any',this)" class="passing-tier-btn active" style="padding:6px 14px;border-radius:8px;font-size:12px;cursor:pointer;background:rgba(168,85,247,.2);border:1px solid rgba(168,85,247,.4);color:#c084fc;font-weight:600">Any</button>
+          <button onclick="setPassingTier('chunyuan',this)" class="passing-tier-btn" style="padding:6px 14px;border-radius:8px;font-size:12px;cursor:pointer;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:#94a3b8" title="Best quality — original factory molds and materials">纯原 Pure OG</button>
+          <button onclick="setPassingTier('gongsiji',this)" class="passing-tier-btn" style="padding:6px 14px;border-radius:8px;font-size:12px;cursor:pointer;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:#94a3b8" title="95%+ accuracy, great value">公司级 Company</button>
+          <button onclick="setPassingTier('zhenbiao',this)" class="passing-tier-btn" style="padding:6px 14px;border-radius:8px;font-size:12px;cursor:pointer;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:#94a3b8" title="Good quality, real tags">真标 True Label</button>
+        </div>
+      </div>
+
+      <!-- BATCH CODE SELECTOR -->
+      <div style="margin-bottom:14px">
+        <p style="color:#64748b;font-size:11px;margin:0 0 8px;text-transform:uppercase;letter-spacing:.05em">Batch Version <span style="color:#334155;font-weight:400;text-transform:none">(leave on Any if unsure)</span></p>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button onclick="setPassingBatch('any',this)" class="passing-batch-btn active" style="padding:5px 12px;border-radius:6px;font-size:11px;cursor:pointer;background:rgba(34,211,238,.15);border:1px solid rgba(34,211,238,.3);color:#22d3ee;font-weight:600">Any Batch</button>
+          <button onclick="setPassingBatch('pk',this)" class="passing-batch-btn" style="padding:5px 12px;border-radius:6px;font-size:11px;cursor:pointer;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:#94a3b8" title="Famous for Yeezy — best quality">PK</button>
+          <button onclick="setPassingBatch('og',this)" class="passing-batch-btn" style="padding:5px 12px;border-radius:6px;font-size:11px;cursor:pointer;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:#94a3b8" title="Top tier AJ factory">OG</button>
+          <button onclick="setPassingBatch('ljr',this)" class="passing-batch-btn" style="padding:5px 12px;border-radius:6px;font-size:11px;cursor:pointer;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:#94a3b8" title="LJR / L version — Dongguan top">LJR/L版</button>
+          <button onclick="setPassingBatch('h12',this)" class="passing-batch-btn" style="padding:5px 12px;border-radius:6px;font-size:11px;cursor:pointer;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:#94a3b8" title="H12 — popular for AJ1">H12</button>
+          <button onclick="setPassingBatch('g',this)" class="passing-batch-btn" style="padding:5px 12px;border-radius:6px;font-size:11px;cursor:pointer;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:#94a3b8" title="G version — known for AJ1 low">G版</button>
+          <button onclick="setPassingBatch('bc',this)" class="passing-batch-btn" style="padding:5px 12px;border-radius:6px;font-size:11px;cursor:pointer;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:#94a3b8" title="BC — basketball shoes">BC</button>
+        </div>
+      </div>
+
+      <!-- TIER EXPLAINER -->
+      <div id="tier-explainer" style="background:rgba(168,85,247,.05);border:1px solid rgba(168,85,247,.12);border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:12px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div style="color:#94a3b8"><b style="color:#c084fc">纯原 Pure OG</b> — best quality. Original factory molds + materials. Same factory as retail. PK/OG/LJR batches.</div>
+          <div style="color:#94a3b8"><b style="color:#a78bfa">公司级 Company</b> — 95%+ accuracy. Head-layer leather. Hard to tell apart from retail. Best value.</div>
+          <div style="color:#94a3b8"><b style="color:#818cf8">真标 True Label</b> — real tags, decent quality. Good daily wear. Can spot differences on close inspection.</div>
+          <div style="color:#94a3b8"><b style="color:#6366f1">通货 Common</b> — basic quality. Avoid for passing — obvious differences on close look.</div>
+        </div>
+        <p style="color:#475569;font-size:11px;margin:8px 0 0">⚠️ Real 纯原 cannot pass authentication apps — any supplier claiming 100% pass rate on Goat/StockX is likely lying.</p>
+      </div>
 
       <!-- SEARCH MODES -->
       <div class="ff-mode-wrap" style="margin-bottom:12px">
