@@ -271,43 +271,7 @@
 
     <!-- PASSING -->
     <section class="tab-panel" id="tab-passing">
-      <div class="passing-banner">⚡ Passing / NFC — find factory-direct passing quality suppliers: 纯原, 公司级, NFC chips, batch-specific</div>
-
-      <!-- QUALITY TIER SELECTOR -->
-      <div style="margin-bottom:14px">
-        <p style="color:#64748b;font-size:11px;margin:0 0 8px;text-transform:uppercase;letter-spacing:.05em">Quality Tier</p>
-        <div style="display:flex;gap:6px;flex-wrap:wrap">
-          <button onclick="setPassingTier('any',this)" class="passing-tier-btn active" style="padding:6px 14px;border-radius:8px;font-size:12px;cursor:pointer;background:rgba(168,85,247,.2);border:1px solid rgba(168,85,247,.4);color:#c084fc;font-weight:600">Any</button>
-          <button onclick="setPassingTier('chunyuan',this)" class="passing-tier-btn" style="padding:6px 14px;border-radius:8px;font-size:12px;cursor:pointer;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:#94a3b8" title="Best quality — original factory molds and materials">纯原 Pure OG</button>
-          <button onclick="setPassingTier('gongsiji',this)" class="passing-tier-btn" style="padding:6px 14px;border-radius:8px;font-size:12px;cursor:pointer;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:#94a3b8" title="95%+ accuracy, great value">公司级 Company</button>
-          <button onclick="setPassingTier('zhenbiao',this)" class="passing-tier-btn" style="padding:6px 14px;border-radius:8px;font-size:12px;cursor:pointer;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:#94a3b8" title="Good quality, real tags">真标 True Label</button>
-        </div>
-      </div>
-
-      <!-- BATCH CODE SELECTOR -->
-      <div style="margin-bottom:14px">
-        <p style="color:#64748b;font-size:11px;margin:0 0 8px;text-transform:uppercase;letter-spacing:.05em">Batch Version <span style="color:#334155;font-weight:400;text-transform:none">(leave on Any if unsure)</span></p>
-        <div style="display:flex;gap:6px;flex-wrap:wrap">
-          <button onclick="setPassingBatch('any',this)" class="passing-batch-btn active" style="padding:5px 12px;border-radius:6px;font-size:11px;cursor:pointer;background:rgba(34,211,238,.15);border:1px solid rgba(34,211,238,.3);color:#22d3ee;font-weight:600">Any Batch</button>
-          <button onclick="setPassingBatch('pk',this)" class="passing-batch-btn" style="padding:5px 12px;border-radius:6px;font-size:11px;cursor:pointer;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:#94a3b8" title="Famous for Yeezy — best quality">PK</button>
-          <button onclick="setPassingBatch('og',this)" class="passing-batch-btn" style="padding:5px 12px;border-radius:6px;font-size:11px;cursor:pointer;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:#94a3b8" title="Top tier AJ factory">OG</button>
-          <button onclick="setPassingBatch('ljr',this)" class="passing-batch-btn" style="padding:5px 12px;border-radius:6px;font-size:11px;cursor:pointer;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:#94a3b8" title="LJR / L version — Dongguan top">LJR/L版</button>
-          <button onclick="setPassingBatch('h12',this)" class="passing-batch-btn" style="padding:5px 12px;border-radius:6px;font-size:11px;cursor:pointer;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:#94a3b8" title="H12 — popular for AJ1">H12</button>
-          <button onclick="setPassingBatch('g',this)" class="passing-batch-btn" style="padding:5px 12px;border-radius:6px;font-size:11px;cursor:pointer;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:#94a3b8" title="G version — known for AJ1 low">G版</button>
-          <button onclick="setPassingBatch('bc',this)" class="passing-batch-btn" style="padding:5px 12px;border-radius:6px;font-size:11px;cursor:pointer;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:#94a3b8" title="BC — basketball shoes">BC</button>
-        </div>
-      </div>
-
-      <!-- TIER EXPLAINER -->
-      <div id="tier-explainer" style="background:rgba(168,85,247,.05);border:1px solid rgba(168,85,247,.12);border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:12px">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-          <div style="color:#94a3b8"><b style="color:#c084fc">纯原 Pure OG</b> — best quality. Original factory molds + materials. Same factory as retail. PK/OG/LJR batches.</div>
-          <div style="color:#94a3b8"><b style="color:#a78bfa">公司级 Company</b> — 95%+ accuracy. Head-layer leather. Hard to tell apart from retail. Best value.</div>
-          <div style="color:#94a3b8"><b style="color:#818cf8">真标 True Label</b> — real tags, decent quality. Good daily wear. Can spot differences on close inspection.</div>
-          <div style="color:#94a3b8"><b style="color:#6366f1">通货 Common</b> — basic quality. Avoid for passing — obvious differences on close look.</div>
-        </div>
-        <p style="color:#475569;font-size:11px;margin:8px 0 0">⚠️ Real 纯原 cannot pass authentication apps — any supplier claiming 100% pass rate on Goat/StockX is likely lying.</p>
-      </div>
+      <div class="passing-banner">⚡ Passing / NFC — find 1:1 suppliers with NFC chips, same factory materials, and verified passing quality</div>
 
       <!-- SEARCH MODES -->
       <div class="ff-mode-wrap" style="margin-bottom:12px">
@@ -661,28 +625,199 @@
         <div id="qrOutput" style="margin-top:12px;text-align:center"></div>
       </div>
     </section>
-<div id="_sfSideBtn" onclick="_sfTogglePanel()" title="Buyer Tools" style="position:fixed;bottom:24px;right:24px;z-index:99990;width:44px;height:44px;border-radius:12px;background:rgba(34,211,238,.12);border:1px solid rgba(34,211,238,.3);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;box-shadow:0 4px 20px rgba(0,0,0,.4)">
-  <span style="width:18px;height:2px;background:#22d3ee;border-radius:2px;display:block"></span>
-  <span style="width:18px;height:2px;background:#22d3ee;border-radius:2px;display:block"></span>
-  <span style="width:12px;height:2px;background:#22d3ee;border-radius:2px;display:block;margin-right:6px"></span>
+
+  
+
+      <div id="finds-comments-section" style="margin-top:24px;border-top:1px solid rgba(255,255,255,.06);padding-top:20px">
+        <h3 style="color:#e2e8f0;font-size:15px;margin:0 0 12px">💬 Community Comments</h3>
+        <div id="finds-comments-list" style="display:grid;gap:10px;margin-bottom:14px">
+          <div style="text-align:center;color:#475569;font-size:12px;padding:16px">No comments yet. Be first!</div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <input id="finds-comment-input" placeholder="Share a tip, ask a question, or drop a contact..."
+            style="flex:1;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#e2e8f0;padding:8px 14px;border-radius:8px;font-size:13px;outline:none"
+            onkeydown="if(event.key==='Enter'){event.preventDefault();_sfPostComment();}">
+          <button onclick="_sfPostComment()" style="background:rgba(99,102,241,.2);border:1px solid rgba(99,102,241,.4);color:#818cf8;padding:8px 16px;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600">Post</button>
+        </div>
+      </div>
 </div>
-<div id="_sfSideOverlay" onclick="_sfTogglePanel()" style="display:none;position:fixed;inset:0;z-index:99988;background:rgba(0,0,0,.5)"></div>
-<div id="_sfSidePanel" style="position:fixed;right:-380px;top:0;bottom:0;width:360px;z-index:99999;background:#080f1a;border-left:1px solid rgba(34,211,238,.15);transition:right .3s ease;overflow-y:auto">
-  <div style="padding:16px 18px;border-bottom:1px solid rgba(255,255,255,.06);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:#080f1a;z-index:2">
-    <div><div style="color:#22d3ee;font-size:14px;font-weight:700">Buyer Tools</div><div style="color:#334155;font-size:11px">Every tool you need per order</div></div>
-    <button onclick="_sfTogglePanel()" style="background:none;border:none;color:#475569;font-size:22px;cursor:pointer;line-height:1">x</button>
+<div id="tab-guide" class="tab-panel" data-tab="guide" style="padding:24px;max-width:860px;margin:0 auto">
+  <h2 style="color:#e2e8f0;font-size:22px;margin:0 0 4px;font-weight:700">📖 SourceFinder — Complete Guide</h2>
+  <p style="color:#475569;font-size:13px;margin:0 0 24px">Everything you need to find real factory suppliers with WeChat contacts</p>
+  <div style="display:grid;gap:16px">
+    <div style="background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.2);border-radius:14px;padding:20px">
+      <h3 style="color:#22c55e;margin:0 0 10px;font-size:15px">🚀 Quick Start (30 seconds)</h3>
+      <ol style="color:#94a3b8;font-size:13px;line-height:2;margin:0;padding-left:20px">
+        <li>Type the <b style="color:#e2e8f0">Brand Name</b> — e.g. Nike, LV, Supreme</li>
+        <li>Type the <b style="color:#e2e8f0">Product Keywords</b> — e.g. Tech Fleece, belt, Dunk Low</li>
+        <li>Leave platform on <b style="color:#e2e8f0">All-in-One</b> and hit Search</li>
+        <li>Green WeChat IDs are factory contacts — click any to copy instantly</li>
+        <li>Add them on WeChat, ask for catalog and pricing</li>
+      </ol>
+    </div>
+    <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:20px">
+      <h3 style="color:#3b82f6;margin:0 0 12px;font-size:15px">🎯 Platform Guide — Which to Use</h3>
+      <div style="display:grid;gap:8px;font-size:13px">
+        <div style="background:rgba(255,255,255,.04);border-radius:8px;padding:12px"><b style="color:#e2e8f0">⚡ All-in-One</b><span style="color:#22c55e;font-size:11px;margin-left:8px">BEST FOR BEGINNERS</span><br><span style="color:#94a3b8">Searches Baidu broadly. Widest net. Use this first every time.</span></div>
+        <div style="background:rgba(255,255,255,.04);border-radius:8px;padding:12px"><b style="color:#e2e8f0">🖼️ Yupoo</b><span style="color:#f59e0b;font-size:11px;margin-left:8px">BEST HIT RATE FOR REPS</span><br><span style="color:#94a3b8">Suppliers post full photo catalogs. WeChat always in bio. Try this if All-in-One doesn't work.</span></div>
+        <div style="background:rgba(255,255,255,.04);border-radius:8px;padding:12px"><b style="color:#e2e8f0">🎵 Douyin</b><span style="color:#fe2c55;font-size:11px;margin-left:8px">BEST FOR VIDEO CATALOGS</span><br><span style="color:#94a3b8">Chinese TikTok. Suppliers post product videos. WeChat is in their bio. Great for finding new factories.</span></div>
+        <div style="background:rgba(255,255,255,.04);border-radius:8px;padding:12px"><b style="color:#e2e8f0">🏭 1688</b><br><span style="color:#94a3b8">Real wholesale factory prices. Usually no WeChat — contact through the platform chat instead.</span></div>
+        <div style="background:rgba(255,255,255,.04);border-radius:8px;padding:12px"><b style="color:#e2e8f0">📱 Weidian</b><br><span style="color:#94a3b8">WeChat-linked mini stores. Small sellers, low MOQ, easy to contact directly.</span></div>
+        <div style="background:rgba(255,255,255,.04);border-radius:8px;padding:12px"><b style="color:#e2e8f0">📕 XiaoHongShu</b><br><span style="color:#94a3b8">Chinese Instagram. Fashion suppliers post here constantly. DM or grab WeChat from posts.</span></div>
+        <div style="background:rgba(255,255,255,.04);border-radius:8px;padding:12px"><b style="color:#e2e8f0">👟 Dewu/Poizon</b><br><span style="color:#94a3b8">Best for passing quality sneakers. Searches for Putian factory contacts specifically.</span></div>
+      </div>
+    </div>
+    <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:20px">
+      <h3 style="color:#f59e0b;margin:0 0 12px;font-size:15px">🔍 Pro Search Tips</h3>
+      <div style="display:grid;gap:8px;font-size:13px;color:#94a3b8">
+        <div style="background:rgba(255,255,255,.04);border-radius:8px;padding:10px 14px"><b style="color:#e2e8f0">Always fill Brand field</b> — activates brand-lock. Searching "LV" in brand field rejects any non-LV result automatically.</div>
+        <div style="background:rgba(255,255,255,.04);border-radius:8px;padding:10px 14px"><b style="color:#e2e8f0">Be specific</b> — "Jordan 4 Thunder" beats "Jordan shoes". Include colorway or model number.</div>
+        <div style="background:rgba(255,255,255,.04);border-radius:8px;padding:10px 14px"><b style="color:#e2e8f0">Load More</b> — best factory contacts are often on page 2-3. Always hit Load More after first results.</div>
+        <div style="background:rgba(255,255,255,.04);border-radius:8px;padding:10px 14px"><b style="color:#e2e8f0">WeChat Only toggle</b> — filters to only show listings with confirmed WeChat IDs. Saves time.</div>
+        <div style="background:rgba(255,255,255,.04);border-radius:8px;padding:10px 14px"><b style="color:#e2e8f0">Image Search button</b> — upload any product photo, Baidu reverse searches to find factories making that exact item.</div>
+        <div style="background:rgba(255,255,255,.04);border-radius:8px;padding:10px 14px"><b style="color:#e2e8f0">Deep Scan</b> — visits each result page, reads QR codes to find hidden WeChats. Slower but finds more.</div>
+        <div style="background:rgba(255,255,255,.04);border-radius:8px;padding:10px 14px"><b style="color:#e2e8f0">Try multiple platforms</b> — same search on Yupoo vs Douyin returns different suppliers every time.</div>
+      </div>
+    </div>
+    <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:20px">
+      <h3 style="color:#a855f7;margin:0 0 12px;font-size:15px">✅ Passing Mode — NFC Quality</h3>
+      <p style="color:#94a3b8;font-size:13px;line-height:1.7;margin:0 0 12px">Click the Passing tab to search for passing-quality/NFC factories using specialized Chinese keywords: 过验, NFC芯片, 1:1, 莆田, 同厂. These target export-quality factories that produce goods passing retail authentication.</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px">
+        <div style="background:rgba(168,85,247,.08);border:1px solid rgba(168,85,247,.2);border-radius:8px;padding:10px;color:#c084fc"><b>过验</b> — Passes authentication</div>
+        <div style="background:rgba(168,85,247,.08);border:1px solid rgba(168,85,247,.2);border-radius:8px;padding:10px;color:#c084fc"><b>NFC芯片</b> — Has NFC chip like retail</div>
+        <div style="background:rgba(168,85,247,.08);border:1px solid rgba(168,85,247,.2);border-radius:8px;padding:10px;color:#c084fc"><b>莆田</b> — Putian city sneaker factories</div>
+        <div style="background:rgba(168,85,247,.08);border:1px solid rgba(168,85,247,.2);border-radius:8px;padding:10px;color:#c084fc"><b>1:1/同厂</b> — Same factory as retail</div>
+      </div>
+    </div>
+    <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:20px">
+      <h3 style="color:#ef4444;margin:0 0 12px;font-size:15px">💬 What to Say to Suppliers</h3>
+      <div style="background:rgba(0,0,0,.3);border-radius:8px;padding:12px;font-family:monospace;color:#94a3b8;font-size:13px;margin-bottom:8px">你好，我想买[品牌][产品]，能发图片和价格吗？谢谢</div>
+      <p style="color:#475569;font-size:12px;margin:0 0 12px">"Hello, I want to buy [brand][product], can you send pictures and price? Thank you"</p>
+      <ul style="color:#94a3b8;font-size:13px;line-height:1.9;margin:0;padding-left:18px">
+        <li>Ask for <b style="color:#e2e8f0">产品图片</b> (product photos) — real photos not stock images</li>
+        <li>Ask for <b style="color:#e2e8f0">价格</b> (price) and minimum order quantity</li>
+        <li>Ask for <b style="color:#e2e8f0">质量/批次</b> (quality/batch) — which version</li>
+        <li>Ask about <b style="color:#e2e8f0">国际物流</b> (international shipping)</li>
+      </ul>
+    </div>
+    <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:20px">
+      <h3 style="color:#ef4444;margin:0 0 12px;font-size:15px">❌ Common Mistakes</h3>
+      <div style="display:grid;gap:8px;font-size:13px;color:#94a3b8">
+        <div style="background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.15);border-radius:8px;padding:10px 14px">Leaving Brand field empty — disables brand-lock, you get random irrelevant results</div>
+        <div style="background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.15);border-radius:8px;padding:10px 14px">Too generic keywords — "shoes" or "bag" returns useless results. Be specific.</div>
+        <div style="background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.15);border-radius:8px;padding:10px 14px">Only checking page 1 — click Load More every time, best contacts are buried deeper</div>
+        <div style="background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.15);border-radius:8px;padding:10px 14px">Ignoring Yupoo results — they almost always have WeChat in the bio, click Open Page</div>
+      </div>
+    </div>
+    <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:20px">
+      <h3 style="color:#06b6d4;margin:0 0 12px;font-size:15px">🛠️ Other Tabs</h3>
+      <div style="display:grid;gap:8px;font-size:13px;color:#94a3b8">
+        <div style="background:rgba(255,255,255,.04);border-radius:8px;padding:10px 14px"><b style="color:#e2e8f0">Tools</b> — Price calculators, QR generator, keyword builder, shipping estimator, batch comparison, supplier validator. Research tools are also here.</div>
+        <div style="background:rgba(255,255,255,.04);border-radius:8px;padding:10px 14px"><b style="color:#e2e8f0">Finds</b> — Save suppliers you have contacted or want to follow up with. Rate them, add notes.</div>
+        <div style="background:rgba(255,255,255,.04);border-radius:8px;padding:10px 14px"><b style="color:#e2e8f0">CRM</b> — Full contact manager. Save WeChat IDs with names, notes and purchase history.</div>
+        <div style="background:rgba(255,255,255,.04);border-radius:8px;padding:10px 14px"><b style="color:#e2e8f0">Freight</b> — Find freight forwarders who ship from China. Filter by route.</div>
+        <div style="background:rgba(255,255,255,.04);border-radius:8px;padding:10px 14px"><b style="color:#e2e8f0">Keyboard shortcuts</b> — Ctrl+K to focus search, Ctrl+H for history, Ctrl+L to logout.</div>
+      </div>
+    </div>
   </div>
-  <div style="display:flex;gap:4px;padding:10px 12px;flex-wrap:wrap;border-bottom:1px solid rgba(255,255,255,.05)">
-    <button onclick="_sfTool('cny')" class="_sftab" data-tool="cny" style="padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer;background:rgba(34,211,238,.15);border:1px solid rgba(34,211,238,.3);color:#22d3ee">CNY</button>
-    <button onclick="_sfTool('ship')" class="_sftab" data-tool="ship" style="padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:#64748b">Ship</button>
-    <button onclick="_sfTool('agent')" class="_sftab" data-tool="agent" style="padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:#64748b">Agent</button>
-    <button onclick="_sfTool('link')" class="_sftab" data-tool="link" style="padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:#64748b">Link</button>
-    <button onclick="_sfTool('qc')" class="_sftab" data-tool="qc" style="padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:#64748b">QC</button>
-    <button onclick="_sfTool('size')" class="_sftab" data-tool="size" style="padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:#64748b">Size</button>
-    <button onclick="_sfTool('duty')" class="_sftab" data-tool="duty" style="padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:#64748b">Duty</button>
-    <button onclick="_sfTool('gloss')" class="_sftab" data-tool="gloss" style="padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:#64748b">Terms</button>
-  </div>
-  <div id="_sfToolContent" style="padding:14px 16px"></div>
 </div>
-<script src="/static/script.js"></script>
-</body></html>
+<div id="tab-chat" class="tab-panel" data-tab="chat" style="padding:24px;max-width:800px;margin:0 auto">
+  <h2 style="color:#e2e8f0;font-size:20px;margin:0 0 4px;font-weight:700">💬 Community Chat</h2>
+  <p style="color:#475569;font-size:13px;margin:0 0 16px">Chat with other SourceFinder members. Share finds, tips, WeChat contacts.</p>
+  <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:14px;display:flex;flex-direction:column;height:500px">
+    <div id="chat-msgs" style="flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px">
+      <div style="text-align:center;color:#334155;font-size:12px;padding:20px">Loading messages...</div>
+    </div>
+    <div style="padding:12px;border-top:1px solid rgba(255,255,255,.06);display:flex;gap:8px">
+      <input id="chat-input" placeholder="Type a message... (Enter to send)"
+        style="flex:1;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#e2e8f0;padding:8px 14px;border-radius:8px;font-size:13px;outline:none"
+        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();_sfSendChat();}">
+      <button onclick="_sfSendChat()" style="background:#22d3ee;border:none;color:#0f172a;padding:8px 18px;border-radius:8px;font-size:13px;cursor:pointer;font-weight:700">Send</button>
+    </div>
+  </div>
+</div></main>
+
+  <!-- MODALS -->
+  <div class="modal-overlay" id="findModal" style="display:none" onclick="if(event.target===this)closeFindModal()">
+    <div class="modal-card">
+      <h3 class="modal-title">Post a Find</h3>
+      <label>Title *</label><input type="text" id="findTitle" placeholder="e.g. Putian Jordan 4 NFC factory"/>
+      <label>Product</label><input type="text" id="findProduct" placeholder="Sneakers, Bags…"/>
+      <label>WeChat ID</label><input type="text" id="findWechat" placeholder="supplier WeChat ID"/>
+      <label>Price Range</label><input type="text" id="findPrice" placeholder="¥120–180, MOQ 10"/>
+      <label>Description</label><textarea id="findDesc" placeholder="Quality, communication, turnaround…"></textarea>
+      <div class="modal-btns">
+        <button class="btn-primary" onclick="submitFind()">Post Find</button>
+        <button class="tool-btn" onclick="closeFindModal()">Cancel</button>
+      </div>
+      <p class="msg" id="findMsg"></p>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="historyModal" style="display:none" onclick="if(event.target===this)closeHistory()">
+    <div class="modal-card">
+      <h3 class="modal-title">Search History</h3>
+      <div id="historyList"></div>
+      <button class="tool-btn" style="margin-top:14px;width:100%;justify-content:center" onclick="closeHistory()">Close</button>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="crmModal" style="display:none" onclick="if(event.target===this)closeCrmModal()">
+    <div class="modal-card">
+      <h3 class="modal-title">Add Supplier</h3>
+      <label>Name *</label><input type="text" id="crmName" placeholder="Factory name"/>
+      <label>WeChat ID</label><input type="text" id="crmWechat" placeholder="e.g. ptx351"/>
+      <label>Product</label><input type="text" id="crmProduct" placeholder="Jordan 4, Tech Fleece…"/>
+      <label>Price</label><input type="text" id="crmPrice" placeholder="¥180/pair, MOQ 10"/>
+      <label>Status</label>
+      <select id="crmStatus" style="width:100%;height:40px;padding:0 12px;background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.07);border-radius:8px;color:#f1f5f9;font-family:inherit;margin-bottom:10px;outline:none">
+        <option value="new">🆕 New Lead</option>
+        <option value="contacted">📨 Contacted</option>
+        <option value="replied">💬 Replied</option>
+        <option value="sampling">📦 Sampling</option>
+        <option value="ordered">✅ Ordered</option>
+        <option value="passed">❌ Passed</option>
+      </select>
+      <label>Notes</label><textarea id="crmNotes" placeholder="Quality, MOQ, notes…"></textarea>
+      <div class="modal-btns">
+        <button class="btn-primary" onclick="saveCrmEntry()">Save</button>
+        <button class="tool-btn" onclick="closeCrmModal()">Cancel</button>
+      </div>
+      <p class="msg" id="crmMsg"></p>
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='script.js') }}?v=999"></script>
+
+<!-- DOUYIN/TIKTOK TAB -->
+<div id="tab-douyin" class="tab-panel" data-tab="douyin" style="padding:24px">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+    <div>
+      <h2 style="color:#22d3ee;font-size:20px;margin-bottom:4px">🎵 Douyin Supplier Search</h2>
+      <p style="color:#475569;font-size:12px">Chinese TikTok — suppliers post product catalogs here. WeChat in bio.</p>
+    </div>
+    <div style="background:rgba(254,44,85,.1);border:1px solid rgba(254,44,85,.2);padding:8px 14px;border-radius:8px;font-size:11px;color:#fe2c55">
+      💡 Tip: Search with brand + product, look for accounts with WeChat in bio
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
+    <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:16px">
+      <div style="font-size:11px;color:#475569;margin-bottom:8px;font-weight:600">SEARCH DOUYIN SUPPLIERS</div>
+      <input id="dy-brand" placeholder="Brand (e.g. Nike, LV, Gucci)" style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#e2e8f0;padding:8px 12px;border-radius:8px;font-size:13px;outline:none;margin-bottom:8px;box-sizing:border-box">
+      <input id="dy-product" placeholder="Product (e.g. Calm Slides, Belt, Bag)" style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#e2e8f0;padding:8px 12px;border-radius:8px;font-size:13px;outline:none;margin-bottom:12px;box-sizing:border-box">
+      <button onclick="_dySearch()" style="width:100%;background:#fe2c55;border:none;color:white;padding:10px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">🔍 Search Douyin Suppliers</button>
+    </div>
+    <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:16px">
+      <div style="font-size:11px;color:#475569;margin-bottom:8px;font-weight:600">HOW TO USE DOUYIN FOR SOURCING</div>
+      <p style="color:#94a3b8;font-size:12px;line-height:1.7">1. Search for your item — Douyin suppliers post product videos<br>2. Check video description for WeChat<br>3. Look at account bio — WeChat usually listed there<br>4. DM them on Douyin and ask for catalog link (微购相册)<br>5. Filter by accounts with 抖音小店 (Douyin shop) = more legit</p>
+    </div>
+  </div>
+
+  <div id="dy-results" style="display:grid;gap:12px">
+    <div style="text-align:center;color:#334155;padding:40px;font-size:13px">Search to find Douyin supplier videos and accounts</div>
+  </div>
+</div>
+<div id="_sfSideBtn" onclick="_sfTogglePanel()" style="position:fixed;bottom:24px;right:24px;z-index:99990;width:46px;height:46px;border-radius:12px;background:rgba(34,211,238,.12);border:1px solid rgba(34,211,238,.3);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px" title="Buyer Tools"><span style="width:18px;height:2px;background:#22d3ee;border-radius:2px;display:block"></span><span style="width:18px;height:2px;background:#22d3ee;border-radius:2px;display:block"></span><span style="width:14px;height:2px;background:#22d3ee;border-radius:2px;display:block"></span></div><div id="_sfSideOverlay" onclick="_sfTogglePanel()" style="display:none;position:fixed;inset:0;z-index:99988;background:rgba(0,0,0,.5)"></div><div id="_sfSidePanel" style="position:fixed;right:-370px;top:0;bottom:0;width:350px;z-index:99999;background:#080f1a;border-left:1px solid rgba(34,211,238,.15);transition:right .3s ease;overflow-y:auto;font-family:inherit"><div style="padding:16px 18px 12px;border-bottom:1px solid rgba(255,255,255,.06);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:#080f1a;z-index:2"><div><div style="color:#22d3ee;font-size:14px;font-weight:700">Buyer Tools</div><div style="color:#334155;font-size:11px">CNY, shipping, agents, QC, sizes</div></div><button onclick="_sfTogglePanel()" style="background:none;border:none;color:#475569;font-size:22px;cursor:pointer">x</button></div><div style="display:flex;gap:4px;padding:10px 12px;flex-wrap:wrap;border-bottom:1px solid rgba(255,255,255,.05)"><button class="_sftab" data-t="cny" onclick="_sfTool('cny')" style="padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer;background:rgba(34,211,238,.15);border:1px solid rgba(34,211,238,.3);color:#22d3ee">CNY</button><button class="_sftab" data-t="ship" onclick="_sfTool('ship')" style="padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:#64748b">Ship</button><button class="_sftab" data-t="agent" onclick="_sfTool('agent')" style="padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:#64748b">Agent</button><button class="_sftab" data-t="link" onclick="_sfTool('link')" style="padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:#64748b">Link</button><button class="_sftab" data-t="qc" onclick="_sfTool('qc')" style="padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:#64748b">QC</button><button class="_sftab" data-t="size" onclick="_sfTool('size')" style="padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:#64748b">Size</button><button class="_sftab" data-t="duty" onclick="_sfTool('duty')" style="padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:#64748b">Duty</button><button class="_sftab" data-t="gloss" onclick="_sfTool('gloss')" style="padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:#64748b">Terms</button></div><div id="_sfToolContent" style="padding:14px 16px"></div></div><script src="/static/script.js"></script>
+</body>
+</html>
