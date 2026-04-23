@@ -633,6 +633,147 @@
 ._ffi:focus{border-color:rgba(34,211,238,.4);}
 </style>
 
+
+    <!-- DOUYIN TAB -->
+    <div id="tab-douyin" class="tab-panel" style="display:none">
+      <div class="section-header" style="margin-bottom:20px">
+        <h2 style="color:#e2e8f0;font-size:22px;font-weight:800;margin:0 0 6px">&#127925; Douyin Supplier Search</h2>
+        <p style="color:#475569;font-size:13px;margin:0">Find suppliers directly on Chinese TikTok. Douyin has thousands of Putian factories, freight agents, and 1688 resellers showing live product videos.</p>
+      </div>
+
+      <!-- SEARCH BOX -->
+      <div class="search-card" style="margin-bottom:20px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+          <div>
+            <label style="color:#475569;font-size:11px;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px">Brand</label>
+            <input id="dy-brand" placeholder="Nike, Jordan, Supreme..." style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#e2e8f0;padding:10px 14px;border-radius:10px;font-size:13px;outline:none;box-sizing:border-box;font-family:inherit" onfocus="this.style.borderColor='rgba(34,211,238,.4)'" onblur="this.style.borderColor='rgba(255,255,255,.1)'">
+          </div>
+          <div>
+            <label style="color:#475569;font-size:11px;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px">Product</label>
+            <input id="dy-product" placeholder="Jordan 4, Tech Fleece..." style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#e2e8f0;padding:10px 14px;border-radius:10px;font-size:13px;outline:none;box-sizing:border-box;font-family:inherit" onfocus="this.style.borderColor='rgba(34,211,238,.4)'" onblur="this.style.borderColor='rgba(255,255,255,.1)'">
+          </div>
+        </div>
+
+        <!-- Search mode chips -->
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+          <span style="color:#475569;font-size:11px;padding:6px 0;align-self:center">Mode:</span>
+          <button class="dy-mode active" data-mode="supplier" onclick="dySetMode('supplier')" style="padding:6px 14px;border-radius:20px;font-size:12px;cursor:pointer;background:rgba(34,211,238,.15);border:1px solid rgba(34,211,238,.3);color:#22d3ee;transition:all .2s">&#127981; Factory Supplier</button>
+          <button class="dy-mode" data-mode="passing" onclick="dySetMode('passing')" style="padding:6px 14px;border-radius:20px;font-size:12px;cursor:pointer;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#64748b;transition:all .2s">&#9889; Passing / 1:1</button>
+          <button class="dy-mode" data-mode="wholesale" onclick="dySetMode('wholesale')" style="padding:6px 14px;border-radius:20px;font-size:12px;cursor:pointer;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#64748b;transition:all .2s">&#128230; Wholesale</button>
+          <button class="dy-mode" data-mode="freight" onclick="dySetMode('freight')" style="padding:6px 14px;border-radius:20px;font-size:12px;cursor:pointer;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#64748b;transition:all .2s">&#128666; Freight Agent</button>
+          <button class="dy-mode" data-mode="live" onclick="dySetMode('live')" style="padding:6px 14px;border-radius:20px;font-size:12px;cursor:pointer;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#64748b;transition:all .2s">&#128250; Live Sellers</button>
+        </div>
+
+        <div style="display:flex;gap:10px">
+          <button onclick="dySearch()" style="flex:1;padding:12px;background:linear-gradient(135deg,#22d3ee,#6366f1);border:none;color:#000;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;transition:all .2s" onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 6px 24px rgba(34,211,238,.4)'" onmouseout="this.style.transform='';this.style.boxShadow=''">&#128269; Search Douyin</button>
+          <button onclick="dyOpenApp()" style="padding:12px 18px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#94a3b8;border-radius:10px;font-size:13px;cursor:pointer;transition:all .2s" onmouseover="this.style.background='rgba(255,255,255,.1)'" onmouseout="this.style.background='rgba(255,255,255,.06)'" title="Open Douyin app search">Open App &#8599;</button>
+        </div>
+      </div>
+
+      <!-- QUERY DISPLAY -->
+      <div id="dy-query-display" style="display:none;background:rgba(34,211,238,.05);border:1px solid rgba(34,211,238,.15);border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:#475569">
+        <span style="color:#22d3ee;font-weight:600">Search query: </span><span id="dy-query-text" style="color:#94a3b8;font-family:monospace"></span>
+      </div>
+
+      <!-- RESULTS -->
+      <div id="dy-results"></div>
+
+      <!-- HOW IT WORKS -->
+      <div style="margin-top:24px;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:20px">
+        <h3 style="color:#e2e8f0;font-size:15px;font-weight:700;margin:0 0 14px">&#128214; How to Find Suppliers on Douyin</h3>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div style="background:rgba(255,255,255,.03);border-radius:10px;padding:14px">
+            <div style="color:#22d3ee;font-size:13px;font-weight:600;margin-bottom:8px">&#127981; Factory Search Tips</div>
+            <ul style="color:#64748b;font-size:12px;line-height:1.8;margin:0;padding-left:16px">
+              <li>Search: 品牌 + 厂家 + 微信 (brand + factory + wechat)</li>
+              <li>Add 莆田 for Putian sneaker factories</li>
+              <li>Add 一手货源 for first-hand supply</li>
+              <li>Look for accounts with 直播 (live stream)</li>
+              <li>High follower count = more established</li>
+            </ul>
+          </div>
+          <div style="background:rgba(255,255,255,.03);border-radius:10px;padding:14px">
+            <div style="color:#22d3ee;font-size:13px;font-weight:600;margin-bottom:8px">&#9889; Passing Search Tips</div>
+            <ul style="color:#64748b;font-size:12px;line-height:1.8;margin:0;padding-left:16px">
+              <li>Search: 品牌 + 纯原 (pure original)</li>
+              <li>Add PK版/OG版/LJR版 for batch codes</li>
+              <li>Look for 过验 (passes authentication)</li>
+              <li>Check video comments for WeChat</li>
+              <li>DM accounts with 联系方式 in bio</li>
+            </ul>
+          </div>
+          <div style="background:rgba(255,255,255,.03);border-radius:10px;padding:14px">
+            <div style="color:#22d3ee;font-size:13px;font-weight:600;margin-bottom:8px">&#128176; Negotiation Tips</div>
+            <ul style="color:#64748b;font-size:12px;line-height:1.8;margin:0;padding-left:16px">
+              <li>Always ask for 价格表 (price list)</li>
+              <li>Request 实物图 (real product photos)</li>
+              <li>Negotiate MOQ — factories prefer bulk</li>
+              <li>Ask about 快递包邮 (shipping included)</li>
+              <li>Pay via WeChat Pay, avoid Alipay strangers</li>
+            </ul>
+          </div>
+          <div style="background:rgba(255,255,255,.03);border-radius:10px;padding:14px">
+            <div style="color:#22d3ee;font-size:13px;font-weight:600;margin-bottom:8px">&#128683; Red Flags</div>
+            <ul style="color:#64748b;font-size:12px;line-height:1.8;margin:0;padding-left:16px">
+              <li>Asks for full payment before QC photos</li>
+              <li>No product videos, only stock images</li>
+              <li>Price way below market (too good = fake)</li>
+              <li>Refuses video call / live demo</li>
+              <li>Pushes you to pay via personal bank</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- QUICK SEARCH TEMPLATES -->
+      <div style="margin-top:16px">
+        <div style="color:#475569;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">Quick Search Templates</div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px" id="dy-quick-btns"></div>
+      </div>
+
+      <!-- KEYWORD BUILDER -->
+      <div style="margin-top:16px;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:18px">
+        <h3 style="color:#e2e8f0;font-size:14px;font-weight:700;margin:0 0 12px">&#128295; Douyin Keyword Builder</h3>
+        <p style="color:#475569;font-size:12px;margin:0 0 12px">Build the perfect Douyin search query for your item</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">
+          <div>
+            <div style="color:#334155;font-size:10px;margin-bottom:4px">Product type</div>
+            <select id="dy-kw-type" style="width:100%;background:#060c18;border:1px solid rgba(255,255,255,.1);color:#e2e8f0;padding:8px;border-radius:8px;font-size:12px;outline:none;font-family:inherit">
+              <option value="sneakers">Sneakers</option>
+              <option value="clothing">Clothing</option>
+              <option value="bags">Bags</option>
+              <option value="watches">Watches</option>
+              <option value="jewelry">Jewelry</option>
+            </select>
+          </div>
+          <div>
+            <div style="color:#334155;font-size:10px;margin-bottom:4px">Quality tier</div>
+            <select id="dy-kw-tier" style="width:100%;background:#060c18;border:1px solid rgba(255,255,255,.1);color:#e2e8f0;padding:8px;border-radius:8px;font-size:12px;outline:none;font-family:inherit">
+              <option value="">Any</option>
+              <option value="纯原">Pure Original (纯原)</option>
+              <option value="公司级">Company Grade (公司级)</option>
+              <option value="莆田">Putian (莆田)</option>
+              <option value="1:1">1:1</option>
+            </select>
+          </div>
+          <div>
+            <div style="color:#334155;font-size:10px;margin-bottom:4px">Goal</div>
+            <select id="dy-kw-goal" style="width:100%;background:#060c18;border:1px solid rgba(255,255,255,.1);color:#e2e8f0;padding:8px;border-radius:8px;font-size:12px;outline:none;font-family:inherit">
+              <option value="factory">Find factory</option>
+              <option value="wechat">Get WeChat</option>
+              <option value="wholesale">Wholesale deal</option>
+              <option value="video">See product video</option>
+            </select>
+          </div>
+        </div>
+        <button onclick="dyBuildKw()" style="width:100%;padding:10px;background:rgba(34,211,238,.12);border:1px solid rgba(34,211,238,.25);color:#22d3ee;border-radius:9px;font-size:13px;cursor:pointer;font-weight:600;font-family:inherit">Build Keyword String</button>
+        <div id="dy-kw-result" style="margin-top:10px;display:none;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:9px;padding:12px">
+          <div style="color:#475569;font-size:10px;margin-bottom:6px">Suggested Douyin search query:</div>
+          <div id="dy-kw-text" style="color:#22d3ee;font-size:13px;font-family:monospace;margin-bottom:8px"></div>
+          <button id="dy-kw-copy" onclick="dyKwCopy()" style="padding:6px 14px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#94a3b8;border-radius:7px;font-size:11px;cursor:pointer;font-family:inherit">Copy</button>
+        </div>
+      </div>
+    </div>
 <div id="_sfMenuBtn" onclick="_sfMT()"><span></span><span></span><span></span></div>
 <div id="_sfOverlay" onclick="_sfMT()"></div>
 <div id="_sfNavPanel">

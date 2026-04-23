@@ -2720,3 +2720,88 @@ function _ffLoad(inp){var f=inp.files[0];if(!f)return;var reader=new FileReader(
 function _ffScanChart(){var badge=document.getElementById("_ffScanBadge"),ratesBox=document.getElementById("_ffRatesBox"),ratesList=document.getElementById("_ffRatesList");if(badge){badge.textContent="AI scanning...";badge.style.color="#f59e0b";}if(ratesBox)ratesBox.style.display="none";var payload={model:"claude-sonnet-4-20250514",max_tokens:1000,messages:[{role:"user",content:[{type:"image",source:{type:"base64",media_type:window._ffMime||"image/jpeg",data:window._ffB64}},{type:"text",text:"This is a freight forwarder rate chart. Extract all shipping lines and per-kg rates in RMB yuan. Return ONLY a JSON array no markdown: [{line:name,rate:number,notes:optional}]. Convert USD to RMB at 7.25 if needed."}]}]};fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)}).then(function(r){return r.json();}).then(function(d){try{var text=(d.content||[]).map(function(b){return b.type==="text"?b.text:"";}).join("").replace(/```json|```/g,"").trim();var rates=JSON.parse(text);window._ffRates=rates;var opts=rates.map(function(r){return "<option value='"+r.rate+"'>"+r.line+" ("+r.rate+" RMB/kg)</option>";}).join("");document.querySelectorAll("._ffS").forEach(function(s){s.innerHTML="<option value=''>Select line...</option>"+opts;});if(ratesList)ratesList.innerHTML=rates.map(function(r){return "<div style='display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.05)'>"+"<span style='color:#94a3b8;font-size:12px'>"+r.line+"</span>"+"<span style='color:#22d3ee;font-size:12px;font-weight:700'>"+r.rate+" RMB/kg</span></div>"+(r.notes?"<div style='color:#334155;font-size:10px'>"+r.notes+"</div>":"");}).join("");if(ratesBox)ratesBox.style.display="block";if(badge){badge.textContent="Rates loaded!";badge.style.color="#22c55e";}}catch(e){if(badge){badge.textContent="Could not read chart";badge.style.color="#ef4444";}}}).catch(function(){if(badge){badge.textContent="Scan failed";badge.style.color="#ef4444";}});}
 function _ffAddItem(){var list=document.getElementById("_ffItems");if(!list)return;var opts="<option value=''>Select line...</option>"+((window._ffRates||[]).map(function(r){return "<option value='"+r.rate+"'>"+r.line+" ("+r.rate+" RMB/kg)</option>";})).join("");var d=document.createElement("div");d.className="_ffItem";d.style.cssText="display:grid;grid-template-columns:1fr 65px 110px 28px;gap:8px;margin-bottom:8px;align-items:center";d.innerHTML="<input class='_ffN' placeholder='Item name' style='background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#e2e8f0;padding:9px 12px;border-radius:9px;font-size:13px;outline:none;box-sizing:border-box;font-family:inherit'>"+"<input class='_ffQ' type='number' placeholder='Qty' min='1' value='1' style='background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#e2e8f0;padding:9px;border-radius:9px;font-size:13px;outline:none;text-align:center;box-sizing:border-box;font-family:inherit'>"+"<select class='_ffS' style='background:#060c18;border:1px solid rgba(255,255,255,.1);color:#e2e8f0;padding:9px;border-radius:9px;font-size:12px;outline:none;font-family:inherit'>"+opts+"</select>"+"<button onclick='this.closest(\"._ffItem\").remove()' style='background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);color:#f87171;border-radius:8px;cursor:pointer;font-size:14px;height:36px'>x</button>";list.appendChild(d);}
 function _ffCalcAI(){var res=document.getElementById("_ffResult");if(!res)return;var items=[];document.querySelectorAll("._ffItem").forEach(function(row){var name=(row.querySelector("._ffN")||{}).value||"",qty=parseInt((row.querySelector("._ffQ")||{}).value||1),rate=parseFloat((row.querySelector("._ffS")||{}).value||0);if(name)items.push({name:name,qty:qty,rate:rate});});if(!items.length){res.innerHTML="<span style='color:#ef4444'>Add at least one item</span>";return;}if(items.some(function(i){return !i.rate;})){res.innerHTML="<span style='color:#f59e0b'>Select a shipping line for every item</span>";return;}res.innerHTML="<div style='text-align:center;color:#f59e0b;padding:20px;font-size:13px'>AI estimating weights...</div>";var prompt="Estimate shipping weights for these streetwear/sneaker items. Return ONLY JSON array no markdown: [{name:string,qty:number,kg_each:number,rate:number}].\n";prompt+="Typical weights: sneakers 0.9kg, tshirt 0.25kg, hoodie 0.6kg, jacket 0.9kg, bag 0.8kg, hat 0.15kg, jeans 0.6kg, shorts 0.3kg, watch 0.15kg.\n";prompt+="Items:\n"+items.map(function(i){return i.qty+"x "+i.name+" (rate:"+i.rate+" RMB/kg)";}).join("\n");fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:800,messages:[{role:"user",content:prompt}]})}).then(function(r){return r.json();}).then(function(d){try{var text=(d.content||[]).map(function(b){return b.type==="text"?b.text:"";}).join("").replace(/```json|```/g,"").trim();var parsed=JSON.parse(text);var totalRmb=0,totalKg=0,totalItems=0;var rows=parsed.map(function(it){var tkg=(it.kg_each||0)*it.qty,cost=tkg*(it.rate||0);totalKg+=tkg;totalRmb+=cost;totalItems+=it.qty;return "<div style='display:flex;justify-content:space-between;align-items:center;padding:9px 12px;background:rgba(255,255,255,.04);border-radius:9px;margin-bottom:6px'>"+"<div><div style='color:#e2e8f0;font-size:13px;font-weight:600'>"+it.name+"</div>"+"<div style='color:#475569;font-size:11px'>x"+it.qty+" @ ~"+it.kg_each+"kg each = "+tkg.toFixed(2)+"kg</div></div>"+"<div style='color:#22d3ee;font-size:15px;font-weight:700'>"+cost.toFixed(0)+" RMB</div></div>";}).join("");var usd=(totalRmb/7.25).toFixed(0);res.innerHTML="<div style='background:rgba(34,211,238,.05);border:1px solid rgba(34,211,238,.2);border-radius:12px;padding:14px'>"+rows+"<div style='border-top:1px solid rgba(34,211,238,.2);margin-top:10px;padding-top:10px'>"+"<div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:3px'>"+"<span style='color:#94a3b8;font-size:13px'>"+totalItems+" items &middot; "+totalKg.toFixed(2)+"kg</span>"+"<span style='color:#22c55e;font-size:24px;font-weight:700'>"+totalRmb.toFixed(0)+" RMB</span></div>"+"<div style='text-align:right;color:#475569;font-size:12px'>approx $"+usd+" USD</div>"+"<div style='color:#334155;font-size:10px;margin-top:8px;text-align:center'>AI weight estimates. Actual cost depends on real weighed package.</div>"+"</div></div>";}catch(e){res.innerHTML="<span style='color:#ef4444'>Calculation failed.</span>";}}).catch(function(){res.innerHTML="<span style='color:#ef4444'>Request failed.</span>";});}
+var _dyMode='supplier';
+var _dyQt=[
+  {label:'Jordan Factory',brand:'Jordan',product:'球鞋 厂家 微信 莆田'},
+  {label:'Nike Passing',brand:'Nike',product:'纯原 过验 PK版'},
+  {label:'Supreme',brand:'Supreme',product:'厂家直销 一手货源'},
+  {label:'LV Bags',brand:'LV',product:'包包 厂家 货源 微信'},
+  {label:'Freight Agent',brand:'',product:'转运 集运 代发货 微信'},
+  {label:'Wholesale',brand:'',product:'球鞋 批发 货源 一件代发'},
+  {label:'Stone Island',brand:'Stone Island',product:'石头岛 厂家 直销'},
+  {label:'Tech Fleece',brand:'Nike',product:'科技套装 厂家 莆田'},
+];
+function dyInit(){
+  var qb=document.getElementById('dy-quick-btns');if(!qb||qb.children.length>0)return;
+  _dyQt.forEach(function(t){
+    var btn=document.createElement('button');btn.textContent=t.label;
+    btn.style.cssText='padding:6px 14px;border-radius:20px;font-size:12px;cursor:pointer;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#94a3b8;transition:all .2s;font-family:inherit';
+    btn.onmouseover=function(){this.style.background='rgba(34,211,238,.1)';this.style.color='#22d3ee';};
+    btn.onmouseout=function(){this.style.background='rgba(255,255,255,.05)';this.style.color='#94a3b8';};
+    btn.onclick=function(){var bEl=document.getElementById('dy-brand'),pEl=document.getElementById('dy-product');if(bEl)bEl.value=t.brand;if(pEl)pEl.value=t.product;dySearch();};
+    qb.appendChild(btn);
+  });
+}
+function dySetMode(mode){
+  _dyMode=mode;
+  document.querySelectorAll('.dy-mode').forEach(function(b){b.style.background='rgba(255,255,255,.05)';b.style.borderColor='rgba(255,255,255,.1)';b.style.color='#64748b';});
+  var ab=document.querySelector('.dy-mode[data-mode="'+mode+'"]');
+  if(ab){ab.style.background='rgba(34,211,238,.15)';ab.style.borderColor='rgba(34,211,238,.3)';ab.style.color='#22d3ee';}
+}
+function dyBuildQuery(brand,product,mode){
+  var b=brand?brand+' ':'';
+  if(mode==='supplier')return b+product+' 厂家 微信 一手货源 联系方式';
+  if(mode==='passing')return b+product+' 纯原 过验 莆田 PK版 工厂';
+  if(mode==='wholesale')return b+product+' 批发 货源 代发 一件代发';
+  if(mode==='freight')return '转运 集运 '+product+' 代购 微信 报价';
+  if(mode==='live')return b+product+' 直播 货源 工厂直播';
+  return b+product;
+}
+function dyCopyQ(q){try{navigator.clipboard.writeText(q);}catch(e){}}
+function dySearch(){
+  var brand=(document.getElementById('dy-brand')||{}).value||'';
+  var product=(document.getElementById('dy-product')||{}).value||'';
+  if(!brand&&!product){var res=document.getElementById('dy-results');if(res)res.innerHTML='<div style="color:#ef4444;padding:16px;text-align:center">Enter a brand or product first</div>';return;}
+  var query=dyBuildQuery(brand,product,_dyMode);
+  window._dyLastQuery=query;
+  var qd=document.getElementById('dy-query-display'),qt=document.getElementById('dy-query-text');
+  if(qd)qd.style.display='block';if(qt)qt.textContent=query;
+  var res=document.getElementById('dy-results');if(!res)return;
+  res.innerHTML='<div style="text-align:center;padding:30px;color:#475569"><div style="font-size:28px;margin-bottom:10px">&#127925;</div><div style="color:#94a3b8;font-size:14px;font-weight:600">Building search...</div></div>';
+  var enc=encodeURIComponent(query);
+  setTimeout(function(){
+    res.innerHTML=
+      '<div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:20px;margin-bottom:12px">'+
+      '<div style="color:#e2e8f0;font-size:14px;font-weight:700;margin-bottom:6px">&#127279; Douyin Web Search</div>'+
+      '<div style="color:#475569;font-size:12px;margin-bottom:12px">Opens Douyin.com with your query. Look for WeChats in video descriptions and comments.</div>'+
+      '<a href="https://www.douyin.com/search/'+enc+'" target="_blank" style="display:inline-block;padding:10px 20px;background:linear-gradient(135deg,rgba(34,211,238,.2),rgba(99,102,241,.2));border:1px solid rgba(34,211,238,.3);color:#22d3ee;border-radius:9px;font-size:13px;font-weight:700;text-decoration:none">Open Douyin Search &#8599;</a>'+
+      '</div>'+
+      '<div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:20px;margin-bottom:12px">'+
+      '<div style="color:#e2e8f0;font-size:14px;font-weight:700;margin-bottom:8px">&#128241; Copy for Douyin App</div>'+
+      '<div style="color:#475569;font-size:12px;margin-bottom:10px">Paste into Douyin app search on your phone for best results</div>'+
+      '<div style="display:flex;gap:8px;align-items:center">'+
+      '<div style="flex:1;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:10px;color:#94a3b8;font-size:12px;font-family:monospace;word-break:break-all">'+query+'</div>'+
+      '<button onclick="dyCopyQ(window._dyLastQuery);this.textContent='Copied!';setTimeout(function(){document.activeElement.textContent='Copy';},1500)" style="padding:10px 14px;background:rgba(34,211,238,.1);border:1px solid rgba(34,211,238,.25);color:#22d3ee;border-radius:8px;font-size:12px;cursor:pointer;white-space:nowrap;font-family:inherit">Copy</button>'+
+      '</div></div>'+
+      '<div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:20px">'+
+      '<div style="color:#e2e8f0;font-size:14px;font-weight:700;margin-bottom:10px">&#128161; What to Look For</div>'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'+
+      ['Check descriptions for 微信 (WeChat)','Look for 联系方式 in bios','Comment 微信多少 to ask for WeChat','Watch for 厂家直播 (factory livestreams)','Videos with price lists = real suppliers','Accounts with 货源 in name = supply source'].map(function(t){return '<div style="background:rgba(34,211,238,.04);border:1px solid rgba(34,211,238,.1);border-radius:8px;padding:8px 10px;color:#94a3b8;font-size:11px">&#10003; '+t+'</div>';}).join('')+
+      '</div></div>';
+  },500);
+}
+function dyOpenApp(){var brand=(document.getElementById('dy-brand')||{}).value||'',product=(document.getElementById('dy-product')||{}).value||'';window.open('https://www.douyin.com/search/'+encodeURIComponent(dyBuildQuery(brand,product,_dyMode)),'_blank');}
+function dyBuildKw(){
+  var type=(document.getElementById('dy-kw-type')||{}).value||'sneakers';
+  var tier=(document.getElementById('dy-kw-tier')||{}).value||'';
+  var goal=(document.getElementById('dy-kw-goal')||{}).value||'factory';
+  var typeMap={sneakers:'球鞋 运动鞋',clothing:'衣服 服装',bags:'包包',watches:'手表',jewelry:'饰品'};
+  var goalMap={factory:'厂家直销 工厂 微信',wechat:'微信 联系方式 加我',wholesale:'批发 货源 代发',video:'实物视频 开箱'};
+  var parts=[typeMap[type]||type,tier,goalMap[goal]||''].filter(Boolean).join(' ');
+  window._dyKw=parts;
+  var res=document.getElementById('dy-kw-result'),txt=document.getElementById('dy-kw-text');
+  if(res)res.style.display='block';if(txt)txt.textContent=parts;
+}
+function dyKwCopy(){var txt=document.getElementById('dy-kw-text');if(txt){dyCopyQ(txt.textContent);var btn=document.getElementById('dy-kw-copy');if(btn){btn.textContent='Copied!';setTimeout(function(){btn.textContent='Copy';},2000);}}}
+var _origST=typeof switchTab==='function'?switchTab:null;
+if(_origST){window.switchTab=function(tab){_origST(tab);if(tab==='douyin')setTimeout(dyInit,100);};}
