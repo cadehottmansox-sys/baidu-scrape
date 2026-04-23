@@ -733,7 +733,9 @@ FILE SIZE: {len(html)} chars
         user = get_user()
         if not user:
             return jsonify({"error": "Unauthorized"}), 401
-        import base64, tempfile, os, time as _t, requests as _req
+        import base64, tempfile, os, time as _t
+        try:
+            import requests as _req
         except ImportError:
             return jsonify({"error": "requests not available"}), 500
         data = request.get_json(silent=True) or {}
@@ -765,7 +767,8 @@ FILE SIZE: {len(html)} chars
                 try: os.unlink(tmp)
                 except: pass
         except Exception as e:
-            return jsonify({"error": str(e), "ok": False}), 500
+            app.logger.error("Image search error: %s", e)
+            return jsonify({"error": str(e)}), 500
 
 
     return app
@@ -794,5 +797,3 @@ def bump_global_stats():
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5001))
     app.run(host="0.0.0.0", port=port, debug=os.getenv("FLASK_DEBUG","false").lower()=="true")
-
-# redeploy trigger
