@@ -7,3 +7,4 @@ pyzbar==0.1.9
 pytesseract==0.3.10
 requests==2.31.0
 psycopg2-binary==2.9.9
+# cache bust 1776956013535
