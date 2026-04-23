@@ -2700,3 +2700,214 @@ function setPassingBatch(batch,btn){
   });
   btn.style.background='rgba(34,211,238,.15)';btn.style.borderColor='rgba(34,211,238,.3)';btn.style.color='#22d3ee';btn.classList.add('active');
 }
+
+/* ===== BUYER TOOLS SIDE PANEL ===== */
+var _sfPanelOpen=false,_sfActiveTool='cny';
+function _sfTogglePanel(){
+  _sfPanelOpen=!_sfPanelOpen;
+  var p=document.getElementById('_sfSidePanel'),o=document.getElementById('_sfSideOverlay'),b=document.getElementById('_sfSideBtn');
+  if(p)p.style.right=_sfPanelOpen?'0':'-380px';
+  if(o)o.style.display=_sfPanelOpen?'block':'none';
+  if(b)b.style.background=_sfPanelOpen?'rgba(34,211,238,.25)':'rgba(34,211,238,.12)';
+  if(_sfPanelOpen)_sfTool(_sfActiveTool);
+}
+function _sfTool(name){
+  _sfActiveTool=name;
+  document.querySelectorAll('._sftab').forEach(function(b){
+    b.style.background='rgba(255,255,255,.04)';b.style.borderColor='rgba(255,255,255,.08)';b.style.color='#64748b';
+  });
+  var ab=document.querySelector('._sftab[data-tool="'+name+'"]');
+  if(ab){ab.style.background='rgba(34,211,238,.15)';ab.style.borderColor='rgba(34,211,238,.3)';ab.style.color='#22d3ee';}
+  var el=document.getElementById('_sfToolContent');if(!el)return;
+  var tools={cny:_sfTC,ship:_sfTS,agent:_sfTA,link:_sfTL,qc:_sfTQ,size:_sfTSz,duty:_sfTD,gloss:_sfTG};
+  if(tools[name])tools[name](el);
+}
+function _sfBox(t,c){return '<div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:14px;margin-bottom:12px"><b style="color:#e2e8f0;font-size:13px;display:block;margin-bottom:10px">'+t+'</b>'+c+'</div>';}
+function _sfNum(id,ph){return '<input id="'+id+'" type="number" placeholder="'+ph+'" style="width:100%;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);color:#e2e8f0;padding:8px 12px;border-radius:8px;font-size:13px;outline:none;box-sizing:border-box;margin-bottom:8px">';}
+function _sfBtn(l,fn){return '<button onclick="'+fn+'()" style="width:100%;padding:9px;background:rgba(34,211,238,.15);border:1px solid rgba(34,211,238,.3);color:#22d3ee;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600;margin-bottom:8px">'+l+'</button>';}
+function _sfOut(id){return '<div id="'+id+'" style="font-size:14px;font-weight:700;text-align:center;padding:8px;min-height:28px;border-radius:8px"></div>';}
+function _sfSel(id,opts,onch){return '<select id="'+id+'" '+(onch?'onchange="'+onch+'()"':'')+' style="width:100%;background:#080f1a;border:1px solid rgba(255,255,255,.1);color:#e2e8f0;padding:8px;border-radius:8px;font-size:12px;margin-bottom:8px">'+opts+'</select>';}
+
+/* CNY CONVERTER */
+function _sfTC(el){
+  el.innerHTML='<p style="color:#475569;font-size:11px;margin:0 0 10px">Approximate rates — update daily</p>'+
+    _sfBox('💱 CNY Converter',_sfNum('_cn','Amount in CNY')+
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px">'+
+    ['USD','EUR','GBP'].map(function(c){return '<button onclick="_sfCnv(''+c+'')" style="padding:7px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#94a3b8;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600">→'+c+'</button>';}).join('')+
+    '</div>'+_sfOut('_cnr')+'<p style="color:#334155;font-size:10px;margin:4px 0 0">7.25/USD · 7.8/EUR · 9.1/GBP</p>');
+}
+function _sfCnv(to){
+  var a=parseFloat(document.getElementById('_cn')&&document.getElementById('_cn').value||0);
+  if(!a){document.getElementById('_cnr').innerHTML='<span style="color:#ef4444">Enter an amount</span>';return;}
+  var r={USD:7.25,EUR:7.8,GBP:9.1};
+  document.getElementById('_cnr').innerHTML='<span style="color:#22d3ee">¥'+a.toLocaleString()+' = '+to+' '+(a/r[to]).toFixed(2)+'</span>';
+}
+
+/* SHIPPING */
+function _sfTS(el){
+  el.innerHTML='<p style="color:#475569;font-size:11px;margin:0 0 10px">Rough estimate from China</p>'+
+    _sfBox('📦 Shipping Estimator',
+    _sfSel('_shdest','<option value="US">USA</option><option value="UK">UK</option><option value="EU">Europe</option><option value="AU">Australia</option><option value="CA">Canada</option>',null)+
+    _sfSel('_shtype','<option value=".8">Sneakers (800g)</option><option value=".25">T-Shirt (250g)</option><option value=".6">Hoodie (600g)</option><option value="1.2">Bag (1.2kg)</option><option value=".9">Jacket (900g)</option><option value="0">Custom</option>','_sfShTy')+
+    '<div id="_shcust" style="display:none">'+_sfNum('_shkg','Weight (kg)')+'</div>'+
+    _sfBtn('Estimate','_sfShCalc')+_sfOut('_shres')+
+    '<p style="color:#334155;font-size:10px;margin:4px 0 0">Economy ~10-20 days · DHL ~5-7 days</p>');
+}
+function _sfShTy(){var v=document.getElementById('_shtype').value;document.getElementById('_shcust').style.display=v==='0'?'block':'none';}
+function _sfShCalc(){
+  var dest=document.getElementById('_shdest').value;
+  var tv=document.getElementById('_shtype').value;
+  var w=tv==='0'?parseFloat(document.getElementById('_shkg').value||0):parseFloat(tv);
+  if(!w){document.getElementById('_shres').innerHTML='<span style="color:#ef4444">Enter weight</span>';return;}
+  var r={US:[8,18],UK:[10,22],EU:[9,20],AU:[12,25],CA:[10,22]};
+  var b=r[dest]||r.US;
+  document.getElementById('_shres').innerHTML='<span style="color:#22c55e">Economy ~$'+Math.max(b[0],(w*b[0])).toFixed(0)+'</span><span style="color:#475569;font-size:11px;margin-left:8px">DHL ~$'+Math.max(b[1],(w*b[1])).toFixed(0)+'</span>';
+}
+
+/* AGENT FEES */
+function _sfTA(el){
+  var ag=[{n:'Sugargoo',f:0,c:'#22c55e'},{n:'CNFans',f:0.015,c:'#22d3ee'},{n:'ACBuy',f:0,c:'#22c55e'},{n:'Kakobuy',f:0.03,c:'#22d3ee'},{n:'Pandabuy',f:0.05,c:'#f59e0b'},{n:'Superbuy',f:0.08,c:'#ef4444'}];
+  window._sfAg=ag;
+  el.innerHTML='<p style="color:#475569;font-size:11px;margin:0 0 10px">Compare what each agent charges</p>'+
+    _sfBox('💰 Agent Fees',_sfNum('_agamt','Order total in CNY')+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px">'+
+    ag.map(function(a,i){return '<div style="padding:8px;background:rgba(255,255,255,.04);border-radius:7px;text-align:center"><div style="color:#475569;font-size:10px">'+a.n+'</div><div id="_ag'+i+'" style="color:'+a.c+';font-size:15px;font-weight:700">-</div></div>';}).join('')+
+    '</div>'+_sfBtn('Compare','_sfAgCalc'));
+}
+function _sfAgCalc(){
+  var amt=parseFloat(document.getElementById('_agamt').value||0);
+  if(!amt)return;
+  (window._sfAg||[]).forEach(function(a,i){
+    var el=document.getElementById('_ag'+i);
+    if(el)el.textContent=a.f===0?'FREE':'$'+(amt*a.f/7.25).toFixed(2);
+  });
+}
+
+/* LINK CONVERTER */
+function _sfTL(el){
+  el.innerHTML='<p style="color:#475569;font-size:11px;margin:0 0 10px">Opens item on every major agent</p>'+
+    _sfBox('🔗 Link Converter',
+    '<textarea id="_lnk" placeholder="Paste Taobao / Weidian / 1688 URL..." style="width:100%;height:68px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#e2e8f0;padding:8px;border-radius:8px;font-size:12px;resize:none;outline:none;box-sizing:border-box;margin-bottom:8px"></textarea>'+
+    _sfBtn('Generate Links','_sfLnkGen')+'<div id="_lnkres"></div>');
+}
+function _sfLnkGen(){
+  var url=((document.getElementById('_lnk')||{}).value||'').trim();
+  if(!url){document.getElementById('_lnkres').innerHTML='<span style="color:#ef4444">Paste a URL first</span>';return;}
+  var e=encodeURIComponent(url);
+  var ag=[['CNFans','https://cnfans.com/?num='+e],['Kakobuy','https://www.kakobuy.com/item/details?url='+e],
+    ['Sugargoo','https://www.sugargoo.com/#/home/productDetail?productLink='+e],
+    ['ACBuy','https://acbuy.com/product?url='+e],['Pandabuy','https://www.pandabuy.com/product?url='+e],
+    ['Superbuy','https://www.superbuy.com/en/page/buy/?url='+e],
+    ['Hagobuy','https://www.hagobuy.com/item/details?url='+e],
+    ['Mulebuy','https://mulebuy.com/product/?url='+e]];
+  document.getElementById('_lnkres').innerHTML=ag.map(function(a){
+    return '<a href="'+a[1]+'" target="_blank" style="display:block;padding:8px 12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:6px;color:#94a3b8;font-size:12px;text-decoration:none;margin-bottom:4px;transition:background .15s" onmouseover="this.style.background='rgba(34,211,238,.08)'" onmouseout="this.style.background='rgba(255,255,255,.04)'">→ '+a[0]+'</a>';
+  }).join('');
+}
+
+/* QC CHECKLIST */
+function _sfTQ(el){
+  window._sfQCData={
+    Sneakers:['Toe box shape matches retail','Sole thickness and color correct','Stitching clean, no loose threads','Tongue label font and size correct','Lace color and texture match','Box label barcode correct','Insole branding correct','No glue marks or uneven edges'],
+    Clothing:['Tag font, size and position correct','Seam stitching even all around','No loose threads anywhere','Material weight feels right','Zipper brand correct (YKK etc)','Print/embroidery placement correct','Color matches stock photos'],
+    Bags:['Stitching count per cm matches retail','Hardware color and weight correct','Zipper smooth and branded correctly','Serial number present and correct format','Lining color correct','Logo depth correct','Leather smell and texture natural'],
+    Watches:['Crown and pushers function smoothly','Crystal no bubbles or scratches','Caseback engravings correct','Bracelet clasp locks securely','Dial text font correct','Hands aligned at 12 oclock']
+  };
+  var cats=Object.keys(window._sfQCData);
+  el.innerHTML='<p style="color:#475569;font-size:11px;margin:0 0 10px">Check before approving QC photos</p>'+
+    _sfBox('QC Checklist',cats.map(function(c){return '<button class="_qcb" data-cat="'+c+'" onclick="_sfQCCat(''+c+'')" style="padding:5px 10px;border-radius:6px;font-size:11px;cursor:pointer;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:#64748b;margin:0 4px 6px 0">'+c+'</button>';}).join('')+
+    '<div id="_qclist"></div>');
+}
+function _sfQCCat(cat){
+  document.querySelectorAll('._qcb').forEach(function(b){b.style.background='rgba(255,255,255,.04)';b.style.borderColor='rgba(255,255,255,.08)';b.style.color='#64748b';});
+  var ab=document.querySelector('._qcb[data-cat="'+cat+'"]');
+  if(ab){ab.style.background='rgba(34,211,238,.15)';ab.style.borderColor='rgba(34,211,238,.3)';ab.style.color='#22d3ee';}
+  var items=(window._sfQCData||{})[cat]||[];
+  document.getElementById('_qclist').innerHTML=items.map(function(t,i){
+    return '<label style="display:flex;gap:8px;align-items:flex-start;padding:7px 0;cursor:pointer;color:#94a3b8;font-size:12px;border-bottom:1px solid rgba(255,255,255,.04)">'+
+      '<input type="checkbox" data-total="'+items.length+'" onchange="_sfQCUpdate()" style="margin-top:2px;accent-color:#22d3ee;flex-shrink:0"> '+t+'</label>';
+  }).join('')+'<div id="_qcscore" style="margin-top:10px;text-align:center;font-size:13px;font-weight:700;color:#475569">0 / '+items.length+'</div>';
+}
+function _sfQCUpdate(){
+  var boxes=document.querySelectorAll('#_qclist input[type=checkbox]');
+  var checked=document.querySelectorAll('#_qclist input:checked');
+  var total=boxes.length,n=checked.length,pct=total?Math.round(n/total*100):0;
+  var el=document.getElementById('_qcscore');if(!el)return;
+  el.innerHTML='<span style="color:'+(pct===100?'#22c55e':pct>60?'#f59e0b':'#ef4444')+'">'+n+'/'+total+' — '+(pct===100?'✅ Approve':'⏳ '+pct+'% done')+'</span>';
+}
+
+/* SIZE CONVERTER */
+function _sfTSz(el){
+  window._sfSizes=[['6','39','5.5','24'],['6.5','39.5','6','24.5'],['7','40','6.5','25'],['7.5','40.5','7','25.5'],
+    ['8','41','7.5','26'],['8.5','42','8','26.5'],['9','42.5','8.5','27'],['9.5','43','9','27.5'],
+    ['10','44','9.5','28'],['10.5','44.5','10','28.5'],['11','45','10.5','29'],['12','46','11.5','30']];
+  el.innerHTML='<p style="color:#475569;font-size:11px;margin:0 0 10px">Men's sneakers — US to all systems</p>'+
+    _sfBox('👟 Size Converter',
+    _sfSel('_szus',window._sfSizes.map(function(r){return '<option value="'+r[0]+'">US '+r[0]+'</option>';}).join(''),'_sfSzConv')+
+    '<div id="_szout" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"></div>');
+  _sfSzConv();
+}
+function _sfSzConv(){
+  var us=(document.getElementById('_szus')||{}).value;
+  var row=(window._sfSizes||[]).filter(function(r){return r[0]===us;})[0];
+  if(!row)return;
+  document.getElementById('_szout').innerHTML=[['EU',row[1]],['UK',row[2]],['CM',row[3]+'cm'],['US',row[0]]].map(function(v){
+    return '<div style="background:rgba(255,255,255,.04);border-radius:8px;padding:10px;text-align:center"><div style="color:#334155;font-size:10px;margin-bottom:3px">'+v[0]+'</div><div style="color:#22d3ee;font-size:22px;font-weight:700">'+v[1]+'</div></div>';
+  }).join('');
+}
+
+/* CUSTOMS */
+function _sfTD(el){
+  el.innerHTML='<p style="color:#475569;font-size:11px;margin:0 0 10px">Estimate import duties before shipping</p>'+
+    _sfBox('🛃 Customs Duty',
+    _sfSel('_dtdest',
+      '<option value="800,0">🇺🇸 USA (under $800 = free)</option>'+
+      '<option value="135,20">🇬🇧 UK (over £135 = 20%)</option>'+
+      '<option value="171,20">🇪🇺 EU (over €150 = 20%)</option>'+
+      '<option value="740,10">🇦🇺 Australia (over A$1000 = 10%)</option>'+
+      '<option value="31,20">🇨🇦 Canada (over C$40 = 20%)</option>',null)+
+    _sfNum('_dtval','Order value in USD')+
+    _sfBtn('Calculate','_sfDtCalc')+_sfOut('_dtout')+
+    '<p style="color:#334155;font-size:10px;margin:4px 0 0">Rough estimate — actual duty varies by HS code</p>');
+}
+function _sfDtCalc(){
+  var parts=((document.getElementById('_dtdest')||{}).value||'800,0').split(',');
+  var val=parseFloat((document.getElementById('_dtval')||{}).value||0);
+  var el=document.getElementById('_dtout');
+  if(!val){el.innerHTML='<span style="color:#ef4444">Enter order value</span>';return;}
+  var thresh=parseFloat(parts[0]),rate=parseFloat(parts[1])/100;
+  if(val<=thresh){el.innerHTML='<span style="color:#22c55e">✅ Under threshold — no duty</span>';}
+  else{el.innerHTML='<span style="color:#f59e0b">~$'+((val-thresh)*rate).toFixed(2)+' est. duty</span>';}
+}
+
+/* GLOSSARY */
+function _sfTG(el){
+  var terms=[['W2C','Where to Cop — asking where to buy a specific item'],['QC','Quality Check — reviewing agent warehouse photos before shipping'],
+    ['GL','Green Light — approving QC photos, ready to ship'],['1:1','Same quality/materials as retail'],
+    ['Haul','Multiple items shipped together in one parcel'],
+    ['PK Batch','Top Putian factory, started with Yeezy 350. Best for Yeezy.'],
+    ['OG Batch','High quality Jordan factory, great AJ1s/4s'],
+    ['LJR / L Ban','Dongguan top batch, excellent AJ1s'],
+    ['H12','Popular AJ1 batch, good value'],
+    ['G Ban','Good for AJ1 low, solid quality'],
+    ['BC Batch','Basketball shoe specialist factory'],
+    ['Chun Yuan','Pure Original — highest Putian tier, original molds + materials'],
+    ['Gong Si Ji','Company Grade — 95% accuracy, best value tier'],
+    ['Zhen Biao','True Label — real tags, decent quality, visible flaws up close'],
+    ['Tong Huo','Common goods — lowest tier, avoid for passing'],
+    ['Pu Tian','Putian city, Fujian province — China sneaker factory capital'],
+    ['Middleman (MM)','Reseller between factory and buyer — adds 30-100% markup'],
+    ['Agent','Service buying from Chinese platforms and shipping internationally'],
+    ['CNFans','Agent — 0-1.5% fees, best overall for most buyers'],
+    ['Sugargoo','Agent — 0% fees, great for large hauls'],
+    ['Kakobuy','Agent — 0-3% fees, good for beginners'],
+    ['Pandabuy','Agent — 5% fees, popular but pricier'],
+    ['Consolidation','Combining multiple parcels into one shipment to save on shipping'],
+    ['MOQ','Minimum Order Quantity — min units factory requires per order'],
+    ['Yupoo','Chinese photo album site where suppliers post product catalogs']];
+  el.innerHTML='<p style="color:#475569;font-size:11px;margin:0 0 10px">A-Z rep community terms explained</p>'+
+    _sfBox('📖 Rep Glossary',terms.map(function(t){
+      return '<div style="padding:8px 0;border-bottom:1px solid rgba(255,255,255,.04)"><b style="color:#22d3ee;font-size:12px">'+t[0]+'</b><div style="color:#64748b;font-size:11px;margin-top:2px;line-height:1.4">'+t[1]+'</div></div>';
+    }).join(''));
+}
+/* ===== END BUYER TOOLS ===== */
