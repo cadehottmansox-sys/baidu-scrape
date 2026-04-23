@@ -730,10 +730,9 @@ FILE SIZE: {len(html)} chars
     # ── IMAGE SEARCH ────────────────────────────────────────────────────────
     @app.route("/api/image-search", methods=["POST"])
     def image_search():
-        try:
-            user = get_user()
-            if not user:
-                return jsonify({"error": "Unauthorized", "ok": False}), 401
+        user = get_user()
+        if not user:
+            return jsonify({"error": "Unauthorized"}), 401
         import base64, tempfile, os, time as _t
         try:
             import requests as _req
