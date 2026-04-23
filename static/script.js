@@ -2626,33 +2626,9 @@ async function _dySearch(){
     });
   }catch(e){if(btn){btn.disabled=false;btn.textContent='Search Douyin';}if(resEl)resEl.innerHTML='<div style="color:#ef4444;padding:20px;text-align:center">Error: '+e.message+'</div>';}
 }
-var _chatPoll=null;
-function _sfLoadChat(){
-  fetch('/api/chat/messages',{credentials:'include'}).then(function(r){return r.json();}).then(function(msgs){
-    var el=document.getElementById('chat-msgs');if(!el)return;
-    if(!msgs||!msgs.length){el.innerHTML='<div style="text-align:center;color:#334155;font-size:12px;padding:20px">No messages yet. Say hi!</div>';return;}
-    var atBottom=el.scrollHeight-el.scrollTop-el.clientHeight<60;
-    el.innerHTML='';
-    msgs.forEach(function(m){
-      var wrap=document.createElement('div');
-      var isMe=window._sfUser&&m.name===window._sfUser;
-      wrap.style.cssText='display:flex;flex-direction:column;align-items:'+(isMe?'flex-end':'flex-start')+';gap:2px';
-      var nm=document.createElement('span');nm.style.cssText='font-size:10px;color:#475569';nm.textContent=m.name+' · '+new Date(m.ts*1000).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
-      var bubble=document.createElement('div');
-      bubble.style.cssText='background:'+(isMe?'rgba(34,211,238,.15)':'rgba(255,255,255,.06)')+';border:1px solid '+(isMe?'rgba(34,211,238,.3)':'rgba(255,255,255,.1)')+';padding:8px 14px;border-radius:10px;font-size:13px;color:#e2e8f0;max-width:75%;word-break:break-word';
-      bubble.textContent=m.message;
-      wrap.appendChild(nm);wrap.appendChild(bubble);el.appendChild(wrap);
-    });
-    if(atBottom)el.scrollTop=el.scrollHeight;
-  }).catch(function(){});
-}
-function _sfSendChat(){
-  var inp=document.getElementById('chat-input');
-  if(!inp||!inp.value.trim())return;
-  var msg=inp.value.trim();inp.value='';
-  fetch('/api/chat/send',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:msg})})
-  .then(function(r){return r.json();}).then(function(d){if(d.ok){setTimeout(_sfLoadChat,500);}else showToast('Failed to send','error');});
-}
+
+
+
 function _sfLoadComments(){
   fetch('/api/chat/messages',{credentials:'include'}).then(function(r){return r.json();}).then(function(msgs){
     var el=document.getElementById('finds-comments-list');if(!el)return;
