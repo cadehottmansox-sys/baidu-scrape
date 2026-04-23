@@ -733,9 +733,7 @@ FILE SIZE: {len(html)} chars
         user = get_user()
         if not user:
             return jsonify({"error": "Unauthorized"}), 401
-        import base64, tempfile, os, time as _t
-        try:
-            import requests as _req
+        import base64, tempfile, os, time as _t, requests as _req
         except ImportError:
             return jsonify({"error": "requests not available"}), 500
         data = request.get_json(silent=True) or {}
@@ -767,8 +765,7 @@ FILE SIZE: {len(html)} chars
                 try: os.unlink(tmp)
                 except: pass
         except Exception as e:
-            app.logger.error("Image search error: %s", e)
-            return jsonify({"error": str(e)}), 500
+            return jsonify({"error": str(e), "ok": False}), 500
 
 
     return app

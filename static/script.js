@@ -2524,7 +2524,7 @@ async function runImageSearch(b64) {
   if (!stat||!res) return;
   try {
     stat.textContent = 'Searching Baidu...';
-    var resp = await fetch('/api/image-search',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:b64})});
+    var resp = await fetch('/api/image-search',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:b64})});
     var data = await resp.json();
     if (!data.ok) { stat.style.color='#ef4444'; stat.textContent='Error: '+(data.error||'Unknown'); return; }
     stat.style.color='#22c55e'; stat.textContent='Found '+data.count+' results';
@@ -2715,3 +2715,64 @@ function _sfSzC(){var us=((document.getElementById("_szus")||{}).value)||"6",row
 function _sfTduty(el){el.innerHTML=_sfMkH("Customs Duty Estimator")+_sfMkSel("_dtd","<option value='800,0'>USA — under $800 = free</option><option value='135,20'>UK — over $135 = 20%</option><option value='171,20'>EU — over $171 = 20%</option><option value='740,10'>Australia — 10%</option><option value='31,20'>Canada — 20%</option>",null)+_sfMkIn("_dtv","Order value in USD")+_sfMkBtn("Calculate","_sfDtC")+_sfMkOut("_dtr")+'<p style="color:#1e293b;font-size:10px;margin-top:6px;text-align:center">Rough estimate only — varies by product type</p>';}
 function _sfDtC(){var parts=((document.getElementById("_dtd")||{}).value||"800,0").split(","),val=parseFloat((document.getElementById("_dtv")||{}).value||0),r=document.getElementById("_dtr");if(!r)return;if(!val){r.innerHTML='<span style="color:#ef4444">Enter order value</span>';return;}var thresh=parseFloat(parts[0]),rate=parseFloat(parts[1])/100;r.innerHTML=val<=thresh?'<span style="color:#22c55e;font-size:16px">Under threshold — no duty</span>':'<span style="color:#f59e0b;font-size:16px">~$'+((val-thresh)*rate).toFixed(2)+" estimated duty</span>";}
 function _sfTgloss(el){var terms=[["W2C","Where to Cop — where to buy a specific item"],["QC","Quality Check — reviewing agent warehouse photos"],["GL","Green Light — approve QC, ready to ship"],["1:1","Same quality and materials as retail"],["Haul","Multiple items shipped together"],["PK","Top Putian batch, started with Yeezy 350"],["OG","High quality Jordan batch"],["LJR","Dongguan top batch, excellent AJ1s"],["H12","Popular AJ1 batch, good value"],["Chun Yuan","Pure Original — highest Putian tier, OG molds"],["Gong Si Ji","Company Grade — 95%+ accuracy, best value"],["Zhen Biao","True Label — real tags, decent quality"],["Tong Huo","Common goods — lowest tier, avoid"],["Pu Tian","Putian city, Fujian — sneaker factory capital"],["Middleman","Reseller adding 30-100% markup over factory price"],["CNFans","Agent — 0-1.5% fees, best overall"],["Sugargoo","Agent — 0% fees, great for large hauls"],["Kakobuy","Agent — 0-3% fees, good for beginners"],["MOQ","Minimum Order Quantity"],["Consolidation","Combining parcels to save on shipping"],["Yupoo","Chinese photo album site for supplier catalogs"]];el.innerHTML=_sfMkH("Rep Glossary A-Z")+terms.map(function(t){return '<div style="padding:8px 0;border-bottom:1px solid rgba(255,255,255,.04)"><b style="color:#22d3ee;font-size:12px">'+t[0]+'</b><div style="color:#64748b;font-size:11px;margin-top:2px;line-height:1.4">'+t[1]+'</div></div>';}).join("");}
+
+/* ==== FF RATE CALCULATOR ==== */
+function ffRatePreview(input){
+  var file=input.files[0];if(!file)return;
+  var reader=new FileReader();
+  reader.onload=function(e){
+    var img=document.getElementById("ff-rate-img-preview");
+    var preview=document.getElementById("ff-rate-preview");
+    if(img)img.src=e.target.result;
+    if(preview)preview.style.display="block";
+    window._ffRateImg=e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+function ffAddItem(){
+  var list=document.getElementById("ff-items-list");if(!list)return;
+  var row=document.createElement("div");
+  row.className="ff-item-row";
+  row.style.cssText="display:grid;grid-template-columns:1fr 80px 80px 32px;gap:8px;margin-bottom:8px;align-items:center";
+  row.innerHTML='<input class="ff-item-name" placeholder="Item name" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#e2e8f0;padding:8px 12px;border-radius:8px;font-size:13px;outline:none;width:100%;box-sizing:border-box"><input class="ff-item-qty" type="number" placeholder="Qty" min="1" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#e2e8f0;padding:8px;border-radius:8px;font-size:13px;outline:none;text-align:center;box-sizing:border-box"><input class="ff-item-kg" type="number" placeholder="kg" step="0.1" min="0.1" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#e2e8f0;padding:8px;border-radius:8px;font-size:13px;outline:none;text-align:center;box-sizing:border-box"><button onclick="ffRemoveItem(this)" style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);color:#f87171;border-radius:8px;cursor:pointer;font-size:16px;height:36px;width:32px;display:flex;align-items:center;justify-content:center">x</button>';
+  list.appendChild(row);
+}
+function ffRemoveItem(btn){
+  var rows=document.querySelectorAll(".ff-item-row");
+  if(rows.length<=1){if(typeof showToast==="function")showToast("Need at least one item","error");return;}
+  btn.closest(".ff-item-row").remove();
+}
+document.addEventListener("change",function(e){
+  if(e.target && e.target.id==="ff-rate-per-kg"){
+    var custom=document.getElementById("ff-custom-rate");
+    if(custom)custom.style.display=e.target.value==="custom"?"block":"none";
+  }
+});
+function ffCalcRate(){
+  var rateEl=document.getElementById("ff-rate-per-kg");
+  var customEl=document.getElementById("ff-custom-rate");
+  var resultEl=document.getElementById("ff-rate-result");
+  if(!rateEl||!resultEl)return;
+  var ratePerKg=rateEl.value==="custom"?parseFloat(customEl&&customEl.value||0):parseFloat(rateEl.value||0);
+  if(!ratePerKg){resultEl.innerHTML='<div style="color:#ef4444;text-align:center;padding:8px">Select or enter a rate per kg</div>';return;}
+  var rows=document.querySelectorAll(".ff-item-row");
+  var items=[],totalKg=0,totalItems=0;
+  rows.forEach(function(row){
+    var name=(row.querySelector(".ff-item-name")||{}).value||"Item";
+    var qty=parseInt((row.querySelector(".ff-item-qty")||{}).value||1);
+    var kg=parseFloat((row.querySelector(".ff-item-kg")||{}).value||0);
+    if(kg>0){
+      var itemKg=kg*qty;
+      var itemCost=itemKg*ratePerKg;
+      totalKg+=itemKg;totalItems+=qty;
+      items.push({name:name,qty:qty,kg:kg,totalKg:itemKg,cost:itemCost});
+    }
+  });
+  if(!items.length){resultEl.innerHTML='<div style="color:#ef4444;text-align:center;padding:8px">Enter item weights first</div>';return;}
+  var totalCost=totalKg*ratePerKg;
+  var rows2=items.map(function(it){
+    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:rgba(255,255,255,.04);border-radius:8px;margin-bottom:6px"><div><div style="color:#e2e8f0;font-size:13px;font-weight:600">'+it.name+'</div><div style="color:#475569;font-size:11px">x'+it.qty+' @ '+it.kg+'kg each = '+it.totalKg.toFixed(2)+'kg</div></div><div style="color:#22d3ee;font-size:14px;font-weight:700">$'+it.cost.toFixed(2)+'</div></div>';
+  }).join("");
+  resultEl.innerHTML='<div style="background:rgba(34,211,238,.05);border:1px solid rgba(34,211,238,.2);border-radius:12px;padding:14px">'+rows2+'<div style="border-top:1px solid rgba(34,211,238,.2);margin-top:10px;padding-top:10px;display:flex;justify-content:space-between;align-items:center"><div style="color:#94a3b8;font-size:13px">'+totalItems+' items · '+totalKg.toFixed(2)+'kg total</div><div style="color:#22c55e;font-size:20px;font-weight:700">$'+totalCost.toFixed(2)+'</div></div></div>';
+  if(window._ffRateImg) resultEl.innerHTML+='<p style="color:#475569;font-size:11px;margin-top:8px;text-align:center">Rate sheet uploaded — verify rates match your FF rate sheet</p>';
+}
