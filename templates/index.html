@@ -681,3 +681,102 @@
     </div>
   </div>
 </div>
+
+<style>
+@keyframes _sfPG{0%,100%{box-shadow:0 0 20px rgba(34,211,238,.3);}50%{box-shadow:0 0 35px rgba(34,211,238,.6),0 0 60px rgba(34,211,238,.15);}}
+#_sfMenuBtn{position:fixed;top:14px;right:16px;z-index:99990;width:42px;height:42px;border-radius:11px;background:linear-gradient(135deg,rgba(34,211,238,.15),rgba(99,102,241,.15));border:1px solid rgba(34,211,238,.35);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;transition:all .25s;backdrop-filter:blur(10px);}
+#_sfMenuBtn:hover{background:linear-gradient(135deg,rgba(34,211,238,.3),rgba(99,102,241,.3));animation:_sfPG 1.5s ease infinite;transform:scale(1.07);}
+#_sfMenuBtn span{width:18px;height:2px;background:linear-gradient(90deg,#22d3ee,#818cf8);border-radius:2px;display:block;transition:all .2s;}
+#_sfMenuBtn:hover span{width:20px;}
+#_sfMenuBtn span:last-child{width:12px;align-self:flex-end;margin-right:2px;}
+#_sfOverlay{display:none;position:fixed;inset:0;z-index:99988;background:rgba(0,0,0,.65);backdrop-filter:blur(4px);}
+#_sfNavPanel{position:fixed;right:-290px;top:0;bottom:0;width:270px;z-index:99999;background:linear-gradient(180deg,#060c18,#080f1e 50%,#060c18);border-left:1px solid rgba(34,211,238,.18);transition:right .35s cubic-bezier(.4,0,.2,1);overflow-y:auto;display:flex;flex-direction:column;}
+#_sfNavPanel::-webkit-scrollbar{width:3px;}
+#_sfNavPanel::-webkit-scrollbar-thumb{background:rgba(34,211,238,.25);border-radius:3px;}
+._sfni{display:flex;align-items:center;gap:12px;padding:10px 16px;cursor:pointer;border-radius:10px;margin:2px 8px;transition:transform .2s cubic-bezier(.34,1.56,.64,1),background .2s,border-color .2s;border:1px solid transparent;position:relative;}
+._sfni:hover{transform:scale(1.05) translateX(-3px);background:linear-gradient(135deg,rgba(34,211,238,.08),rgba(99,102,241,.06));border-color:rgba(34,211,238,.22);}
+._sfni:hover ._nil{color:#22d3ee;}
+._sfni:hover ._niico{transform:scale(1.18);}
+._sfni.active{background:linear-gradient(135deg,rgba(34,211,238,.12),rgba(99,102,241,.08));border-color:rgba(34,211,238,.28);}
+._sfni.active ._nil{color:#22d3ee;}
+._sfni.active::after{content:"";position:absolute;right:-1px;top:25%;height:50%;width:3px;background:linear-gradient(180deg,#22d3ee,#818cf8);border-radius:3px 0 0 3px;}
+._niico{font-size:19px;width:28px;text-align:center;flex-shrink:0;transition:transform .2s cubic-bezier(.34,1.56,.64,1);}
+._nil{color:#94a3b8;font-size:13px;font-weight:600;transition:color .2s;}
+._nid{color:#334155;font-size:10px;margin-top:1px;}
+._sfti{display:flex;align-items:center;gap:10px;padding:8px 16px;cursor:pointer;border-radius:8px;margin:1px 8px;transition:transform .2s cubic-bezier(.34,1.56,.64,1),background .2s;border:1px solid transparent;}
+._sfti:hover{transform:scale(1.04) translateX(-2px);background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.08);}
+._sfti:hover ._til{color:#22d3ee;}
+._til{color:#475569;font-size:12px;font-weight:500;transition:color .2s;}
+._sfDiv{height:1px;background:linear-gradient(90deg,transparent,rgba(34,211,238,.18),transparent);margin:8px 14px;}
+._sfSL{padding:5px 18px 3px;color:#22d3ee;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;opacity:.6;}
+#_sfToolModal{display:none;position:fixed;inset:0;z-index:999999;align-items:center;justify-content:center;background:rgba(0,0,0,.82);backdrop-filter:blur(8px);}
+#_sfToolInner{background:linear-gradient(135deg,#080f1e,#060c18);border:1px solid rgba(34,211,238,.22);border-radius:18px;padding:26px;width:390px;max-height:86vh;overflow-y:auto;position:relative;box-shadow:0 30px 80px rgba(0,0,0,.8),0 0 40px rgba(34,211,238,.06);}
+#_sfToolInner::-webkit-scrollbar{width:3px;}
+#_sfToolInner::-webkit-scrollbar-thumb{background:rgba(34,211,238,.25);border-radius:3px;}
+._sftc{position:absolute;top:14px;right:14px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#475569;font-size:15px;cursor:pointer;width:27px;height:27px;border-radius:7px;display:flex;align-items:center;justify-content:center;transition:all .2s;}
+._sftc:hover{background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.3);color:#f87171;}
+._sfIn{width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#e2e8f0;padding:10px 13px;border-radius:10px;font-size:13px;outline:none;box-sizing:border-box;margin-bottom:9px;transition:border-color .2s,box-shadow .2s;font-family:inherit;}
+._sfIn:focus{border-color:rgba(34,211,238,.45);box-shadow:0 0 0 3px rgba(34,211,238,.07);}
+._sfSel{width:100%;background:#060c18;border:1px solid rgba(255,255,255,.1);color:#e2e8f0;padding:10px 13px;border-radius:10px;font-size:13px;margin-bottom:9px;outline:none;transition:border-color .2s;font-family:inherit;cursor:pointer;}
+._sfSel:focus{border-color:rgba(34,211,238,.45);}
+._sfBt{width:100%;padding:11px;background:linear-gradient(135deg,rgba(34,211,238,.18),rgba(99,102,241,.18));border:1px solid rgba(34,211,238,.32);color:#22d3ee;border-radius:10px;font-size:13px;cursor:pointer;font-weight:700;margin-bottom:10px;transition:all .2s;letter-spacing:.02em;font-family:inherit;}
+._sfBt:hover{background:linear-gradient(135deg,rgba(34,211,238,.32),rgba(99,102,241,.32));transform:translateY(-1px);box-shadow:0 4px 18px rgba(34,211,238,.18);}
+._sfOut{font-size:15px;font-weight:700;text-align:center;padding:10px;min-height:36px;border-radius:10px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);margin-bottom:6px;}
+._sfLnk{display:block;padding:9px 13px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:8px;color:#94a3b8;font-size:12px;text-decoration:none;margin-bottom:5px;transition:all .2s;}
+._sfLnk:hover{background:rgba(34,211,238,.08);border-color:rgba(34,211,238,.22);color:#22d3ee;transform:translateX(-2px);}
+._sfStatBar{display:flex;gap:6px;padding:8px 14px;border-bottom:1px solid rgba(255,255,255,.05);}
+._sfStatBox{flex:1;text-align:center;background:rgba(255,255,255,.03);border-radius:7px;padding:5px 3px;}
+._sfStatV{color:#22d3ee;font-size:13px;font-weight:700;}
+._sfStatL{color:#334155;font-size:9px;text-transform:uppercase;letter-spacing:.05em;}
+</style>
+
+<div id="_sfMenuBtn" onclick="_sfMenuToggle()"><span></span><span></span><span></span></div>
+<div id="_sfOverlay" onclick="_sfMenuToggle()"></div>
+<div id="_sfNavPanel">
+  <div style="padding:16px 16px 0">
+    <div style="display:flex;align-items:center;gap:9px">
+      <div style="width:7px;height:7px;border-radius:50%;background:#22d3ee;animation:_sfPG 2s ease infinite"></div>
+      <span style="color:#e2e8f0;font-size:13px;font-weight:700;letter-spacing:.03em">SourceFinder</span>
+    </div>
+    <div style="color:#1e293b;font-size:9px;margin:2px 0 10px 16px">Private access · Live</div>
+    <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(34,211,238,.3),transparent)"></div>
+  </div>
+  <div class="_sfStatBar">
+    <div class="_sfStatBox"><div class="_sfStatV" id="_pnlS">—</div><div class="_sfStatL">Suppliers</div></div>
+    <div class="_sfStatBox"><div class="_sfStatV" id="_pnlW">—</div><div class="_sfStatL">WeChats</div></div>
+    <div class="_sfStatBox"><div class="_sfStatV" id="_pnlQ">—</div><div class="_sfStatL">Searches</div></div>
+  </div>
+  <div style="padding:6px 0 10px">
+    <div class="_sfSL">Search</div>
+    <div class="_sfni active" data-tab="supplier" onclick="_sfNavGo('supplier')"><span class="_niico">&#128269;</span><div><div class="_nil">Supplier</div><div class="_nid">Factory WeChats</div></div></div>
+    <div class="_sfni" data-tab="passing" onclick="_sfNavGo('passing')"><span class="_niico">&#9889;</span><div><div class="_nil">Passing / NFC</div><div class="_nid">Pure OG & batches</div></div></div>
+    <div class="_sfni" data-tab="douyin" onclick="_sfNavGo('douyin')"><span class="_niico">&#127925;</span><div><div class="_nil">Douyin</div><div class="_nid">Chinese TikTok</div></div></div>
+    <div class="_sfDiv"></div>
+    <div class="_sfSL">Sourcing</div>
+    <div class="_sfni" data-tab="ff" onclick="_sfNavGo('ff')"><span class="_niico">&#128666;</span><div><div class="_nil">Freight</div><div class="_nid">Forwarders</div></div></div>
+    <div class="_sfni" data-tab="finds" onclick="_sfNavGo('finds')"><span class="_niico">&#11088;</span><div><div class="_nil">Community Finds</div><div class="_nid">Share leads</div></div></div>
+    <div class="_sfni" data-tab="research" onclick="_sfNavGo('research')"><span class="_niico">&#128202;</span><div><div class="_nil">Research</div><div class="_nid">Validate & trends</div></div></div>
+    <div class="_sfDiv"></div>
+    <div class="_sfSL">Manage</div>
+    <div class="_sfni" data-tab="saved" onclick="_sfNavGo('saved')"><span class="_niico">&#128278;</span><div><div class="_nil">Saved</div><div class="_nid">Your suppliers</div></div></div>
+    <div class="_sfni" data-tab="crm" onclick="_sfNavGo('crm')"><span class="_niico">&#128101;</span><div><div class="_nil">CRM</div><div class="_nid">WeChat contacts</div></div></div>
+    <div class="_sfni" data-tab="guide" onclick="_sfNavGo('guide')"><span class="_niico">&#128214;</span><div><div class="_nil">Guide</div><div class="_nid">How to use</div></div></div>
+    <div class="_sfni" data-tab="admin" onclick="_sfNavGo('admin')"><span class="_niico">&#9881;</span><div><div class="_nil">Admin</div><div class="_nid">Users & access</div></div></div>
+    <div class="_sfDiv"></div>
+    <div class="_sfSL">Buyer Tools</div>
+    <div class="_sfti" onclick="_sfOpenTool('cny')"><span style="font-size:15px">&#128178;</span><span class="_til">CNY Converter</span></div>
+    <div class="_sfti" onclick="_sfOpenTool('ship')"><span style="font-size:15px">&#128666;</span><span class="_til">Shipping Estimator</span></div>
+    <div class="_sfti" onclick="_sfOpenTool('agent')"><span style="font-size:15px">&#128176;</span><span class="_til">Agent Fees</span></div>
+    <div class="_sfti" onclick="_sfOpenTool('link')"><span style="font-size:15px">&#128279;</span><span class="_til">Link Converter</span></div>
+    <div class="_sfti" onclick="_sfOpenTool('qc')"><span style="font-size:15px">&#9989;</span><span class="_til">QC Checklist</span></div>
+    <div class="_sfti" onclick="_sfOpenTool('size')"><span style="font-size:15px">&#128095;</span><span class="_til">Size Converter</span></div>
+    <div class="_sfti" onclick="_sfOpenTool('duty')"><span style="font-size:15px">&#128722;</span><span class="_til">Customs Duty</span></div>
+    <div class="_sfti" onclick="_sfOpenTool('gloss')"><span style="font-size:15px">&#128218;</span><span class="_til">Rep Glossary</span></div>
+    <div style="height:10px"></div>
+    <div style="margin:0 10px 14px;padding:9px 14px;background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.18);border-radius:9px;cursor:pointer;transition:all .2s" onmouseover="this.style.background='rgba(239,68,68,.14)'" onmouseout="this.style.background='rgba(239,68,68,.07)'" onclick="_sfMenuToggle();if(confirm('Log out?'))logout()">
+      <span style="color:#f87171;font-size:12px;font-weight:600">&#8594; Log out</span>
+    </div>
+  </div>
+</div>
+<div id="_sfToolModal"><div id="_sfToolInner"><button class="_sftc" onclick="_sfCloseTool()">&#215;</button><div id="_sfToolContent"></div></div></div>
+<script src="/static/script.js"></script>

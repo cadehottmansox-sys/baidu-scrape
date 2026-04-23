@@ -2626,9 +2626,33 @@ async function _dySearch(){
     });
   }catch(e){if(btn){btn.disabled=false;btn.textContent='Search Douyin';}if(resEl)resEl.innerHTML='<div style="color:#ef4444;padding:20px;text-align:center">Error: '+e.message+'</div>';}
 }
-
-
-
+var _chatPoll=null;
+function _sfLoadChat(){
+  fetch('/api/chat/messages',{credentials:'include'}).then(function(r){return r.json();}).then(function(msgs){
+    var el=document.getElementById('chat-msgs');if(!el)return;
+    if(!msgs||!msgs.length){el.innerHTML='<div style="text-align:center;color:#334155;font-size:12px;padding:20px">No messages yet. Say hi!</div>';return;}
+    var atBottom=el.scrollHeight-el.scrollTop-el.clientHeight<60;
+    el.innerHTML='';
+    msgs.forEach(function(m){
+      var wrap=document.createElement('div');
+      var isMe=window._sfUser&&m.name===window._sfUser;
+      wrap.style.cssText='display:flex;flex-direction:column;align-items:'+(isMe?'flex-end':'flex-start')+';gap:2px';
+      var nm=document.createElement('span');nm.style.cssText='font-size:10px;color:#475569';nm.textContent=m.name+' · '+new Date(m.ts*1000).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+      var bubble=document.createElement('div');
+      bubble.style.cssText='background:'+(isMe?'rgba(34,211,238,.15)':'rgba(255,255,255,.06)')+';border:1px solid '+(isMe?'rgba(34,211,238,.3)':'rgba(255,255,255,.1)')+';padding:8px 14px;border-radius:10px;font-size:13px;color:#e2e8f0;max-width:75%;word-break:break-word';
+      bubble.textContent=m.message;
+      wrap.appendChild(nm);wrap.appendChild(bubble);el.appendChild(wrap);
+    });
+    if(atBottom)el.scrollTop=el.scrollHeight;
+  }).catch(function(){});
+}
+function _sfSendChat(){
+  var inp=document.getElementById('chat-input');
+  if(!inp||!inp.value.trim())return;
+  var msg=inp.value.trim();inp.value='';
+  fetch('/api/chat/send',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:msg})})
+  .then(function(r){return r.json();}).then(function(d){if(d.ok){setTimeout(_sfLoadChat,500);}else showToast('Failed to send','error');});
+}
 function _sfLoadComments(){
   fetch('/api/chat/messages',{credentials:'include'}).then(function(r){return r.json();}).then(function(msgs){
     var el=document.getElementById('finds-comments-list');if(!el)return;
@@ -2661,159 +2685,33 @@ function _sfPostComment(){
   fetch('/api/chat/send',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:msg,type:'finds_comment'})})
   .then(function(r){return r.json();}).then(function(d){if(d.ok)_sfLoadComments();else showToast('Failed to post','error');});
 }
-/* ---- SIDE NAV + BUYER TOOLS ---- */
-var _sfMenuOpen=false;
-function _sfMenuToggle(){
-  _sfMenuOpen=!_sfMenuOpen;
-  var p=document.getElementById("_sfNavPanel");
-  var o=document.getElementById("_sfOverlay");
-  if(p)p.style.left=_sfMenuOpen?"0":"-300px";
-  if(o)o.style.display=_sfMenuOpen?"block":"none";
-}
-function _sfNavGo(tab){
-  _sfMenuOpen=false;
-  var p=document.getElementById("_sfNavPanel");
-  var o=document.getElementById("_sfOverlay");
-  if(p)p.style.left="-300px";
-  if(o)o.style.display="none";
-  document.querySelectorAll("._sfnavitem").forEach(function(el){el.classList.remove("active");});
-  var ab=document.querySelector("._sfnavitem[data-tab='"+tab+"']");
-  if(ab)ab.classList.add("active");
-  if(typeof switchTab==="function")switchTab(tab);
-}
-function _sfPanelOpen(tool){
-  _sfMenuOpen=false;
-  var p=document.getElementById("_sfNavPanel");
-  var o=document.getElementById("_sfOverlay");
-  if(p)p.style.left="-300px";
-  if(o)o.style.display="none";
-  var m=document.getElementById("_sfToolModal");
-  var c=document.getElementById("_sfToolModalContent");
-  if(!m||!c)return;
-  m.style.display="flex";
-  if(tool==="cny")_sfTcny(c);
-  else if(tool==="ship")_sfTship(c);
-  else if(tool==="agent")_sfTagent(c);
-  else if(tool==="link")_sfTlink(c);
-  else if(tool==="qc")_sfTqc(c);
-  else if(tool==="size")_sfTsize(c);
-  else if(tool==="duty")_sfTduty(c);
-  else if(tool==="gloss")_sfTgloss(c);
-}
-function _sfToolClose(){
-  var m=document.getElementById("_sfToolModal");
-  if(m)m.style.display="none";
-}
-function _sfCard(t,c){return '<div style="margin-bottom:16px"><b style="color:#22d3ee;font-size:14px;display:block;margin-bottom:12px">'+t+'</b>'+c+'</div>';}
-function _sfI(id,ph){return '<input id="'+id+'" type="number" placeholder="'+ph+'" style="width:100%;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);color:#e2e8f0;padding:9px 12px;border-radius:8px;font-size:13px;outline:none;box-sizing:border-box;margin-bottom:8px">';}
-function _sfB(l,fn){return '<button onclick="'+fn+'()" style="width:100%;padding:10px;background:rgba(34,211,238,.15);border:1px solid rgba(34,211,238,.3);color:#22d3ee;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600;margin-bottom:8px">'+l+'</button>';}
-function _sfO(id){return '<div id="'+id+'" style="font-size:15px;font-weight:700;text-align:center;padding:8px;min-height:32px;border-radius:8px"></div>';}
-function _sfS(id,opts,onch){return '<select id="'+id+'"'+(onch?' onchange="'+onch+'()"':'')+' style="width:100%;background:#070d1a;border:1px solid rgba(255,255,255,.12);color:#e2e8f0;padding:9px;border-radius:8px;font-size:13px;margin-bottom:8px">'+opts+'</select>';}
-function _sfTcny(el){
-  el.innerHTML='<h3 style="color:#e2e8f0;margin:0 0 16px;font-size:16px">CNY Converter</h3>';
-  el.innerHTML+=_sfI("_cn","Amount in CNY");
-  el.innerHTML+='<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px">';
-  el.innerHTML+='<button onclick="_sfCnv(\'USD\')" style="padding:9px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#94a3b8;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600">USD</button>';
-  el.innerHTML+='<button onclick="_sfCnv(\'EUR\')" style="padding:9px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#94a3b8;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600">EUR</button>';
-  el.innerHTML+='<button onclick="_sfCnv(\'GBP\')" style="padding:9px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#94a3b8;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600">GBP</button>';
-  el.innerHTML+='</div>';
-  el.innerHTML+=_sfO("_cnr");
-  el.innerHTML+='<p style="color:#334155;font-size:11px;margin:4px 0 0">Approx: 7.25/USD  7.8/EUR  9.1/GBP</p>';
-}
-function _sfCnv(to){
-  var a=parseFloat((document.getElementById("_cn")||{}).value||0);
-  var r=document.getElementById("_cnr");
-  if(!a||!r){if(r)r.innerHTML='<span style="color:#ef4444">Enter an amount</span>';return;}
-  var rates={USD:7.25,EUR:7.8,GBP:9.1};
-  r.innerHTML='<span style="color:#22d3ee">CNY '+a+' = '+to+' '+(a/rates[to]).toFixed(2)+'</span>';
-}
-function _sfTship(el){
-  el.innerHTML='<h3 style="color:#e2e8f0;margin:0 0 16px;font-size:16px">Shipping Estimator</h3>';
-  el.innerHTML+=_sfS("_shd","<option value='US'>USA</option><option value='UK'>UK</option><option value='EU'>Europe</option><option value='AU'>Australia</option><option value='CA'>Canada</option>",null);
-  el.innerHTML+=_sfS("_sht","<option value='.8'>Sneakers (800g)</option><option value='.25'>T-Shirt (250g)</option><option value='.6'>Hoodie (600g)</option><option value='1.2'>Bag (1.2kg)</option><option value='.9'>Jacket (900g)</option><option value='0'>Custom weight</option>","_sfShTy");
-  el.innerHTML+='<div id="_shcw" style="display:none">'+_sfI("_shkg","Weight in kg")+'</div>';
-  el.innerHTML+=_sfB("Estimate","_sfShCalc")+_sfO("_shr");
-  el.innerHTML+='<p style="color:#334155;font-size:11px;margin:4px 0 0">Economy ~10-20 days  DHL ~5-7 days</p>';
-}
-function _sfShTy(){var v=(document.getElementById("_sht")||{}).value;if(document.getElementById("_shcw"))document.getElementById("_shcw").style.display=v==="0"?"block":"none";}
-function _sfShCalc(){
-  var dest=(document.getElementById("_shd")||{}).value||"US";
-  var tv=(document.getElementById("_sht")||{}).value||".8";
-  var w=tv==="0"?parseFloat((document.getElementById("_shkg")||{}).value||0):parseFloat(tv);
-  var r=document.getElementById("_shr");if(!r)return;
-  if(!w){r.innerHTML='<span style="color:#ef4444">Enter weight</span>';return;}
-  var b={US:[8,18],UK:[10,22],EU:[9,20],AU:[12,25],CA:[10,22]}[dest]||[8,18];
-  r.innerHTML='<span style="color:#22c55e">Economy ~$'+Math.max(b[0],(w*b[0])).toFixed(0)+'</span><span style="color:#475569;margin-left:12px">DHL ~$'+Math.max(b[1],(w*b[1])).toFixed(0)+'</span>';
-}
-function _sfTagent(el){
-  var ag=[{n:"Sugargoo",f:0,c:"#22c55e"},{n:"CNFans",f:0.015,c:"#22d3ee"},{n:"ACBuy",f:0,c:"#22c55e"},{n:"Kakobuy",f:0.03,c:"#22d3ee"},{n:"Pandabuy",f:0.05,c:"#f59e0b"},{n:"Superbuy",f:0.08,c:"#ef4444"}];
-  window._sfAg=ag;
-  var grid=ag.map(function(a,i){return '<div style="padding:10px;background:rgba(255,255,255,.04);border-radius:8px;text-align:center"><div style="color:#475569;font-size:11px;margin-bottom:4px">'+a.n+'</div><div id="_ag'+i+'" style="color:'+a.c+';font-size:16px;font-weight:700">-</div></div>';}).join("");
-  el.innerHTML='<h3 style="color:#e2e8f0;margin:0 0 16px;font-size:16px">Agent Fee Compare</h3>';
-  el.innerHTML+=_sfI("_agamt","Order total in CNY");
-  el.innerHTML+=_sfB("Compare","_sfAgCalc");
-  el.innerHTML+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'+grid+'</div>';
-}
-function _sfAgCalc(){
-  var amt=parseFloat((document.getElementById("_agamt")||{}).value||0);if(!amt)return;
-  (window._sfAg||[]).forEach(function(a,i){var el=document.getElementById("_ag"+i);if(el)el.textContent=a.f===0?"FREE":"$"+(amt*a.f/7.25).toFixed(2);});
-}
-function _sfTlink(el){
-  el.innerHTML='<h3 style="color:#e2e8f0;margin:0 0 16px;font-size:16px">Agent Link Converter</h3>';
-  el.innerHTML+='<textarea id="_lnk" placeholder="Paste Taobao / Weidian / 1688 URL..." style="width:100%;height:72px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#e2e8f0;padding:9px;border-radius:8px;font-size:12px;resize:none;outline:none;box-sizing:border-box;margin-bottom:8px"></textarea>';
-  el.innerHTML+=_sfB("Generate All Agent Links","_sfLnkGen");
-  el.innerHTML+='<div id="_lnkr"></div>';
-}
-function _sfLnkGen(){
-  var url=((document.getElementById("_lnk")||{}).value||"").trim();
-  var r=document.getElementById("_lnkr");if(!url||!r){if(r)r.innerHTML='<span style="color:#ef4444">Paste a URL first</span>';return;}
-  var e=encodeURIComponent(url);
-  var ag=[["CNFans","https://cnfans.com/?num="+e],["Kakobuy","https://www.kakobuy.com/item/details?url="+e],["Sugargoo","https://www.sugargoo.com/#/home/productDetail?productLink="+e],["ACBuy","https://acbuy.com/product?url="+e],["Pandabuy","https://www.pandabuy.com/product?url="+e],["Superbuy","https://www.superbuy.com/en/page/buy/?url="+e],["Hagobuy","https://www.hagobuy.com/item/details?url="+e],["Mulebuy","https://mulebuy.com/product/?url="+e]];
-  r.innerHTML=ag.map(function(a){return '<a href="'+a[1]+'" target="_blank" style="display:block;padding:9px 14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:7px;color:#94a3b8;font-size:13px;text-decoration:none;margin-bottom:5px;transition:background .15s" onmouseover="this.style.background=\'rgba(34,211,238,.08)\'" onmouseout="this.style.background=\'rgba(255,255,255,.04)\'">&#8594; '+a[0]+'</a>';}).join("");
-}
-function _sfTqc(el){
-  window._qcd={"Sneakers":["Toe box shape correct","Sole thickness correct","Stitching clean","Tongue label correct","Lace color matches","Box barcode correct","Insole correct","No glue marks"],"Clothing":["Tag position correct","Seams even","No loose threads","Material weight right","Zipper brand correct","Print placement correct"],"Bags":["Stitching matches retail","Hardware color correct","Zipper branded","Serial number correct","Lining color correct","Leather smell natural"],"Watches":["Crown functions","Crystal clear","Caseback correct","Clasp locks","Dial text correct","Hands aligned"]};
-  var btns=Object.keys(window._qcd).map(function(c){return '<button class="_qcb" data-cat="'+c+'" onclick="_sfQcC(\'"+c+"\')" style="padding:7px 12px;border-radius:7px;font-size:12px;cursor:pointer;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#64748b;margin:0 6px 6px 0">'+c+'</button>';}).join("");
-  el.innerHTML='<h3 style="color:#e2e8f0;margin:0 0 12px;font-size:16px">QC Checklist</h3>'+btns+'<div id="_qcl" style="margin-top:8px"></div>';
-}
-function _sfQcC(cat){
-  document.querySelectorAll("._qcb").forEach(function(b){b.style.background="rgba(255,255,255,.06)";b.style.color="#64748b";});
-  var ab=document.querySelector("._qcb[data-cat='"+cat+"']");if(ab){ab.style.background="rgba(34,211,238,.15)";ab.style.color="#22d3ee";}
-  var items=(window._qcd||{})[cat]||[];
-  document.getElementById("_qcl").innerHTML=items.map(function(t,i){return '<label style="display:flex;gap:8px;align-items:flex-start;padding:8px 0;cursor:pointer;color:#94a3b8;font-size:13px;border-bottom:1px solid rgba(255,255,255,.04)"><input type="checkbox" onchange="_sfQcU('+items.length+')" style="margin-top:2px;accent-color:#22d3ee;flex-shrink:0"> '+t+'</label>';}).join("")+'<div id="_qcs" style="margin-top:10px;text-align:center;font-size:14px;font-weight:700">0/'+items.length+'</div>';
-}
-function _sfQcU(total){var n=document.querySelectorAll("#_qcl input:checked").length;var el=document.getElementById("_qcs");if(!el)return;el.innerHTML='<span style="color:'+(n===total?"#22c55e":n>total*.6?"#f59e0b":"#ef4444")+'">'+ n+"/"+total+" "+(n===total?"Approve":"Review")+"</span>";}
-function _sfTsize(el){
-  window._szm=[["6","39","5.5","24"],["6.5","39.5","6","24.5"],["7","40","6.5","25"],["7.5","40.5","7","25.5"],["8","41","7.5","26"],["8.5","42","8","26.5"],["9","42.5","8.5","27"],["9.5","43","9","27.5"],["10","44","9.5","28"],["10.5","44.5","10","28.5"],["11","45","10.5","29"],["12","46","11.5","30"]];
-  var opts=window._szm.map(function(r){return '<option value="'+r[0]+'">US '+r[0]+'</option>';}).join("");
-  el.innerHTML='<h3 style="color:#e2e8f0;margin:0 0 16px;font-size:16px">Size Converter</h3>';
-  el.innerHTML+=_sfS("_szus",opts,"_sfSzC");
-  el.innerHTML+='<div id="_szout" style="display:grid;grid-template-columns:1fr 1fr;gap:10px"></div>';
-  _sfSzC();
-}
-function _sfSzC(){
-  var us=((document.getElementById("_szus")||{}).value)||"6";
-  var row=(window._szm||[]).filter(function(r){return r[0]===us;})[0];if(!row)return;
-  document.getElementById("_szout").innerHTML=[["EU",row[1]],["UK",row[2]],["CM",row[3]+"cm"],["US",row[0]]].map(function(v){return '<div style="background:rgba(255,255,255,.05);border-radius:10px;padding:12px;text-align:center"><div style="color:#475569;font-size:10px;margin-bottom:3px;text-transform:uppercase">'+v[0]+'</div><div style="color:#22d3ee;font-size:24px;font-weight:700">'+v[1]+'</div></div>';}).join("");
-}
-function _sfTduty(el){
-  el.innerHTML='<h3 style="color:#e2e8f0;margin:0 0 16px;font-size:16px">Customs Duty</h3>';
-  el.innerHTML+=_sfS("_dtd","<option value='800,0'>USA (under $800 free)</option><option value='135,20'>UK (over $135 = 20%)</option><option value='171,20'>EU (over $171 = 20%)</option><option value='740,10'>Australia (10%)</option><option value='31,20'>Canada (20%)</option>",null);
-  el.innerHTML+=_sfI("_dtv","Order value in USD");
-  el.innerHTML+=_sfB("Calculate","_sfDtC")+_sfO("_dtr");
-  el.innerHTML+='<p style="color:#334155;font-size:11px;margin:4px 0 0">Rough estimate only</p>';
-}
-function _sfDtC(){
-  var parts=((document.getElementById("_dtd")||{}).value||"800,0").split(",");
-  var val=parseFloat((document.getElementById("_dtv")||{}).value||0);
-  var r=document.getElementById("_dtr");if(!r)return;
-  if(!val){r.innerHTML='<span style="color:#ef4444">Enter order value</span>';return;}
-  var thresh=parseFloat(parts[0]),rate=parseFloat(parts[1])/100;
-  r.innerHTML=val<=thresh?'<span style="color:#22c55e">Under threshold - no duty</span>':'<span style="color:#f59e0b">~$'+((val-thresh)*rate).toFixed(2)+" estimated duty</span>";
-}
-function _sfTgloss(el){
-  var terms=[["W2C","Where to Cop - where to buy an item"],["QC","Quality Check - reviewing agent photos before shipping"],["GL","Green Light - approve QC, ready to ship"],["1:1","Same quality as retail"],["Haul","Multiple items shipped together"],["PK","Top Putian batch for Yeezy"],["OG","High quality Jordan batch"],["LJR","Dongguan top batch, excellent AJ1s"],["H12","Popular AJ1 batch"],["Chun Yuan","Pure Original - highest Putian tier"],["Gong Si Ji","Company Grade - 95%+ accuracy"],["Zhen Biao","True Label - real tags"],["Pu Tian","Putian city - China sneaker capital"],["Middleman","Reseller adding 30-100% markup"],["CNFans","Agent - 0-1.5% fees"],["Sugargoo","Agent - 0% fees, large hauls"],["MOQ","Minimum Order Quantity"],["Yupoo","Chinese photo album for catalogs"],["Consolidation","Combining parcels to save on shipping"]];
-  el.innerHTML='<h3 style="color:#e2e8f0;margin:0 0 14px;font-size:16px">Rep Glossary</h3>';
-  el.innerHTML+=terms.map(function(t){return '<div style="padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05)"><b style="color:#22d3ee;font-size:13px">'+t[0]+'</b><div style="color:#64748b;font-size:12px;margin-top:2px">'+t[1]+'</div></div>';}).join("");
-}
-document.addEventListener("keydown",function(e){if(e.key==="Escape"){_sfToolClose();_sfMenuOpen=false;var p=document.getElementById("_sfNavPanel");var o=document.getElementById("_sfOverlay");if(p)p.style.left="-300px";if(o)o.style.display="none";}});
+/* ==== SIDE NAV ==== */
+var _sfMO=false;
+function _sfMenuToggle(){_sfMO=!_sfMO;var p=document.getElementById("_sfNavPanel"),o=document.getElementById("_sfOverlay");if(p)p.style.right=_sfMO?"0":"-290px";if(o)o.style.display=_sfMO?"block":"none";if(_sfMO)_sfLoadStats();}
+function _sfNavGo(tab){_sfMO=false;var p=document.getElementById("_sfNavPanel"),o=document.getElementById("_sfOverlay");if(p)p.style.right="-290px";if(o)o.style.display="none";document.querySelectorAll("._sfni").forEach(function(el){el.classList.remove("active");});var ab=document.querySelector("._sfni[data-tab='"+tab+"']");if(ab)ab.classList.add("active");if(typeof switchTab==="function")switchTab(tab);}
+function _sfOpenTool(t){_sfMO=false;var p=document.getElementById("_sfNavPanel"),o=document.getElementById("_sfOverlay");if(p)p.style.right="-290px";if(o)o.style.display="none";var m=document.getElementById("_sfToolModal"),c=document.getElementById("_sfToolContent");if(!m||!c)return;m.style.display="flex";var fns={cny:_sfTcny,ship:_sfTship,agent:_sfTagent,link:_sfTlink,qc:_sfTqc,size:_sfTsize,duty:_sfTduty,gloss:_sfTgloss};if(fns[t])fns[t](c);}
+function _sfCloseTool(){var m=document.getElementById("_sfToolModal");if(m)m.style.display="none";}
+function _sfLoadStats(){try{var s=JSON.parse(localStorage.getItem("sf_stats")||"{}");var el=document.getElementById("_pnlS");if(el)el.textContent=s.suppliers||"—";el=document.getElementById("_pnlW");if(el)el.textContent=s.wechats||"—";el=document.getElementById("_pnlQ");if(el)el.textContent=parseInt(localStorage.getItem("_sfd"+new Date().toDateString())||"0")||"—";}catch(e){}}
+document.addEventListener("keydown",function(e){if(e.key==="Escape"){_sfCloseTool();if(_sfMO){_sfMO=false;var p=document.getElementById("_sfNavPanel"),o=document.getElementById("_sfOverlay");if(p)p.style.right="-290px";if(o)o.style.display="none";}}});
+function _sfMkIn(id,ph){return '<input id="'+id+'" type="number" placeholder="'+ph+'" class="_sfIn">';}  
+function _sfMkSel(id,opts,onch){return '<select id="'+id+'"'+(onch?' onchange="'+onch+'()"':'')+' class="_sfSel">'+opts+'</select>';}
+function _sfMkBtn(l,fn){return '<button onclick="'+fn+'()" class="_sfBt">'+l+'</button>';}
+function _sfMkOut(id){return '<div id="'+id+'" class="_sfOut"></div>';}
+function _sfMkH(t){return '<h3 style="color:#e2e8f0;margin:0 0 16px;font-size:16px;font-weight:700">'+t+'</h3>';}
+function _sfTcny(el){el.innerHTML=_sfMkH("CNY Converter")+_sfMkIn("_cn","Amount in CNY")+'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px"><button onclick="_sfCnv(\'USD\')" class="_sfBt" style="margin:0">USD</button><button onclick="_sfCnv(\'EUR\')" class="_sfBt" style="margin:0">EUR</button><button onclick="_sfCnv(\'GBP\')" class="_sfBt" style="margin:0">GBP</button></div>'+_sfMkOut("_cnr")+'<p style="color:#1e293b;font-size:10px;margin-top:6px;text-align:center">~7.25 CNY/USD · ~7.8/EUR · ~9.1/GBP</p>';}
+function _sfCnv(to){var a=parseFloat((document.getElementById("_cn")||{}).value||0),r=document.getElementById("_cnr");if(!a||!r){if(r)r.innerHTML='<span style="color:#ef4444">Enter an amount</span>';return;}var rates={USD:7.25,EUR:7.8,GBP:9.1};r.innerHTML='<span style="color:#22d3ee;font-size:18px">CNY '+a+' = '+to+' '+(a/rates[to]).toFixed(2)+'</span>';}
+function _sfTship(el){el.innerHTML=_sfMkH("Shipping Estimator")+_sfMkSel("_shd","<option value='US'>USA</option><option value='UK'>UK</option><option value='EU'>Europe</option><option value='AU'>Australia</option><option value='CA'>Canada</option>",null)+_sfMkSel("_sht","<option value='.8'>Sneakers (800g)</option><option value='.25'>T-Shirt (250g)</option><option value='.6'>Hoodie (600g)</option><option value='1.2'>Bag (1.2kg)</option><option value='.9'>Jacket (900g)</option><option value='0'>Custom</option>","_sfShTy")+'<div id="_shcw" style="display:none">'+_sfMkIn("_shkg","Weight kg")+'</div>'+_sfMkBtn("Estimate","_sfShCalc")+_sfMkOut("_shr")+'<p style="color:#1e293b;font-size:10px;margin-top:6px;text-align:center">Economy ~10-20 days · DHL ~5-7 days</p>';}
+function _sfShTy(){var v=(document.getElementById("_sht")||{}).value;document.getElementById("_shcw").style.display=v==="0"?"block":"none";}
+function _sfShCalc(){var dest=(document.getElementById("_shd")||{}).value||"US",tv=(document.getElementById("_sht")||{}).value||".8",w=tv==="0"?parseFloat((document.getElementById("_shkg")||{}).value||0):parseFloat(tv),r=document.getElementById("_shr");if(!w||!r){if(r)r.innerHTML='<span style="color:#ef4444">Enter weight</span>';return;}var b={US:[8,18],UK:[10,22],EU:[9,20],AU:[12,25],CA:[10,22]}[dest]||[8,18];r.innerHTML='<span style="color:#22c55e;font-size:16px">Economy ~$'+Math.max(b[0],(w*b[0])).toFixed(0)+'</span><span style="color:#475569;font-size:13px;margin-left:12px">DHL ~$'+Math.max(b[1],(w*b[1])).toFixed(0)+'</span>';}
+function _sfTagent(el){var ag=[{n:"Sugargoo",f:0,c:"#22c55e"},{n:"CNFans",f:0.015,c:"#22d3ee"},{n:"ACBuy",f:0,c:"#22c55e"},{n:"Kakobuy",f:0.03,c:"#22d3ee"},{n:"Pandabuy",f:0.05,c:"#f59e0b"},{n:"Superbuy",f:0.08,c:"#ef4444"}];window._sfAg=ag;var grid=ag.map(function(a,i){return '<div style="padding:10px 6px;background:rgba(255,255,255,.04);border-radius:9px;text-align:center;border:1px solid rgba(255,255,255,.06)"><div style="color:#475569;font-size:10px;margin-bottom:5px">'+a.n+'</div><div id="_ag'+i+'" style="color:'+a.c+';font-size:17px;font-weight:700">-</div></div>';}).join("");el.innerHTML=_sfMkH("Agent Fee Compare")+_sfMkIn("_agamt","Order total in CNY")+_sfMkBtn("Compare","_sfAgCalc")+'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'+grid+'</div>';}
+function _sfAgCalc(){var amt=parseFloat((document.getElementById("_agamt")||{}).value||0);if(!amt)return;(window._sfAg||[]).forEach(function(a,i){var el=document.getElementById("_ag"+i);if(el)el.textContent=a.f===0?"FREE":"$"+(amt*a.f/7.25).toFixed(2);});}
+function _sfTlink(el){el.innerHTML=_sfMkH("Agent Link Converter")+'<textarea id="_lnk" placeholder="Paste Taobao / Weidian / 1688 URL..." style="width:100%;height:70px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#e2e8f0;padding:10px;border-radius:10px;font-size:12px;resize:none;outline:none;box-sizing:border-box;margin-bottom:10px;transition:border-color .2s;font-family:inherit"></textarea>'+_sfMkBtn("Generate All Agent Links","_sfLnkGen")+'<div id="_lnkr"></div>';}
+function _sfLnkGen(){var url=((document.getElementById("_lnk")||{}).value||"").trim(),r=document.getElementById("_lnkr");if(!url||!r){if(r)r.innerHTML='<span style="color:#ef4444">Paste a URL first</span>';return;}var e=encodeURIComponent(url);var ag=[["CNFans","https://cnfans.com/?num="+e],["Kakobuy","https://www.kakobuy.com/item/details?url="+e],["Sugargoo","https://www.sugargoo.com/#/home/productDetail?productLink="+e],["ACBuy","https://acbuy.com/product?url="+e],["Pandabuy","https://www.pandabuy.com/product?url="+e],["Superbuy","https://www.superbuy.com/en/page/buy/?url="+e],["Hagobuy","https://www.hagobuy.com/item/details?url="+e],["Mulebuy","https://mulebuy.com/product/?url="+e]];r.innerHTML=ag.map(function(a){return '<a href="'+a[1]+'" target="_blank" class="_sfLnk">&#8594; '+a[0]+'</a>';}).join("");}
+function _sfTqc(el){window._qcd={"Sneakers":["Toe box shape correct","Sole thickness correct","Stitching clean, no loose threads","Tongue label font correct","Lace color matches","Box barcode correct","Insole branding correct","No glue marks"],"Clothing":["Tag position correct","Seams even","No loose threads","Material weight right","Zipper brand correct","Print placement correct"],"Bags":["Stitching matches retail","Hardware color correct","Zipper branded correctly","Serial number correct","Lining color correct","Leather smell natural"],"Watches":["Crown functions smoothly","Crystal no bubbles","Caseback engravings correct","Clasp locks","Dial text correct","Hands aligned at 12"]};var btns=Object.keys(window._qcd).map(function(c){return '<button class="_sfQcB" data-cat="'+c+'" onclick="_sfQcC(\'"+c+"\')" style="padding:7px 12px;border-radius:8px;font-size:12px;cursor:pointer;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#64748b;margin:0 6px 8px 0;transition:all .2s;font-family:inherit">'+c+'</button>';}).join("");el.innerHTML=_sfMkH("QC Checklist")+btns+'<div id="_qcl" style="margin-top:4px"></div>';}
+function _sfQcC(cat){document.querySelectorAll("._sfQcB").forEach(function(b){b.style.background="rgba(255,255,255,.05)";b.style.color="#64748b";b.style.borderColor="rgba(255,255,255,.1)";});var ab=document.querySelector("._sfQcB[data-cat='"+cat+"']");if(ab){ab.style.background="rgba(34,211,238,.15)";ab.style.color="#22d3ee";ab.style.borderColor="rgba(34,211,238,.3)";}var items=(window._qcd||{})[cat]||[];document.getElementById("_qcl").innerHTML=items.map(function(t,i){return '<label style="display:flex;gap:9px;align-items:flex-start;padding:8px 0;cursor:pointer;color:#94a3b8;font-size:13px;border-bottom:1px solid rgba(255,255,255,.04)"><input type="checkbox" onchange="_sfQcU('+items.length+')" style="margin-top:2px;accent-color:#22d3ee;flex-shrink:0"> '+t+'</label>';}).join("")+'<div id="_qcs" style="margin-top:12px;text-align:center;font-size:14px;font-weight:700;padding:8px;border-radius:8px;background:rgba(255,255,255,.03)">0/'+items.length+'</div>';}
+function _sfQcU(total){var n=document.querySelectorAll("#_qcl input:checked").length,el=document.getElementById("_qcs");if(!el)return;var pct=total?Math.round(n/total*100):0;el.innerHTML='<span style="color:'+(n===total?"#22c55e":pct>60?"#f59e0b":"#ef4444")+'">'+ n+"/"+total+" — "+(n===total?"Approve":"Review")+"</span>";}
+function _sfTsize(el){window._szm=[["6","39","5.5","24"],["6.5","39.5","6","24.5"],["7","40","6.5","25"],["7.5","40.5","7","25.5"],["8","41","7.5","26"],["8.5","42","8","26.5"],["9","42.5","8.5","27"],["9.5","43","9","27.5"],["10","44","9.5","28"],["10.5","44.5","10","28.5"],["11","45","10.5","29"],["12","46","11.5","30"]];var opts=window._szm.map(function(r){return '<option value="'+r[0]+'">US '+r[0]+'</option>';}).join("");el.innerHTML=_sfMkH("Size Converter — Men's Sneakers")+_sfMkSel("_szus",opts,"_sfSzC")+'<div id="_szout" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px"></div>';_sfSzC();}
+function _sfSzC(){var us=((document.getElementById("_szus")||{}).value)||"6",row=(window._szm||[]).filter(function(r){return r[0]===us;})[0];if(!row)return;document.getElementById("_szout").innerHTML=[["EU",row[1]],["UK",row[2]],["CM",row[3]+"cm"],["US",row[0]]].map(function(v){return '<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:12px;text-align:center"><div style="color:#475569;font-size:9px;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">'+v[0]+'</div><div style="color:#22d3ee;font-size:26px;font-weight:700">'+v[1]+'</div></div>';}).join("");}
+function _sfTduty(el){el.innerHTML=_sfMkH("Customs Duty Estimator")+_sfMkSel("_dtd","<option value='800,0'>USA — under $800 = free</option><option value='135,20'>UK — over $135 = 20%</option><option value='171,20'>EU — over $171 = 20%</option><option value='740,10'>Australia — 10%</option><option value='31,20'>Canada — 20%</option>",null)+_sfMkIn("_dtv","Order value in USD")+_sfMkBtn("Calculate","_sfDtC")+_sfMkOut("_dtr")+'<p style="color:#1e293b;font-size:10px;margin-top:6px;text-align:center">Rough estimate only — varies by product type</p>';}
+function _sfDtC(){var parts=((document.getElementById("_dtd")||{}).value||"800,0").split(","),val=parseFloat((document.getElementById("_dtv")||{}).value||0),r=document.getElementById("_dtr");if(!r)return;if(!val){r.innerHTML='<span style="color:#ef4444">Enter order value</span>';return;}var thresh=parseFloat(parts[0]),rate=parseFloat(parts[1])/100;r.innerHTML=val<=thresh?'<span style="color:#22c55e;font-size:16px">Under threshold — no duty</span>':'<span style="color:#f59e0b;font-size:16px">~$'+((val-thresh)*rate).toFixed(2)+" estimated duty</span>";}
+function _sfTgloss(el){var terms=[["W2C","Where to Cop — where to buy a specific item"],["QC","Quality Check — reviewing agent warehouse photos"],["GL","Green Light — approve QC, ready to ship"],["1:1","Same quality and materials as retail"],["Haul","Multiple items shipped together"],["PK","Top Putian batch, started with Yeezy 350"],["OG","High quality Jordan batch"],["LJR","Dongguan top batch, excellent AJ1s"],["H12","Popular AJ1 batch, good value"],["Chun Yuan","Pure Original — highest Putian tier, OG molds"],["Gong Si Ji","Company Grade — 95%+ accuracy, best value"],["Zhen Biao","True Label — real tags, decent quality"],["Tong Huo","Common goods — lowest tier, avoid"],["Pu Tian","Putian city, Fujian — sneaker factory capital"],["Middleman","Reseller adding 30-100% markup over factory price"],["CNFans","Agent — 0-1.5% fees, best overall"],["Sugargoo","Agent — 0% fees, great for large hauls"],["Kakobuy","Agent — 0-3% fees, good for beginners"],["MOQ","Minimum Order Quantity"],["Consolidation","Combining parcels to save on shipping"],["Yupoo","Chinese photo album site for supplier catalogs"]];el.innerHTML=_sfMkH("Rep Glossary A-Z")+terms.map(function(t){return '<div style="padding:8px 0;border-bottom:1px solid rgba(255,255,255,.04)"><b style="color:#22d3ee;font-size:12px">'+t[0]+'</b><div style="color:#64748b;font-size:11px;margin-top:2px;line-height:1.4">'+t[1]+'</div></div>';}).join("");}
