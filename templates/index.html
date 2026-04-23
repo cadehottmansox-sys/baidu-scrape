@@ -661,7 +661,27 @@
         <div id="qrOutput" style="margin-top:12px;text-align:center"></div>
       </div>
     </section>
-
-  
-
-      
+<div id="_sfSideBtn" onclick="_sfTogglePanel()" title="Buyer Tools" style="position:fixed;bottom:24px;right:24px;z-index:99990;width:44px;height:44px;border-radius:12px;background:rgba(34,211,238,.12);border:1px solid rgba(34,211,238,.3);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;box-shadow:0 4px 20px rgba(0,0,0,.4)">
+  <span style="width:18px;height:2px;background:#22d3ee;border-radius:2px;display:block"></span>
+  <span style="width:18px;height:2px;background:#22d3ee;border-radius:2px;display:block"></span>
+  <span style="width:12px;height:2px;background:#22d3ee;border-radius:2px;display:block;margin-right:6px"></span>
+</div>
+<div id="_sfSideOverlay" onclick="_sfTogglePanel()" style="display:none;position:fixed;inset:0;z-index:99988;background:rgba(0,0,0,.5)"></div>
+<div id="_sfSidePanel" style="position:fixed;right:-380px;top:0;bottom:0;width:360px;z-index:99999;background:#080f1a;border-left:1px solid rgba(34,211,238,.15);transition:right .3s ease;overflow-y:auto">
+  <div style="padding:16px 18px;border-bottom:1px solid rgba(255,255,255,.06);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:#080f1a;z-index:2">
+    <div><div style="color:#22d3ee;font-size:14px;font-weight:700">Buyer Tools</div><div style="color:#334155;font-size:11px">Every tool you need per order</div></div>
+    <button onclick="_sfTogglePanel()" style="background:none;border:none;color:#475569;font-size:22px;cursor:pointer;line-height:1">x</button>
+  </div>
+  <div style="display:flex;gap:4px;padding:10px 12px;flex-wrap:wrap;border-bottom:1px solid rgba(255,255,255,.05)">
+    <button onclick="_sfTool('cny')" class="_sftab" data-tool="cny" style="padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer;background:rgba(34,211,238,.15);border:1px solid rgba(34,211,238,.3);color:#22d3ee">CNY</button>
+    <button onclick="_sfTool('ship')" class="_sftab" data-tool="ship" style="padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:#64748b">Ship</button>
+    <button onclick="_sfTool('agent')" class="_sftab" data-tool="agent" style="padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:#64748b">Agent</button>
+    <button onclick="_sfTool('link')" class="_sftab" data-tool="link" style="padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:#64748b">Link</button>
+    <button onclick="_sfTool('qc')" class="_sftab" data-tool="qc" style="padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:#64748b">QC</button>
+    <button onclick="_sfTool('size')" class="_sftab" data-tool="size" style="padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:#64748b">Size</button>
+    <button onclick="_sfTool('duty')" class="_sftab" data-tool="duty" style="padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:#64748b">Duty</button>
+    <button onclick="_sfTool('gloss')" class="_sftab" data-tool="gloss" style="padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:#64748b">Terms</button>
+  </div>
+  <div id="_sfToolContent" style="padding:14px 16px"></div>
+</div>
+</body></html>
