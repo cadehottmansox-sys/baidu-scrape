@@ -2726,3 +2726,39 @@ function dySearch(){var brand=(document.getElementById("dy-brand")||{}).value||"
 function dyOpenApp(){var brand=(document.getElementById("dy-brand")||{}).value||"",product=(document.getElementById("dy-product")||{}).value||"";window.open("https://www.douyin.com/search/"+encodeURIComponent(dyBuildQ(brand,product,_dyMode)),"_blank");}
 function dyBuildKw(){var type=(document.getElementById("dy-kw-type")||{}).value||"sneakers",tier=(document.getElementById("dy-kw-tier")||{}).value||"",goal=(document.getElementById("dy-kw-goal")||{}).value||"factory";var tm={sneakers:"球鞋 运动鞋",clothing:"衣服 服装",bags:"包包",watches:"手表",jewelry:"饰品"};var gm={factory:"厂家直销 工厂 微信",wechat:"微信 联系方式 加我",wholesale:"批发 货源 代发",video:"实物视频 开箱"};var parts=[tm[type]||type,tier,gm[goal]||""].filter(Boolean).join(" ");window._dyKw=parts;var res=document.getElementById("dy-kw-result"),txt=document.getElementById("dy-kw-text");if(res)res.style.display="block";if(txt)txt.textContent=parts;}
 function dyKwCopy(){var txt=document.getElementById("dy-kw-text");if(txt){dyCopy(txt.textContent);var btn=document.getElementById("dy-kw-copy");if(btn){btn.textContent="Copied";setTimeout(function(){btn.textContent="Copy";},2000);}}}
+function dyDownloadVideo(){
+  var urlEl=document.getElementById("dy-video-url");
+  var url=(urlEl?urlEl.value:"").trim();
+  var res=document.getElementById("dy-video-result");
+  if(!url){if(res)res.innerHTML="<div style='color:#ef4444;padding:12px;text-align:center'>Paste a Douyin video URL first</div>";return;}
+  if(!res)return;
+  res.innerHTML="<div style='text-align:center;padding:24px'><div style='font-size:32px;margin-bottom:8px'>&#9203;</div><div style='color:#f59e0b;font-size:14px;font-weight:600'>Downloading video...</div><div style='color:#475569;font-size:12px;margin-top:4px'>Fetching + scanning description for WeChats</div></div>";
+  fetch("/api/douyin-video",{method:"POST",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify({url:url})})
+  .then(function(r){return r.json();})
+  .then(function(d){
+    if(!d.ok){res.innerHTML="<div style='background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:10px;padding:16px;color:#ef4444;text-align:center'>"+( d.error||"Download failed")+"</div>";return;}
+    var wHTML="";
+    if(d.wechats&&d.wechats.length){
+      wHTML+="<div style='background:rgba(34,211,238,.07);border:1px solid rgba(34,211,238,.2);border-radius:10px;padding:14px;margin-bottom:14px'>";
+      wHTML+="<div style='color:#22d3ee;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px'>WeChats Found</div>";
+      wHTML+=d.wechats.map(function(w){return "<div style='display:flex;justify-content:space-between;align-items:center;background:rgba(0,0,0,.3);border-radius:8px;padding:9px 12px;margin-bottom:6px'><span style='color:#22d3ee;font-size:15px;font-weight:700;font-family:monospace'>"+w+"</span><button onclick='navigator.clipboard.writeText(""+w+"")' style='padding:5px 12px;background:rgba(34,211,238,.15);border:1px solid rgba(34,211,238,.3);color:#22d3ee;border-radius:6px;font-size:11px;cursor:pointer;font-family:inherit'>Copy</button></div>";}).join("");
+      wHTML+="</div>";
+    } else {
+      wHTML="<div style='background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:12px;margin-bottom:14px;color:#475569;font-size:12px;text-align:center'>No WeChat IDs found in description</div>";
+    }
+    var dHTML=d.description?"<div style='background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:14px;margin-bottom:14px'><div style='color:#94a3b8;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px'>Description</div><div style='color:#e2e8f0;font-size:13px;line-height:1.6;white-space:pre-wrap'>"+d.description+"</div></div>":"";
+    var sHTML="<div style='display:flex;gap:8px;margin-bottom:14px'>"
+      +"<div style='flex:1;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:8px;padding:10px;text-align:center'><div style='color:#22d3ee;font-size:15px;font-weight:700'>"+(d.duration||0)+"s</div><div style='color:#334155;font-size:10px'>Duration</div></div>"
+      +"<div style='flex:1;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:8px;padding:10px;text-align:center'><div style='color:#22d3ee;font-size:15px;font-weight:700'>"+(d.view_count||0).toLocaleString()+"</div><div style='color:#334155;font-size:10px'>Views</div></div>"
+      +"<div style='flex:1;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:8px;padding:10px;text-align:center'><div style='color:#22d3ee;font-size:15px;font-weight:700'>"+(d.file_size_mb||0)+"MB</div><div style='color:#334155;font-size:10px'>Size</div></div>"
+      +"</div>";
+    var vsrc="data:video/"+(d.ext||"mp4")+";base64,"+d.video_b64;
+    res.innerHTML=
+      "<div style='margin-bottom:14px'>"
+      +"<div style='color:#94a3b8;font-size:11px;margin-bottom:6px'>By: "+d.author+"</div>"
+      +"<video controls playsinline style='width:100%;border-radius:12px;background:#000;max-height:360px'><source src='"+vsrc+"' type='video/"+(d.ext||"mp4")+"'></video>"
+      +"<a href='"+vsrc+"' download='douyin."+(d.ext||"mp4")+"' style='display:block;margin-top:8px;padding:9px;background:rgba(34,211,238,.1);border:1px solid rgba(34,211,238,.25);color:#22d3ee;border-radius:8px;font-size:12px;font-weight:600;text-align:center;text-decoration:none'>Download Video File</a></div>"
+      +sHTML+wHTML+dHTML;
+  })
+  .catch(function(e){res.innerHTML="<div style='color:#ef4444;padding:12px;text-align:center'>Error: "+e.message+"</div>";});
+}

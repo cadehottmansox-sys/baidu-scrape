@@ -678,6 +678,20 @@
       <!-- RESULTS -->
       <div id="dy-results"></div>
 
+
+      <div style="margin-top:20px;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:18px">
+        <h3 style="color:#e2e8f0;font-size:15px;font-weight:700;margin:0 0 6px">&#127925; Douyin Video Downloader + WeChat Scanner</h3>
+        <p style="color:#475569;font-size:12px;margin:0 0 14px">Paste any Douyin video URL. Downloads the video, extracts the description, and auto-scans for WeChat contacts.</p>
+        <div style="display:flex;gap:8px;margin-bottom:12px">
+          <input id="dy-video-url" placeholder="https://www.douyin.com/video/..." style="flex:1;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#e2e8f0;padding:10px 14px;border-radius:10px;font-size:13px;outline:none;font-family:inherit" onfocus="this.style.borderColor='rgba(34,211,238,.4)'" onblur="this.style.borderColor='rgba(255,255,255,.1)'">
+          <button onclick="dyDownloadVideo()" style="padding:10px 18px;background:linear-gradient(135deg,rgba(34,211,238,.2),rgba(99,102,241,.2));border:1px solid rgba(34,211,238,.35);color:#22d3ee;border-radius:10px;font-size:13px;cursor:pointer;font-weight:700;white-space:nowrap;font-family:inherit">Download + Scan</button>
+        </div>
+        <div style="background:rgba(34,211,238,.04);border:1px solid rgba(34,211,238,.1);border-radius:8px;padding:10px 12px;margin-bottom:12px">
+          <div style="color:#22d3ee;font-size:11px;font-weight:600;margin-bottom:3px">How to get the URL:</div>
+          <div style="color:#475569;font-size:11px;line-height:1.6">On Douyin app: tap Share then Copy Link. On web: copy from address bar. Also works with short links like v.douyin.com/xxx</div>
+        </div>
+        <div id="dy-video-result"></div>
+      </div>
       <!-- HOW IT WORKS -->
       <div style="margin-top:24px;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:20px">
         <h3 style="color:#e2e8f0;font-size:15px;font-weight:700;margin:0 0 14px">&#128214; How to Find Suppliers on Douyin</h3>

@@ -693,6 +693,56 @@ FILE SIZE: {len(html)} chars
         data = request.get_json(silent=True) or {}
         return jsonify(auth.update_password(data.get("email", ""), data.get("password", "")))
 
+    @app.route('/api/douyin-video', methods=['POST'])
+    def douyin_video():
+        user = get_user()
+        if not user:
+            return jsonify({'error': 'Unauthorized'}), 401
+        try:
+            import yt_dlp, tempfile, os, re, base64
+            data = request.get_json(silent=True) or {}
+            url = (data.get('url') or '').strip()
+            if not url:
+                return jsonify({'error': 'No URL'}), 400
+            if not any(d in url for d in ['douyin.com','tiktok.com','iesdouyin.com','v.douyin']):
+                return jsonify({'error': 'Not a Douyin URL'}), 400
+            with tempfile.TemporaryDirectory() as tmpdir:
+                outtmpl = os.path.join(tmpdir, 'vid.%(ext)s')
+                opts = {'outtmpl': outtmpl, 'format': 'mp4/best', 'quiet': True, 'no_warnings': True,
+                        'http_headers': {'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15'}}
+                with yt_dlp.YoutubeDL(opts) as ydl:
+                    info = ydl.extract_info(url, download=True)
+                desc = info.get('description') or info.get('title') or ''
+                author = info.get('uploader') or ''
+                vfile = None
+                for f in os.listdir(tmpdir):
+                    if f.startswith('vid.'):
+                        vfile = os.path.join(tmpdir, f); break
+                if not vfile:
+                    return jsonify({'error': 'Download failed'}), 500
+                sz = os.path.getsize(vfile)
+                if sz > 50*1024*1024:
+                    return jsonify({'error': 'Video too large (50MB max)'}), 400
+                with open(vfile,'rb') as vf:
+                    vb64 = base64.b64encode(vf.read()).decode()
+                wechats = []
+                for pat in [r'\u5fae\u4fe1[\uff1a:\u53f7]?\s*([A-Za-z0-9_\-]{5,25})',
+                             r'wx[\uff1a:]?\s*([A-Za-z0-9_\-]{5,25})',
+                             r'V\u4fe1[\uff1a:]?\s*([A-Za-z0-9_\-]{5,25})',
+                             r'weixin[\uff1a:]?\s*([A-Za-z0-9_\-]{5,25})']:
+                    for m in re.findall(pat, desc+' '+author, re.IGNORECASE):
+                        if m not in wechats: wechats.append(m)
+                return jsonify({'ok': True, 'video_b64': vb64,
+                    'ext': os.path.splitext(vfile)[1].lstrip('.') or 'mp4',
+                    'description': desc, 'author': author,
+                    'duration': info.get('duration',0),
+                    'view_count': info.get('view_count',0),
+                    'like_count': info.get('like_count',0),
+                    'wechats': wechats,
+                    'file_size_mb': round(sz/1024/1024,1)})
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+
     return app
     # ── COMMUNITY CHAT ──────────────────────────────────────────────────────
     @app.route("/api/chat/messages")

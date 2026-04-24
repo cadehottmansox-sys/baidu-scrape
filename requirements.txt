@@ -7,4 +7,5 @@ pyzbar==0.1.9
 pytesseract==0.3.10
 requests==2.31.0
 psycopg2-binary==2.9.9
-# v1776971310533
+yt-dlp==2024.12.13
+# v1776992993941
