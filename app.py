@@ -33,7 +33,7 @@ def create_app() -> Flask:
     app = Flask(__name__)
     logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s")
 
-    # Clear all session tokens on startup — forces re-login every deploy
+    # Clear all session tokens on startup â forces re-login every deploy
     try:
         import storage
         data = storage.read("sf_users", {"requests": [], "approved": []})
@@ -176,7 +176,7 @@ def create_app() -> Flask:
             p.write_text(json.dumps(data, indent=2))
         return f"<h2>Done!</h2><p>Email: cadehottmansox@gmail.com</p><p>Password: {pw}</p><p><a href='/'>Go to app</a></p>"
 
-    # ──── Admin API endpoints ────────────────────────────────────────────────
+    # ââ Admin API endpoints ââââââââââââââââââââââââââââââââââââââââââ
     @app.get("/api/admin/data")
     @require_admin
     def api_admin_data():
@@ -520,7 +520,7 @@ def create_app() -> Flask:
     @app.post("/scan-page")
     @require_auth
     def scan_page():
-        """Scan a single URL for WeChat IDs — used by per-card scan button."""
+        """Scan a single URL for WeChat IDs â used by per-card scan button."""
         data = request.get_json(silent=True) or {}
         url  = (data.get("url") or "").strip()
         if not url:
@@ -532,7 +532,34 @@ def create_app() -> Flask:
             app.logger.exception("Scan page failed: %s", exc)
             return jsonify({"error": "Scan failed. Try again."}), 500
 
-    # ──── Finds board ────────────────────────────────────────────────────────
+    # ââ Debug endpoint âââââââââââââââââââââââââââââââââââââââââââââââ
+    @app.get("/debug/baidu-html")
+    @require_admin
+    def debug_baidu_html():
+        """Read saved Baidu HTML to debug parser."""
+        from pathlib import Path
+        p = Path("/app/data/debug_baidu.html")
+        if not p.exists():
+            return "No debug HTML saved yet. Run a search first.", 404
+        html = p.read_text(errors="replace")
+        # Find h3 tags
+        import re
+        h3s = re.findall(r'<h3[^>]*>.*?</h3>', html, re.S)[:5]
+        links = re.findall(r'href="([^"]+)"', html[:5000])[:20]
+        return f"""<pre>
+HTML length: {len(html)}
+
+=== FIRST 5 H3 TAGS ===
+{chr(10).join(h3s[:5])}
+
+=== FIRST 20 HREFS IN PAGE ===
+{chr(10).join(links)}
+
+=== HTML SAMPLE 2000-4000 ===
+{html[2000:4000]}
+</pre>"""
+
+    # ââ Finds board âââââââââââââââââââââââââââââââââââââââââââââââ
     @app.get("/finds")
     def get_finds():
         finds = _load_finds()
@@ -585,6 +612,86 @@ def create_app() -> Flask:
         finds = [f for f in finds if f["id"] != find_id]
         _save_finds(finds)
         return jsonify({"status": "deleted"}), 200
+
+    # ââ Debug ââââââââââââââââââââââââââââââââââââââââââââââââââââ
+    @app.get("/debug/html")
+    @require_admin
+    def debug_html():
+        from pathlib import Path
+        p = Path("/app/data/debug_baidu.html")
+        if not p.exists():
+            return "No debug HTML saved yet", 404
+        html = p.read_text(errors="replace")
+        # Find h3 tags
+        import re
+        h3s = re.findall(r'<h3[^>]*>.*?</h3>', html[:100000], re.S)
+        links = re.findall(r'href="([^"]{20,})"', html[:100000])
+        return f"""
+        <pre>
+FILE SIZE: {len(html)} chars
+
+=== H3 TAGS FOUND ({len(h3s)}) ===
+{chr(10).join(h3s[:5])}
+
+=== ALL HREFS ({len(links)}) ===
+{chr(10).join(links[:30])}
+
+=== HTML SAMPLE (chars 5000-8000) ===
+{html[5000:8000]}
+        </pre>
+        """
+
+    # ââ Admin âââââââââââââââââââââââââââââââââââââââââââââââââââââ
+    @app.get("/admin")
+    @require_admin
+    def admin_dashboard():
+        return render_template("admin.html", secret=ADMIN_SECRET)
+
+    @app.get("/admin/data")
+    @require_admin
+    def admin_data():
+        return jsonify(auth.get_admin_data())
+
+    @app.post("/admin/approve/<req_id>")
+    @require_admin
+    def admin_approve(req_id):
+        data     = request.get_json(silent=True) or {}
+        password = (data.get("password") or "").strip()
+        result   = auth.approve_request(req_id, password)
+        return jsonify(result)
+
+    @app.get("/admin/deny/<req_id>")
+    @require_admin
+    def admin_deny(req_id):
+        return jsonify(auth.deny_request(req_id))
+
+    @app.post("/admin/set-expiry")
+    @require_admin
+    def admin_set_expiry():
+        body = request.get_json(silent=True) or {}
+        email = body.get("email")
+        expires_at = body.get("expires_at")
+        if not email:
+            return jsonify({"error": "email required"}), 400
+        return jsonify(auth.set_expiry(email, expires_at))
+
+    @app.post("/admin/revoke")
+    @require_admin
+    def admin_revoke():
+        data  = request.get_json(silent=True) or {}
+        return jsonify(auth.revoke_user(data.get("email", "")))
+
+    @app.post("/admin/set-admin")
+    @require_admin
+    def admin_set_admin():
+        data = request.get_json(silent=True) or {}
+        return jsonify(auth.set_admin(data.get("email", ""), data.get("is_admin", True)))
+
+    @app.post("/admin/update-password")
+    @require_admin
+    def admin_update_password():
+        data = request.get_json(silent=True) or {}
+        return jsonify(auth.update_password(data.get("email", ""), data.get("password", "")))
 
     @app.route('/api/douyin-video', methods=['POST'])
     def douyin_video():
