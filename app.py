@@ -749,7 +749,6 @@ FILE SIZE: {len(html)} chars
         if not user:
             return jsonify({'error': 'Unauthorized'}), 401
         import requests as _req, re as _re, os, base64, time
-
         data = request.get_json(silent=True) or {}
         query = (data.get('query') or '').strip()
         if not query:
@@ -758,76 +757,45 @@ FILE SIZE: {len(html)} chars
         api_key = os.getenv('SCRAPINGDOG_API_KEY', '69e6b959ba3950604d5080d7')
         results = []
         debug_info = []
-
         try:
-            # Search strategies - try multiple to find douyin video IDs
             search_queries = [
-                query + ' 抖音视频',
-                query + ' 抖音 douyin.com',
-                query + ' site:v.douyin.com',
+                query + ' site:douyin.com/video',
+                query + ' douyin.com/video',
+                query + ' v.douyin.com',
             ]
             video_ids = []
             seen = set()
-
             for sq in search_queries:
-                if len(video_ids) >= max_vids:
-                    break
+                if len(video_ids) >= max_vids: break
                 try:
-                    r = _req.get(
-                        'https://api.scrapingdog.com/baidu/search/',
+                    r = _req.get('https://api.scrapingdog.com/baidu/search/',
                         params={'api_key': api_key, 'query': sq, 'results': 20, 'country': 'cn'},
-                        timeout=20
-                    )
+                        timeout=20)
                     if r.status_code != 200:
-                        debug_info.append('baidu_error_' + sq[:20] + ':' + str(r.status_code))
+                        debug_info.append('baidu_err:'+str(r.status_code))
                         continue
                     raw = r.json()
                     organic = raw.get('Baidu_data') or raw.get('organic_data') or raw.get('data') or []
-                    if not isinstance(organic, list):
-                        organic = []
-                    debug_info.append('baidu_results:' + str(len(organic)) + ' for ' + sq[:30])
-
+                    if not isinstance(organic, list): organic = []
+                    debug_info.append('baidu:'+str(len(organic))+':'+sq[:25])
                     for item in organic:
-                        # Check all text fields for douyin video IDs
-                        parts = [
-                            item.get('link',''), item.get('url',''),
-                            item.get('description',''), item.get('snippet',''),
-                            item.get('title','')
-                        ]
+                        parts = [item.get('link',''), item.get('url',''),
+                                 item.get('description',''), item.get('snippet',''), item.get('title','')]
                         combined = ' '.join(str(p) for p in parts)
-
-                        # Look for douyin video IDs (15-19 digit numbers)
-                        for m in _re.finditer(r'douyin\.com/video/(\d{15,20})', combined):
+                        import re as _r2
+                        for m in _r2.finditer(r'douyin\.com/video/(\d{15,20})', combined):
                             vid = m.group(1)
-                            if vid not in seen:
-                                seen.add(vid); video_ids.append(vid)
-
-                        # Look for v.douyin.com short links
-                        for m in _re.finditer(r'v\.douyin\.com/([A-Za-z0-9]{6,12})', combined):
-                            short = 'https://v.douyin.com/' + m.group(1) + '/'
-                            if short not in seen:
-                                seen.add(short); video_ids.append(short)
-
-                        # Also grab any direct douyin.com links
-                        if 'douyin.com' in combined:
-                            for m in _re.finditer(r'https?://(?:www\.)?douyin\.com/[^\s'"<>]+', combined):
-                                u = m.group(0).rstrip('.,;)')
-                                if u not in seen:
-                                    seen.add(u); video_ids.append(u)
-
+                            if vid not in seen: seen.add(vid); video_ids.append(vid)
+                        for m in _r2.finditer(r'v\.douyin\.com/([A-Za-z0-9]{6,12})', combined):
+                            short = 'https://v.douyin.com/'+m.group(1)+'/'
+                            if short not in seen: seen.add(short); video_ids.append(short)
                 except Exception as e:
-                    debug_info.append('search_err:' + str(e)[:50])
-                    continue
-
-            debug_info.append('total_video_ids:' + str(len(video_ids)))
-            app.logger.info('Douyin IDs found: %s | debug: %s', video_ids[:5], debug_info)
-
-            # WeChat patterns
+                    debug_info.append('sq_err:'+str(e)[:40])
+            debug_info.append('ids:'+str(len(video_ids)))
             wc_pats = [
                 _re.compile(r'[\u5fae\u4fe1][\uff1a:]?\s*([A-Za-z0-9_\-]{5,25})'),
                 _re.compile(r'wx[\uff1a:]?\s*([A-Za-z0-9_\-]{5,25})', _re.I),
                 _re.compile(r'weixin[\uff1a:]?\s*([A-Za-z0-9_\-]{5,25})', _re.I),
-                _re.compile(r'V[\u4fe1][\uff1a:]?\s*([A-Za-z0-9_\-]{5,25})'),
             ]
             def scan_wc(text):
                 found = []
@@ -835,20 +803,16 @@ FILE SIZE: {len(html)} chars
                     for m in p.findall(text or ''):
                         if m and len(m)>=5 and m not in found: found.append(m)
                 return found
-
             hdrs = {'User-Agent':'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15',
                     'Referer':'https://www.douyin.com/'}
-
             for vid in video_ids[:max_vids]:
                 try:
                     vurl = ('https://www.douyin.com/video/'+vid) if vid.isdigit() else vid
                     vr = _req.get('https://api.douyin.wtf/api/hybrid/video_data',
-                                  params={'url': vurl, 'minimal': 'false'},
-                                  timeout=25, headers=hdrs)
+                                  params={'url':vurl,'minimal':'false'}, timeout=25, headers=hdrs)
                     if vr.status_code != 200: continue
                     vd = vr.json()
                     if vd.get('status') == 'failed': continue
-
                     desc = vd.get('desc') or vd.get('title') or ''
                     ao = vd.get('author') or {}
                     author = ao.get('nickname') or ao.get('unique_id') or ''
@@ -857,8 +821,6 @@ FILE SIZE: {len(html)} chars
                     vo = vd.get('video') or {}
                     play_url = (vo.get('play_addr') or vo.get('download_addr') or
                                 vo.get('wm_video_url_HQ') or vo.get('wm_video_url') or '')
-
-                    # Download video
                     video_b64 = ''
                     if play_url:
                         try:
@@ -867,31 +829,19 @@ FILE SIZE: {len(html)} chars
                             for chunk in dl.iter_content(65536):
                                 chunks += chunk
                                 if len(chunks) > 25*1024*1024: break
-                            if chunks:
-                                video_b64 = base64.b64encode(chunks).decode()
-                        except: pass
-
-                    wechats = scan_wc(desc + ' ' + author + ' ' + author_sig)
-                    results.append({
-                        'url': vurl, 'title': desc[:120] or author+' - Douyin',
-                        'desc': desc, 'author': author, 'author_sig': author_sig,
-                        'play_count': stats.get('play_count',0),
-                        'digg_count': stats.get('digg_count',0),
-                        'comment_count': stats.get('comment_count',0),
-                        'duration': vo.get('duration',0),
-                        'wechats': wechats, 'video_b64': video_b64,
-                        'has_video': bool(video_b64), 'video_url': play_url,
-                    })
+                            if chunks: video_b64 = base64.b64encode(chunks).decode()
+                        except Exception: pass
+                    wechats = scan_wc(desc+' '+author+' '+author_sig)
+                    results.append({'url':vurl,'title':desc[:120] if desc else author+' - Douyin',
+                        'desc':desc,'author':author,'author_sig':author_sig,
+                        'play_count':stats.get('play_count',0),'digg_count':stats.get('digg_count',0),
+                        'comment_count':stats.get('comment_count',0),'duration':vo.get('duration',0),
+                        'wechats':wechats,'video_b64':video_b64,'has_video':bool(video_b64),'video_url':play_url})
                     time.sleep(0.3)
-                except Exception as e:
-                    debug_info.append('video_err:'+str(e)[:40])
-
+                except Exception as e: debug_info.append('vid_err:'+str(e)[:40])
         except Exception as e:
-            return jsonify({'error': str(e), 'debug': debug_info}), 500
-
-        return jsonify({'ok': True, 'query': query, 'results': results,
-                        'count': len(results), 'debug': debug_info})
-
+            return jsonify({'error':str(e),'debug':debug_info}), 500
+        return jsonify({'ok':True,'query':query,'results':results,'count':len(results),'debug':debug_info})
     @app.route("/api/chat/messages")
     def get_chat_messages():
         import storage
