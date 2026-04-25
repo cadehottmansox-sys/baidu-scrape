@@ -944,38 +944,3 @@ def bump_global_stats():
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5001))
     app.run(host="0.0.0.0", port=port, debug=os.getenv("FLASK_DEBUG","false").lower()=="true")
-# ============================================================
-# NEW ENDPOINT - SMART SEARCH
-# ADD THIS TO BOTTOM OF app.py (DON'T DELETE ANYTHING)
-# ============================================================
-
-@app.route("/api/smart-search", methods=["POST"])
-@require_auth
-def smart_search_endpoint():
-    """Enhanced search with intent detection and relevance scoring"""
-    try:
-        data = request.get_json(silent=True) or {}
-        query = data.get("query", "").strip()
-        brand = data.get("brand", "").strip()
-        platform = data.get("platform", "baidu")
-        mode = data.get("mode", "supplier")
-        
-        if not query:
-            return jsonify({"error": "Query required"}), 400
-        
-        # Import the smart search function
-        from searcher import smart_search
-        
-        # Run enhanced search
-        results = asyncio.run(smart_search(query, brand, platform, mode))
-        
-        return jsonify({
-            "ok": True,
-            "results": results,
-            "count": len(results),
-            "intent_detected": detect_intent(query, brand)["detected_intent"]
-        })
-        
-    except Exception as e:
-        app.logger.exception("Smart search failed")
-        return jsonify({"error": str(e)}), 500
