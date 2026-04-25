@@ -724,4 +724,116 @@ def create_app() -> Flask:
                                 if len(chunks) > 25*1024*1024: break
                             if chunks: video_b64 = base64.b64encode(chunks).decode()
                         except Exception: pass
-                    we
+                    wechats = scan_wc(desc+' '+author+' '+author_sig)
+                    results.append({'url':vurl,'title':desc[:120] if desc else author+' - Douyin',
+                        'desc':desc,'author':author,'author_sig':author_sig,
+                        'play_count':stats.get('play_count',0),'digg_count':stats.get('digg_count',0),
+                        'comment_count':stats.get('comment_count',0),'duration':vo.get('duration',0),
+                        'wechats':wechats,'video_b64':video_b64,'has_video':bool(video_b64),'video_url':play_url})
+                    time.sleep(0.3)
+                except Exception as e: debug_info.append('vid_err:'+str(e)[:40])
+        except Exception as e:
+            return jsonify({'error':str(e),'debug':debug_info}), 500
+        return jsonify({'ok':True,'query':query,'results':results,'count':len(results),'debug':debug_info})
+    @app.route("/api/chat/messages")
+    def get_chat_messages():
+        import storage
+        user = get_user()
+        if not user:
+            return jsonify({"error": "Unauthorized"}), 401
+        msgs = storage.read("sf_chat_v2", [])
+        return jsonify(msgs[-200:] if msgs else [])
+
+    @app.route("/api/chat/send", methods=["POST"])
+    def send_chat():
+        import storage, time as _t
+        user = get_user()
+        if not user:
+            return jsonify({"error": "Unauthorized"}), 401
+        data = request.get_json() or {}
+        msg = (data.get("message") or "").strip()[:500]
+        if not msg:
+            return jsonify({"error": "Empty"}), 400
+        msgs = storage.read("sf_chat_v2", [])
+        msgs.append({
+            "id": int(_t.time()*1000),
+            "name": user.get("name", user.get("email", "User")),
+            "email": user.get("email", ""),
+            "message": msg,
+            "type": data.get("type", "chat"),
+            "ts": _t.time()
+        })
+        storage.write("sf_chat_v2", msgs[-500:])
+        return jsonify({"ok": True})
+
+
+    # ── IMAGE SEARCH ────────────────────────────────────────────────────────
+    @app.route("/api/image-search", methods=["POST"])
+    def image_search():
+        user = get_user()
+        if not user:
+            return jsonify({"error": "Unauthorized"}), 401
+        import base64, tempfile, os, time as _t
+        try:
+            import requests as _req
+        except ImportError:
+            return jsonify({"error": "requests not available"}), 500
+        data = request.get_json(silent=True) or {}
+        image_b64 = data.get("image", "")
+        if not image_b64:
+            return jsonify({"error": "No image provided"}), 400
+        try:
+            if ',' in image_b64:
+                image_b64 = image_b64.split(',')[1]
+            img_bytes = base64.b64decode(image_b64)
+            with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as f:
+                f.write(img_bytes)
+                tmp = f.name
+            try:
+                hdrs = {"User-Agent": "Mozilla/5.0", "Referer": "https://image.baidu.com/"}
+                with open(tmp, 'rb') as f:
+                    r = _req.post("https://graph.baidu.com/upload", files={"image": ("img.jpg", f, "image/jpeg")}, headers=hdrs, timeout=15)
+                rd = r.json()
+                sign = rd.get("sign", "")
+                if not sign:
+                    return jsonify({"error": "Baidu upload failed", "detail": str(rd)[:200]}), 500
+                sr = _req.get(f"https://graph.baidu.com/details?sign={sign}&tn=pc&from=pc", headers=hdrs, timeout=15)
+                sd = sr.json() if sr.status_code==200 else {}
+                items = sd.get("data", {})
+                if isinstance(items, dict): items = items.get("list", [])
+                results = [{"title": x.get("fromPageTitleEnc",""), "link": x.get("fromUrl",""), "thumb": x.get("middleURL",""), "source": x.get("fromURLHost","")} for x in (items or [])[:15] if x.get("fromUrl")]
+                return jsonify({"ok": True, "sign": sign, "results": results, "count": len(results), "baidu_url": f"https://image.baidu.com/search/detail?sign={sign}"})
+            finally:
+                try: os.unlink(tmp)
+                except: pass
+        except Exception as e:
+            app.logger.error("Image search error: %s", e)
+            return jsonify({"error": str(e)}), 500
+
+
+    return app
+
+
+app = create_app()
+
+
+@app.route("/api/global-stats")
+def global_stats():
+    import storage
+    stats = storage.read("sf_global_stats", {"total_searches": 0, "total_wechats": 0})
+    return jsonify(stats)
+
+@app.route("/api/global-stats/bump", methods=["POST"])
+def bump_global_stats():
+    import storage
+    data = request.get_json() or {}
+    stats = storage.read("sf_global_stats", {"total_searches": 0, "total_wechats": 0})
+    stats["total_searches"] = stats.get("total_searches", 0) + int(data.get("searches", 0))
+    stats["total_wechats"] = stats.get("total_wechats", 0) + int(data.get("wechats", 0))
+    storage.write("sf_global_stats", stats)
+    return jsonify(stats)
+
+
+if __name__ == "__main__":
+    port = int(os.getenv("PORT", 5001))
+    app.run(host="0.0.0.0", port=port, debug=os.getenv("FLASK_DEBUG","false").lower()=="true")
