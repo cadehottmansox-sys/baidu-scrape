@@ -2878,8 +2878,166 @@ function dyInit(){var qb=document.getElementById("dy-quick-btns");if(!qb||qb.chi
 function dySetMode(mode){_dyMode=mode;document.querySelectorAll(".dy-mode").forEach(function(b){b.style.background="rgba(255,255,255,.05)";b.style.borderColor="rgba(255,255,255,.1)";b.style.color="#64748b";});var ab=document.querySelector(".dy-mode[data-mode="+JSON.stringify(mode)+"]");if(ab){ab.style.background="rgba(34,211,238,.15)";ab.style.borderColor="rgba(34,211,238,.3)";ab.style.color="#22d3ee";}}
 function dyBuildQ(brand,product,mode){var b=brand?brand+" ":"";if(mode==="supplier")return b+product+" 厂家 微信 一手货源 联系方式";if(mode==="passing")return b+product+" 纯原 过验 莆田 PK版 工厂";if(mode==="wholesale")return b+product+" 批发 货源 代发 一件代发";if(mode==="freight")return "转运 集运 "+product+" 代购 微信 报价";if(mode==="live")return b+product+" 直播 货源 工厂直播";return b+product;}
 function dyCopy(q){try{navigator.clipboard.writeText(q);}catch(e){}}
-function dySearch(){var brand=(document.getElementById("dy-brand")||{}).value||"",product=(document.getElementById("dy-product")||{}).value||"";var res=document.getElementById("dy-results");if(!brand&&!product){if(res)res.textContent="Enter a brand or product first";return;}var query=dyBuildQ(brand,product,_dyMode);window._dyQ=query;var qd=document.getElementById("dy-query-display"),qt=document.getElementById("dy-query-text");if(qd)qd.style.display="block";if(qt)qt.textContent=query;if(!res)return;res.textContent="Building...";var enc=encodeURIComponent(query);setTimeout(function(){res.innerHTML="<div style=background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:16px;margin-bottom:10px><div style=color:#e2e8f0;font-size:14px;font-weight:700;margin-bottom:5px>Douyin Web Search</div><div style=color:#475569;font-size:12px;margin-bottom:10px>Check video descriptions and comments for WeChat numbers.</div><a href=https://www.douyin.com/search/"+enc+" target=_blank style=display:inline-block;padding:9px 18px;background:linear-gradient(135deg,rgba(34,211,238,.2),rgba(99,102,241,.2));border:1px solid rgba(34,211,238,.3);color:#22d3ee;border-radius:9px;font-size:13px;font-weight:700;text-decoration:none>Open Douyin Search</a></div><div style=background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:16px><div style=color:#e2e8f0;font-size:14px;font-weight:700;margin-bottom:8px>Copy for Douyin App</div><div style=display:flex;gap:8px;align-items:center><div style=flex:1;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:9px;color:#94a3b8;font-size:12px;font-family:monospace;word-break:break-all>"+query+"</div><button onclick=dyCopy(window._dyQ) style=padding:9px 13px;background:rgba(34,211,238,.1);border:1px solid rgba(34,211,238,.25);color:#22d3ee;border-radius:8px;font-size:12px;cursor:pointer;white-space:nowrap;font-family:inherit>Copy</button></div></div>";},300);}
+function dySearch() {
+  var brand = (document.getElementById("dy-brand")||{}).value||"";
+  var product = (document.getElementById("dy-product")||{}).value||"";
+  var res = document.getElementById("dy-results");
+  if (!brand && !product) { if (res) res.textContent="Enter a brand or product first"; return; }
+  var query = dyBuildQ(brand, product, _dyMode);
+  window._dyQ = query;
+  var qd = document.getElementById("dy-query-display");
+  var qt = document.getElementById("dy-query-text");
+  if (qd) qd.style.display = "block";
+  if (qt) qt.textContent = query;
+  if (!res) return;
+  res.innerHTML = "";
+  var loading = document.createElement("div");
+  loading.style.cssText = "text-align:center;padding:32px";
+  loading.innerHTML = "<div style=\"font-size:28px;margin-bottom:10px\">&#128269;</div><div style=\"color:#22d3ee;font-size:14px;font-weight:600\">Searching Douyin...</div><div style=\"color:#475569;font-size:12px;margin-top:4px\">Scanning videos and profiles for supplier contacts</div>";
+  res.appendChild(loading);
+  fetch("/search", {
+    method: "POST", credentials: "include",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({ query: query, brand: brand, platform: "douyin", mode: _dyMode==="passing"?"passing":"supplier", deep_scan: false, wechat_only: false, page_num: 1, variation: 0, seen_links: [] })
+  }).then(function(r){return r.json();}).then(function(d){
+    res.innerHTML = "";
+    if (d.error) { res.textContent = "Error: "+d.error; return; }
+    var results = d.results || [];
+    if (!results.length) {
+      var empty = document.createElement("div");
+      empty.style.cssText = "text-align:center;padding:32px;color:#475569";
+      empty.innerHTML = "<div style=\"font-size:28px;margin-bottom:8px\">&#128270;</div><div>No results found. Try different keywords.</div>";
+      res.appendChild(empty);
+      return;
+    }
+    results.forEach(function(r) {
+      var card = document.createElement("div");
+      card.style.cssText = "background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:16px;margin-bottom:12px";
+      var title = document.createElement("div");
+      title.style.cssText = "color:#e2e8f0;font-size:14px;font-weight:700;margin-bottom:6px";
+      title.textContent = r.title || r.name || "Douyin Account";
+      card.appendChild(title);
+      if (r.snippet || r.description) {
+        var snip = document.createElement("div");
+        snip.style.cssText = "color:#64748b;font-size:12px;margin-bottom:10px;line-height:1.5";
+        snip.textContent = (r.snippet || r.description).slice(0,200);
+        card.appendChild(snip);
+      }
+      var wechats = r.wechats || [];
+      if (wechats.length) {
+        var wb = document.createElement("div");
+        wb.style.cssText = "background:rgba(34,211,238,.08);border:1px solid rgba(34,211,238,.2);border-radius:10px;padding:12px;margin-bottom:10px";
+        var wt = document.createElement("div");
+        wt.style.cssText = "color:#22d3ee;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px";
+        wt.textContent = "WeChat IDs Found";
+        wb.appendChild(wt);
+        wechats.forEach(function(w) {
+          var row = document.createElement("div");
+          row.style.cssText = "display:flex;justify-content:space-between;align-items:center;background:rgba(0,0,0,.3);border-radius:8px;padding:8px 12px;margin-bottom:6px";
+          var wspan = document.createElement("span");
+          wspan.style.cssText = "color:#22d3ee;font-size:14px;font-weight:700;font-family:monospace";
+          wspan.textContent = w;
+          var cb = document.createElement("button");
+          cb.textContent = "Copy";
+          cb.style.cssText = "padding:4px 10px;background:rgba(34,211,238,.15);border:1px solid rgba(34,211,238,.3);color:#22d3ee;border-radius:6px;font-size:11px;cursor:pointer;font-family:inherit";
+          cb.onclick = (function(wc){return function(){navigator.clipboard.writeText(wc);};})(w);
+          row.appendChild(wspan); row.appendChild(cb); wb.appendChild(row);
+        });
+        card.appendChild(wb);
+      }
+      if (r.url) {
+        var link = document.createElement("a");
+        link.href = r.url; link.target = "_blank";
+        link.style.cssText = "display:inline-block;padding:7px 14px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:#94a3b8;font-size:12px;text-decoration:none";
+        link.textContent = "View on Douyin ↗";
+        card.appendChild(link);
+      }
+      res.appendChild(card);
+    });
+  }).catch(function(e){
+    res.innerHTML = "";
+    var err = document.createElement("div");
+    err.style.cssText = "color:#ef4444;padding:16px;text-align:center";
+    err.textContent = "Search failed: "+e.message;
+    res.appendChild(err);
+  });
+}
 function dyOpenApp(){var brand=(document.getElementById("dy-brand")||{}).value||"",product=(document.getElementById("dy-product")||{}).value||"";window.open("https://www.douyin.com/search/"+encodeURIComponent(dyBuildQ(brand,product,_dyMode)),"_blank");}
 function dyBuildKw(){var type=(document.getElementById("dy-kw-type")||{}).value||"sneakers",tier=(document.getElementById("dy-kw-tier")||{}).value||"",goal=(document.getElementById("dy-kw-goal")||{}).value||"factory";var tm={sneakers:"球鞋 运动鞋",clothing:"衣服 服装",bags:"包包",watches:"手表",jewelry:"饰品"};var gm={factory:"厂家直销 工厂 微信",wechat:"微信 联系方式 加我",wholesale:"批发 货源 代发",video:"实物视频 开箱"};var parts=[tm[type]||type,tier,gm[goal]||""].filter(Boolean).join(" ");window._dyKw=parts;var res=document.getElementById("dy-kw-result"),txt=document.getElementById("dy-kw-text");if(res)res.style.display="block";if(txt)txt.textContent=parts;}
 function dyKwCopy(){var txt=document.getElementById("dy-kw-text");if(txt){dyCopy(txt.textContent);var btn=document.getElementById("dy-kw-copy");if(btn){btn.textContent="Copied";setTimeout(function(){btn.textContent="Copy";},2000);}}}
-function dyDownloadVideo(){var urlEl=document.getElementById("dy-video-url"),url=(urlEl?urlEl.value:"").trim(),res=document.getElementById("dy-video-result");if(!url){if(res)res.textContent="Paste a Douyin video URL first";return;}if(!res)return;res.textContent="Downloading...";fetch("/api/douyin-video",{method:"POST",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify({url:url})}).then(function(r){return r.json();}).then(function(d){if(!d.ok){res.textContent=d.error||"Download failed";return;}res.innerHTML="";var vid=document.createElement("div");vid.style.marginBottom="14px";var auth=_mkH("div",{style:"color:#94a3b8;font-size:11px;margin-bottom:6px"},"By: "+d.author);vid.appendChild(auth);var video=document.createElement("video");video.controls=true;video.style.cssText="width:100%;border-radius:12px;background:#000;max-height:360px";var src=document.createElement("source");src.src="data:video/"+(d.ext||"mp4")+";base64,"+d.video_b64;src.type="video/"+(d.ext||"mp4");video.appendChild(src);vid.appendChild(video);var dl=document.createElement("a");dl.href=src.src;dl.download="douyin."+(d.ext||"mp4");dl.textContent="Download Video File";dl.style.cssText="display:block;margin-top:8px;padding:9px;background:rgba(34,211,238,.1);border:1px solid rgba(34,211,238,.25);color:#22d3ee;border-radius:8px;font-size:12px;font-weight:600;text-align:center;text-decoration:none";vid.appendChild(dl);res.appendChild(vid);var stats=document.createElement("div");stats.style.cssText="display:flex;gap:8px;margin-bottom:14px";[["Duration",(d.duration||0)+"s"],["Views",(d.view_count||0).toLocaleString()],["Size",(d.file_size_mb||0)+"MB"]].forEach(function(s){var cell=_mkH("div",{style:"flex:1;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:8px;padding:10px;text-align:center"});cell.appendChild(_mkH("div",{style:"color:#22d3ee;font-size:15px;font-weight:700"},s[1]));cell.appendChild(_mkH("div",{style:"color:#334155;font-size:10px"},s[0]));stats.appendChild(cell);});res.appendChild(stats);if(d.wechats&&d.wechats.length){var wb=_mkH("div",{style:"background:rgba(34,211,238,.07);border:1px solid rgba(34,211,238,.2);border-radius:10px;padding:14px;margin-bottom:14px"});wb.appendChild(_mkH("div",{style:"color:#22d3ee;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px"},"WeChat IDs Found"));d.wechats.forEach(function(w){var row=_mkH("div",{style:"display:flex;justify-content:space-between;align-items:center;background:rgba(0,0,0,.3);border-radius:8px;padding:9px 12px;margin-bottom:6px"});row.appendChild(_mkH("span",{style:"color:#22d3ee;font-size:15px;font-weight:700;font-family:monospace"},w));var cb=_mkH("button",{style:"padding:5px 12px;background:rgba(34,211,238,.15);border:1px solid rgba(34,211,238,.3);color:#22d3ee;border-radius:6px;font-size:11px;cursor:pointer;font-family:inherit"},"Copy");cb.onclick=function(){navigator.clipboard.writeText(w);};row.appendChild(cb);wb.appendChild(row);});res.appendChild(wb);}else{res.appendChild(_mkH("div",{style:"background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:12px;margin-bottom:14px;color:#475569;font-size:12px;text-align:center"},"No WeChat IDs found in description"));}if(d.description){var db=_mkH("div",{style:"background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:14px"});db.appendChild(_mkH("div",{style:"color:#94a3b8;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px"},"Description"));db.appendChild(_mkH("div",{style:"color:#e2e8f0;font-size:13px;line-height:1.6;white-space:pre-wrap"},d.description));res.appendChild(db);}}).catch(function(e){res.textContent="Error: "+e.message;});}
+function dyDownloadVideo() {
+  var urlEl = document.getElementById("dy-video-url");
+  var url = (urlEl ? urlEl.value : "").trim();
+  var res = document.getElementById("dy-video-result");
+  if (!url) { if (res) res.textContent="Paste a Douyin video URL first"; return; }
+  if (!res) return;
+  res.innerHTML="";
+  var loading=document.createElement("div");
+  loading.style.cssText="text-align:center;padding:24px";
+  loading.innerHTML="<div style=\"font-size:32px;margin-bottom:8px\">&#9203;</div><div style=\"color:#f59e0b;font-size:14px;font-weight:600\">Fetching video info...</div><div style=\"color:#475569;font-size:12px;margin-top:4px\">Parsing URL and scanning for WeChat IDs</div>";
+  res.appendChild(loading);
+  var apiUrl = "https://api.douyin.wtf/api/hybrid/video_data?url="+encodeURIComponent(url)+"&minimal=false";
+  fetch(apiUrl).then(function(r){return r.json();}).then(function(d){
+    res.innerHTML="";
+    if (d.status === "failed" || (!d.video && !d.images)) {
+      var err=document.createElement("div");
+      err.style.cssText="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:10px;padding:16px;color:#ef4444;text-align:center";
+      err.textContent=d.message||"Could not parse video. Try copying the URL from the Douyin app (Share → Copy Link).";
+      res.appendChild(err); return;
+    }
+    var desc = d.desc || d.title || "";
+    var author = (d.author && (d.author.nickname||d.author.unique_id)) || "";
+    var videoUrl = d.video && (d.video.play_addr||d.video.download_addr||d.video.wm_video_url_HQ||d.video.wm_video_url||"");
+    var stats = d.statistics || {};
+    var views = stats.play_count || stats.view_count || 0;
+    var wechats = [];
+    var wcPatterns = [/[微信][：:]{0,1}s*([A-Za-z0-9_-]{5,25})/g, /wx[：:]{0,1}s*([A-Za-z0-9_-]{5,25})/gi, /weixin[：:]{0,1}s*([A-Za-z0-9_-]{5,25})/gi, /V[信][：:]{0,1}s*([A-Za-z0-9_-]{5,25})/g];
+    var fullText = desc + " " + author;
+    wcPatterns.forEach(function(pat){var m;while((m=pat.exec(fullText))!==null){if(m[1]&&wechats.indexOf(m[1])<0)wechats.push(m[1]);}});
+    if (videoUrl) {
+      var vidWrap=document.createElement("div"); vidWrap.style.marginBottom="14px";
+      var auth=document.createElement("div"); auth.style.cssText="color:#94a3b8;font-size:11px;margin-bottom:6px"; auth.textContent="By: "+author;
+      vidWrap.appendChild(auth);
+      var video=document.createElement("video"); video.controls=true; video.style.cssText="width:100%;border-radius:12px;background:#000;max-height:360px";
+      var vsrc=document.createElement("source"); vsrc.src=videoUrl; vsrc.type="video/mp4";
+      video.appendChild(vsrc); vidWrap.appendChild(video);
+      var dl=document.createElement("a"); dl.href=videoUrl; dl.target="_blank"; dl.download="douyin.mp4";
+      dl.style.cssText="display:block;margin-top:8px;padding:9px;background:rgba(34,211,238,.1);border:1px solid rgba(34,211,238,.25);color:#22d3ee;border-radius:8px;font-size:12px;font-weight:600;text-align:center;text-decoration:none";
+      dl.textContent="Download Video (No Watermark)";
+      vidWrap.appendChild(dl); res.appendChild(vidWrap);
+    }
+    var sWrap=document.createElement("div"); sWrap.style.cssText="display:flex;gap:8px;margin-bottom:14px";
+    [{l:"Views",v:views.toLocaleString()},{l:"Duration",v:(d.video&&d.video.duration||0)+"s"},{l:"Author",v:author.slice(0,12)}].forEach(function(st){
+      var cell=document.createElement("div"); cell.style.cssText="flex:1;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:8px;padding:10px;text-align:center";
+      var val=document.createElement("div"); val.style.cssText="color:#22d3ee;font-size:13px;font-weight:700"; val.textContent=st.v;
+      var lbl=document.createElement("div"); lbl.style.cssText="color:#334155;font-size:10px"; lbl.textContent=st.l;
+      cell.appendChild(val); cell.appendChild(lbl); sWrap.appendChild(cell);
+    }); res.appendChild(sWrap);
+    if (wechats.length) {
+      var wb=document.createElement("div"); wb.style.cssText="background:rgba(34,211,238,.07);border:1px solid rgba(34,211,238,.2);border-radius:10px;padding:14px;margin-bottom:14px";
+      var wt=document.createElement("div"); wt.style.cssText="color:#22d3ee;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px"; wt.textContent="WeChat IDs Found";
+      wb.appendChild(wt);
+      wechats.forEach(function(w){
+        var row=document.createElement("div"); row.style.cssText="display:flex;justify-content:space-between;align-items:center;background:rgba(0,0,0,.3);border-radius:8px;padding:9px 12px;margin-bottom:6px";
+        var sp=document.createElement("span"); sp.style.cssText="color:#22d3ee;font-size:15px;font-weight:700;font-family:monospace"; sp.textContent=w;
+        var cp=document.createElement("button"); cp.textContent="Copy"; cp.style.cssText="padding:5px 12px;background:rgba(34,211,238,.15);border:1px solid rgba(34,211,238,.3);color:#22d3ee;border-radius:6px;font-size:11px;cursor:pointer;font-family:inherit";
+        cp.onclick=(function(wc){return function(){navigator.clipboard.writeText(wc);};})(w);
+        row.appendChild(sp); row.appendChild(cp); wb.appendChild(row);
+      }); res.appendChild(wb);
+    } else {
+      var nw=document.createElement("div"); nw.style.cssText="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:12px;margin-bottom:14px;color:#475569;font-size:12px;text-align:center";
+      nw.textContent="No WeChat IDs found in description"; res.appendChild(nw);
+    }
+    if (desc) {
+      var db=document.createElement("div"); db.style.cssText="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:14px";
+      var dt=document.createElement("div"); dt.style.cssText="color:#94a3b8;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px"; dt.textContent="Description";
+      var dd=document.createElement("div"); dd.style.cssText="color:#e2e8f0;font-size:13px;line-height:1.6;white-space:pre-wrap"; dd.textContent=desc;
+      db.appendChild(dt); db.appendChild(dd); res.appendChild(db);
+    }
+  }).catch(function(e){
+    res.innerHTML="";
+    var err=document.createElement("div"); err.style.cssText="color:#ef4444;padding:16px;text-align:center";
+    err.textContent="Error: "+e.message+" - Try opening the Douyin app, tap Share → Copy Link, paste here.";
+    res.appendChild(err);
+  });
+}
