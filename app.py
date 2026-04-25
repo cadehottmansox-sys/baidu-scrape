@@ -743,6 +743,135 @@ FILE SIZE: {len(html)} chars
         except Exception as e:
             return jsonify({'error': str(e)}), 500
 
+    @app.route('/api/douyin-search', methods=['POST'])
+    def douyin_search():
+        user = get_user()
+        if not user:
+            return jsonify({'error': 'Unauthorized'}), 401
+        import requests as req_lib, re, base64, time
+        data = request.get_json(silent=True) or {}
+        query = (data.get('query') or '').strip()
+        if not query:
+            return jsonify({'error': 'No query'}), 400
+        max_results = min(int(data.get('max_results', 5)), 8)
+        results = []
+        try:
+            # Step 1: Search Douyin via api.douyin.wtf
+            search_url = 'https://api.douyin.wtf/api/douyin/web/search_by_type'
+            search_params = {'keyword': query, 'search_type': 1, 'count': max_results, 'offset': 0, 'cookie': ''}
+            try:
+                sr = req_lib.get(search_url, params=search_params, timeout=15, headers={'User-Agent':'Mozilla/5.0'})
+                search_data = sr.json()
+            except Exception as se:
+                app.logger.warning('Douyin search API failed: %s', se)
+                search_data = {}
+            # Extract video URLs from search results
+            video_urls = []
+            items = search_data.get('data', {})
+            if isinstance(items, dict):
+                items = items.get('data', [])
+            if not isinstance(items, list):
+                items = []
+            for item in items[:max_results]:
+                vid = None
+                if isinstance(item, dict):
+                    # Try various nested paths
+                    vid = (item.get('aweme_info') or item.get('aweme') or item or {}).get('share_url') or \
+                          (item.get('aweme_info') or item.get('aweme') or item or {}).get('aweme_id')
+                    if vid and vid.startswith('7'):
+                        vid = 'https://www.douyin.com/video/' + vid
+                if vid:
+                    video_urls.append(vid)
+            # If search API didn't work, construct search URLs manually
+            if not video_urls:
+                # Fall back: use aweme_id from any nested structure
+                for item in items[:max_results]:
+                    try:
+                        aweme_id = str(item.get('aweme_id') or item.get('aweme_info', {}).get('aweme_id',''))
+                        if aweme_id and len(aweme_id) > 10:
+                            video_urls.append('https://www.douyin.com/video/' + aweme_id)
+                    except:
+                        pass
+            # Step 2: For each video URL, get full video data
+            wechat_pats = [
+                re.compile(r'[微信][：:\:]?\s*([A-Za-z0-9_\-]{5,25})'),
+                re.compile(r'wx[\uff1a:\:]?\s*([A-Za-z0-9_\-]{5,25})', re.I),
+                re.compile(r'weixin[\uff1a:\:]?\s*([A-Za-z0-9_\-]{5,25})', re.I),
+                re.compile(r'V[\u4fe1][\uff1a:\:]?\s*([A-Za-z0-9_\-]{5,25})'),
+                re.compile(r'[\u52a0][\u6211][\u5fae][\u4fe1]?[\uff1a:\:]?\s*([A-Za-z0-9_\-]{5,25})'),
+            ]
+            def extract_wechats(text):
+                found = []
+                for pat in wechat_pats:
+                    for m in pat.findall(text or ''):
+                        if m and m not in found and len(m) >= 5:
+                            found.append(m)
+                return found
+            for vurl in video_urls[:max_results]:
+                try:
+                    vr = req_lib.get(
+                        'https://api.douyin.wtf/api/hybrid/video_data',
+                        params={'url': vurl, 'minimal': 'false'},
+                        timeout=20,
+                        headers={'User-Agent':'Mozilla/5.0'}
+                    )
+                    vdata = vr.json()
+                    if vdata.get('status') == 'failed':
+                        continue
+                    desc = vdata.get('desc') or vdata.get('title') or ''
+                    author_info = vdata.get('author') or {}
+                    author = author_info.get('nickname') or author_info.get('unique_id') or ''
+                    author_sig = author_info.get('signature') or ''
+                    stats = vdata.get('statistics') or {}
+                    play_count = stats.get('play_count') or stats.get('comment_count') or 0
+                    # Get video download URL (no watermark)
+                    video_info = vdata.get('video') or {}
+                    video_dl_url = (video_info.get('play_addr') or
+                                    video_info.get('download_addr') or
+                                    video_info.get('wm_video_url_HQ') or
+                                    video_info.get('wm_video_url') or '')
+                    # Download the video and base64 encode it (max 30MB)
+                    video_b64 = ''
+                    if video_dl_url:
+                        try:
+                            vfile = req_lib.get(video_dl_url, timeout=30, stream=True,
+                                               headers={'User-Agent':'Mozilla/5.0','Referer':'https://www.douyin.com/'})
+                            chunks = b''
+                            for chunk in vfile.iter_content(chunk_size=65536):
+                                chunks += chunk
+                                if len(chunks) > 30 * 1024 * 1024:
+                                    break
+                            if chunks:
+                                video_b64 = base64.b64encode(chunks).decode()
+                        except Exception as ve:
+                            app.logger.warning('Video download failed: %s', ve)
+                    # Scan all text for WeChats
+                    all_text = desc + ' ' + author + ' ' + author_sig
+                    wechats = extract_wechats(all_text)
+                    # Build result
+                    result = {
+                        'url': vurl,
+                        'title': desc[:100] if desc else (author + ' video'),
+                        'desc': desc,
+                        'author': author,
+                        'author_sig': author_sig,
+                        'play_count': play_count,
+                        'duration': video_info.get('duration', 0),
+                        'wechats': wechats,
+                        'video_b64': video_b64,
+                        'has_video': bool(video_b64),
+                        'video_url': video_dl_url,
+                    }
+                    results.append(result)
+                    time.sleep(0.5)  # be nice to the API
+                except Exception as ve:
+                    app.logger.warning('Video fetch failed for %s: %s', vurl, ve)
+                    continue
+        except Exception as e:
+            app.logger.error('Douyin search error: %s', e)
+            return jsonify({'error': str(e)}), 500
+        return jsonify({'ok': True, 'query': query, 'results': results, 'count': len(results)})
+
     return app
     # ── COMMUNITY CHAT ──────────────────────────────────────────────────────
     @app.route("/api/chat/messages")

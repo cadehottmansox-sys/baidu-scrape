@@ -2885,80 +2885,94 @@ function dySearch() {
   if (!brand && !product) { if (res) res.textContent="Enter a brand or product first"; return; }
   var query = dyBuildQ(brand, product, _dyMode);
   window._dyQ = query;
-  var qd = document.getElementById("dy-query-display");
-  var qt = document.getElementById("dy-query-text");
-  if (qd) qd.style.display = "block";
+  var qd=document.getElementById("dy-query-display"), qt=document.getElementById("dy-query-text");
+  if (qd) qd.style.display="block";
   if (qt) qt.textContent = query;
   if (!res) return;
-  res.innerHTML = "";
-  var loading = document.createElement("div");
-  loading.style.cssText = "text-align:center;padding:32px";
-  loading.innerHTML = "<div style=\"font-size:28px;margin-bottom:10px\">&#128269;</div><div style=\"color:#22d3ee;font-size:14px;font-weight:600\">Searching Douyin...</div><div style=\"color:#475569;font-size:12px;margin-top:4px\">Scanning videos and profiles for supplier contacts</div>";
-  res.appendChild(loading);
-  fetch("/search", {
-    method: "POST", credentials: "include",
-    headers: {"Content-Type":"application/json"},
-    body: JSON.stringify({ query: query, brand: brand, platform: "douyin", mode: _dyMode==="passing"?"passing":"supplier", deep_scan: false, wechat_only: false, page_num: 1, variation: 0, seen_links: [] })
+  res.innerHTML="";
+  var spin=document.createElement("div"); spin.style.cssText="text-align:center;padding:40px";
+  spin.innerHTML="<div style=\"font-size:36px;margin-bottom:12px\">&#128269;</div><div style=\"color:#22d3ee;font-size:15px;font-weight:700;margin-bottom:6px\">Searching Douyin...</div><div style=\"color:#475569;font-size:12px\">Finding videos, downloading, scanning for WeChat IDs</div>";
+  res.appendChild(spin);
+  fetch("/api/douyin-search", {
+    method:"POST", credentials:"include",
+    headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({query:query, max_results:5})
   }).then(function(r){return r.json();}).then(function(d){
-    res.innerHTML = "";
-    if (d.error) { res.textContent = "Error: "+d.error; return; }
-    var results = d.results || [];
-    if (!results.length) {
-      var empty = document.createElement("div");
-      empty.style.cssText = "text-align:center;padding:32px;color:#475569";
-      empty.innerHTML = "<div style=\"font-size:28px;margin-bottom:8px\">&#128270;</div><div>No results found. Try different keywords.</div>";
-      res.appendChild(empty);
-      return;
+    res.innerHTML="";
+    if (!d.ok || d.error) {
+      var err=document.createElement("div"); err.style.cssText="color:#ef4444;padding:20px;text-align:center;font-size:13px";
+      err.textContent="Error: "+(d.error||"Search failed");
+      res.appendChild(err); return;
     }
-    results.forEach(function(r) {
-      var card = document.createElement("div");
-      card.style.cssText = "background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:16px;margin-bottom:12px";
-      var title = document.createElement("div");
-      title.style.cssText = "color:#e2e8f0;font-size:14px;font-weight:700;margin-bottom:6px";
-      title.textContent = r.title || r.name || "Douyin Account";
-      card.appendChild(title);
-      if (r.snippet || r.description) {
-        var snip = document.createElement("div");
-        snip.style.cssText = "color:#64748b;font-size:12px;margin-bottom:10px;line-height:1.5";
-        snip.textContent = (r.snippet || r.description).slice(0,200);
-        card.appendChild(snip);
-      }
-      var wechats = r.wechats || [];
+    var results = d.results||[];
+    if (!results.length) {
+      var empty=document.createElement("div"); empty.style.cssText="text-align:center;padding:40px;color:#475569";
+      empty.innerHTML="<div style=\"font-size:32px;margin-bottom:8px\">&#128270;</div><div>No videos found. Try different keywords.</div>";
+      res.appendChild(empty); return;
+    }
+    var hdr=document.createElement("div"); hdr.style.cssText="color:#475569;font-size:12px;margin-bottom:14px";
+    hdr.textContent="Found "+results.length+" Douyin videos for: "+query;
+    res.appendChild(hdr);
+    results.forEach(function(r, idx) {
+      var card=document.createElement("div");
+      card.style.cssText="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:18px;margin-bottom:14px";
+      var meta=document.createElement("div"); meta.style.cssText="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px";
+      var auth=document.createElement("div"); auth.style.cssText="color:#22d3ee;font-size:13px;font-weight:700";
+      auth.textContent=(r.author||"Unknown") + (r.play_count?" · "+Number(r.play_count).toLocaleString()+" views":"");
+      var num=document.createElement("div"); num.style.cssText="color:#334155;font-size:11px"; num.textContent="#"+(idx+1);
+      meta.appendChild(auth); meta.appendChild(num); card.appendChild(meta);
+      var wechats=r.wechats||[];
       if (wechats.length) {
-        var wb = document.createElement("div");
-        wb.style.cssText = "background:rgba(34,211,238,.08);border:1px solid rgba(34,211,238,.2);border-radius:10px;padding:12px;margin-bottom:10px";
-        var wt = document.createElement("div");
-        wt.style.cssText = "color:#22d3ee;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px";
-        wt.textContent = "WeChat IDs Found";
-        wb.appendChild(wt);
-        wechats.forEach(function(w) {
-          var row = document.createElement("div");
-          row.style.cssText = "display:flex;justify-content:space-between;align-items:center;background:rgba(0,0,0,.3);border-radius:8px;padding:8px 12px;margin-bottom:6px";
-          var wspan = document.createElement("span");
-          wspan.style.cssText = "color:#22d3ee;font-size:14px;font-weight:700;font-family:monospace";
-          wspan.textContent = w;
-          var cb = document.createElement("button");
-          cb.textContent = "Copy";
-          cb.style.cssText = "padding:4px 10px;background:rgba(34,211,238,.15);border:1px solid rgba(34,211,238,.3);color:#22d3ee;border-radius:6px;font-size:11px;cursor:pointer;font-family:inherit";
-          cb.onclick = (function(wc){return function(){navigator.clipboard.writeText(wc);};})(w);
-          row.appendChild(wspan); row.appendChild(cb); wb.appendChild(row);
+        var wb=document.createElement("div"); wb.style.cssText="background:rgba(34,211,238,.08);border:1px solid rgba(34,211,238,.25);border-radius:10px;padding:12px;margin-bottom:12px";
+        var wlbl=document.createElement("div"); wlbl.style.cssText="color:#22d3ee;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px"; wlbl.textContent="WeChat IDs Found";
+        wb.appendChild(wlbl);
+        wechats.forEach(function(w){
+          var row=document.createElement("div"); row.style.cssText="display:flex;justify-content:space-between;align-items:center;background:rgba(0,0,0,.35);border-radius:8px;padding:9px 13px;margin-bottom:6px";
+          var sp=document.createElement("span"); sp.style.cssText="color:#22d3ee;font-size:16px;font-weight:700;font-family:monospace"; sp.textContent=w;
+          var cp=document.createElement("button"); cp.textContent="Copy"; cp.style.cssText="padding:5px 13px;background:rgba(34,211,238,.15);border:1px solid rgba(34,211,238,.35);color:#22d3ee;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;font-family:inherit";
+          cp.onclick=(function(wc,btn){return function(){navigator.clipboard.writeText(wc);btn.textContent="Copied";setTimeout(function(){btn.textContent="Copy";},2000);};})(w,cp);
+          row.appendChild(sp); row.appendChild(cp); wb.appendChild(row);
         });
         card.appendChild(wb);
       }
+      if (r.has_video && r.video_b64) {
+        var vsrc="data:video/mp4;base64,"+r.video_b64;
+        var vid=document.createElement("video"); vid.controls=true; vid.style.cssText="width:100%;border-radius:12px;background:#000;max-height:400px;margin-bottom:10px";
+        var src=document.createElement("source"); src.src=vsrc; src.type="video/mp4";
+        vid.appendChild(src); card.appendChild(vid);
+        var dl=document.createElement("a"); dl.href=vsrc; dl.download="douyin_"+(idx+1)+".mp4";
+        dl.style.cssText="display:block;padding:9px;background:rgba(34,211,238,.1);border:1px solid rgba(34,211,238,.25);color:#22d3ee;border-radius:8px;font-size:12px;font-weight:600;text-align:center;text-decoration:none;margin-bottom:10px";
+        dl.textContent="Download Video (No Watermark)";
+        card.appendChild(dl);
+      } else if (r.video_url) {
+        var ext=document.createElement("a"); ext.href=r.video_url; ext.target="_blank";
+        ext.style.cssText="display:block;padding:9px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#94a3b8;border-radius:8px;font-size:12px;text-align:center;text-decoration:none;margin-bottom:10px";
+        ext.textContent="Open Video ↗";
+        card.appendChild(ext);
+      }
+      if (r.desc) {
+        var descBox=document.createElement("div"); descBox.style.cssText="background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:12px;margin-bottom:10px";
+        var dlbl=document.createElement("div"); dlbl.style.cssText="color:#475569;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px"; dlbl.textContent="Description";
+        var dtxt=document.createElement("div"); dtxt.style.cssText="color:#94a3b8;font-size:12px;line-height:1.6;white-space:pre-wrap"; dtxt.textContent=r.desc;
+        descBox.appendChild(dlbl); descBox.appendChild(dtxt); card.appendChild(descBox);
+      }
+      if (r.author_sig) {
+        var sigBox=document.createElement("div"); sigBox.style.cssText="background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:12px;margin-bottom:10px";
+        var slbl=document.createElement("div"); slbl.style.cssText="color:#475569;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px"; slbl.textContent="Author Bio";
+        var stxt=document.createElement("div"); stxt.style.cssText="color:#94a3b8;font-size:12px;line-height:1.6"; stxt.textContent=r.author_sig;
+        sigBox.appendChild(slbl); sigBox.appendChild(stxt); card.appendChild(sigBox);
+      }
       if (r.url) {
-        var link = document.createElement("a");
-        link.href = r.url; link.target = "_blank";
-        link.style.cssText = "display:inline-block;padding:7px 14px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:#94a3b8;font-size:12px;text-decoration:none";
-        link.textContent = "View on Douyin ↗";
-        card.appendChild(link);
+        var vlink=document.createElement("a"); vlink.href=r.url; vlink.target="_blank";
+        vlink.style.cssText="color:#334155;font-size:11px;text-decoration:none"; vlink.textContent="View on Douyin ↗";
+        card.appendChild(vlink);
       }
       res.appendChild(card);
     });
   }).catch(function(e){
-    res.innerHTML = "";
-    var err = document.createElement("div");
-    err.style.cssText = "color:#ef4444;padding:16px;text-align:center";
-    err.textContent = "Search failed: "+e.message;
+    res.innerHTML="";
+    var err=document.createElement("div"); err.style.cssText="color:#ef4444;padding:20px;text-align:center;font-size:13px";
+    err.textContent="Search failed: "+e.message;
     res.appendChild(err);
   });
 }
