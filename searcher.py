@@ -1251,3 +1251,57 @@ async def _scrape_yupoo(query, brand, page, timeout=25000, max_results=6):
     except Exception as e:
         logger.warning("Yupoo scrape error: %s", e)
     return results
+# ============================================================
+# ADD THIS FUNCTION TO THE BOTTOM OF searcher.py
+# DO NOT DELETE ANY EXISTING CODE
+# ============================================================
+
+from intent_detector import detect_intent, build_targeted_query, should_exclude_result
+from result_scorer import sort_by_relevance
+from location_filter import filter_and_score_by_location
+
+async def smart_search(
+    query: str, 
+    brand: str = "", 
+    platform: str = "baidu", 
+    mode: str = "supplier",
+    max_results: int = 20
+):
+    """
+    ENHANCED SEARCH - Uses intent detection and relevance scoring.
+    Call this instead of search_platform for better accuracy.
+    """
+    # Step 1: Detect what user is actually looking for
+    intent = detect_intent(query, brand)
+    print(f"[Smart Search] Detected intent: {intent['detected_intent']} (confidence: {intent['confidence']})")
+    
+    # Step 2: Build targeted query (minimal injection)
+    targeted_query = build_targeted_query(query, brand)
+    print(f"[Smart Search] Query: {targeted_query}")
+    
+    # Step 3: Run existing search function (your code)
+    results = await search_platform(
+        query=targeted_query,
+        brand=brand,
+        platform=platform,
+        mode=mode,
+        deep_scan=False,
+        wechat_only=False,
+        page_num=1
+    )
+    
+    # Step 4: Filter out unwanted results (official sites, blog posts)
+    filtered_results = []
+    for r in results:
+        combined_text = f"{r.get('title', '')} {r.get('snippet', '')}"
+        if not should_exclude_result(combined_text, intent):
+            filtered_results.append(r)
+    
+    # Step 5: Score and sort by relevance
+    scored_results = sort_by_relevance(filtered_results, query, brand)
+    
+    # Step 6: Apply location filtering
+    final_results = filter_and_score_by_location(scored_results)
+    
+    # Step 7: Return top results
+    return final_results[:max_results]
