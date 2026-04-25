@@ -7,7 +7,7 @@ from pathlib import Path
 
 _DEFAULT_DATA = {"requests": [], "approved": []}
 
-# In-memory sessions
+# In-memory sessions only - wiped on every restart/deploy
 _SESSIONS = {}
 
 def _load():
@@ -21,6 +21,13 @@ def _save(data):
 
 def _hash(password):
     return hashlib.sha256(password.encode()).hexdigest()
+
+def _next_id(data):
+    """Generate next available user ID"""
+    approved = data.get("approved", [])
+    if not approved:
+        return 1
+    return max((u.get("id", 0) for u in approved), default=0) + 1
 
 def submit_request(name, email, reason, ip, discord="", wechat="", password="", **kwargs):
     _ensure_owner()
@@ -40,15 +47,15 @@ def submit_request(name, email, reason, ip, discord="", wechat="", password="", 
     if not password or len(password) < 4:
         return {"ok": False, "error": "Password must be at least 6 characters."}
     req = {
-        "id": secrets.token_hex(8), 
-        "name": name, 
+        "id": secrets.token_hex(8),
+        "name": name,
         "email": email,
-        "reason": reason, 
-        "discord": discord, 
+        "reason": reason,
+        "discord": discord,
         "wechat": wechat,
-        "password_hash": _hash(password), 
+        "password_hash": _hash(password),
         "ip": ip,
-        "timestamp": time.time(), 
+        "timestamp": time.time(),
         "status": "pending"
     }
     data["requests"].append(req)
@@ -65,7 +72,6 @@ def approve_request(req_id, custom_password=None):
     req["status"] = "approved"
     req["approved_at"] = time.time()
     
-    # Use custom password if provided, otherwise keep existing
     password_hash = req.get("password_hash")
     if custom_password:
         password_hash = _hash(custom_password)
@@ -78,19 +84,20 @@ def approve_request(req_id, custom_password=None):
             existing["password"] = password_hash
     else:
         data["approved"].append({
-            "id": len(data["approved"]) + 1,
-            "name": req["name"], 
+            "id": _next_id(data),
+            "name": req["name"],
             "email": req["email"],
-            "password": password_hash, 
+            "password": password_hash,
             "is_admin": False,
-            "ip_history": [req["ip"]], 
+            "revoked": False,
+            "ip_history": [req["ip"]],
             "approved_at": time.time(),
-            "last_login": None, 
+            "last_login": None,
             "request_id": req_id,
-            "search_count": 0, 
-            "last_search": None, 
+            "search_count": 0,
+            "last_search": None,
             "last_query": "",
-            "revoked": False
+            "notes": {}
         })
     _save(data)
     return {"status": "approved"}
@@ -121,7 +128,7 @@ def login_user(email, password, ip):
             return {"valid": False, "error": "Your access has expired. Contact the admin to renew."}
     
     if not user.get("password"):
-        return {"valid": False, "needs_password": True, "error": "Set your password first."}
+        return {"valid": False, "needs_password": True, "error": "Account not set up. Contact admin."}
     
     if user["password"] != _hash(password):
         return {"valid": False, "error": "Wrong password."}
@@ -138,11 +145,11 @@ def login_user(email, password, ip):
     is_admin = user.get("is_admin", False) or email == OWNER_EMAIL
     
     return {
-        "valid": True, 
-        "token": token, 
-        "name": user["name"], 
+        "valid": True,
+        "token": token,
+        "name": user["name"],
         "is_admin": is_admin,
-        "user_id": user.get("id")  # <-- CRITICAL for session
+        "user_id": user.get("id")  # ADDED: for session
     }
 
 def _ensure_owner():
@@ -150,19 +157,20 @@ def _ensure_owner():
     user = next((u for u in data["approved"] if u["email"] == OWNER_EMAIL), None)
     if not user:
         data["approved"].append({
-            "id": 1,
-            "name": "Cade", 
-            "email": OWNER_EMAIL, 
+            "id": _next_id(data),
+            "name": "Cade",
+            "email": OWNER_EMAIL,
             "password": None,
-            "is_admin": True, 
-            "revoked": False, 
+            "is_admin": True,
+            "revoked": False,
             "ip_history": [],
-            "approved_at": time.time(), 
+            "approved_at": time.time(),
             "last_login": None,
-            "request_id": None, 
-            "search_count": 0, 
-            "last_search": None, 
-            "last_query": ""
+            "request_id": None,
+            "search_count": 0,
+            "last_search": None,
+            "last_query": "",
+            "notes": {}
         })
         _save(data)
     elif not user.get("is_admin"):
@@ -197,12 +205,23 @@ def validate_token(token, ip):
     
     is_admin = user.get("is_admin", False) or email == OWNER_EMAIL
     return {
-        "valid": True, 
-        "name": user["name"], 
-        "email": email, 
+        "valid": True,
+        "name": user["name"],
+        "email": email,
         "is_admin": is_admin,
         "user_id": user.get("id")
     }
+
+def ensure_session(email, ip):
+    data = _load()
+    user = next((u for u in data["approved"] if u["email"] == email), None)
+    if not user or user.get("revoked"):
+        return None
+    token = secrets.token_urlsafe(32)
+    _SESSIONS[token] = email
+    user["last_login"] = time.time()
+    _save(data)
+    return token
 
 def set_password(email, new_password):
     data = _load()
@@ -211,9 +230,7 @@ def set_password(email, new_password):
         return {"ok": False, "error": "User not found"}
     
     user["password"] = _hash(new_password)
-    user["needs_password"] = False
     
-    # Create a session token
     token = secrets.token_urlsafe(32)
     _SESSIONS[token] = email
     user["session_token"] = token
@@ -221,12 +238,24 @@ def set_password(email, new_password):
     _save(data)
     
     return {
-        "ok": True, 
-        "name": user["name"], 
+        "ok": True,
+        "name": user["name"],
         "token": token,
         "user_id": user.get("id"),
         "is_admin": user.get("is_admin", False)
     }
+
+def set_expiry(email, expires_at):
+    data = _load()
+    user = next((u for u in data["approved"] if u["email"] == email), None)
+    if not user:
+        return {"status": "not_found"}
+    if expires_at is None:
+        user.pop("expires_at", None)
+    else:
+        user["expires_at"] = expires_at
+    _save(data)
+    return {"status": "updated", "expires_at": expires_at}
 
 def get_admin_data():
     return _load()
@@ -264,15 +293,3 @@ def update_password(email, new_password):
 def get_user_by_email(email):
     data = _load()
     return next((u for u in data["approved"] if u["email"] == email), None)
-
-def set_expiry(email, expires_at):
-    data = _load()
-    user = next((u for u in data["approved"] if u["email"] == email), None)
-    if not user:
-        return {"status": "not_found"}
-    if expires_at is None:
-        user.pop("expires_at", None)
-    else:
-        user["expires_at"] = expires_at
-    _save(data)
-    return {"status": "updated", "expires_at": expires_at}
