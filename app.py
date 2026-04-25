@@ -759,9 +759,9 @@ FILE SIZE: {len(html)} chars
         debug_info = []
         try:
             search_queries = [
-                query + ' site:douyin.com/video',
-                query + ' douyin.com/video',
-                query + ' v.douyin.com',
+                query + ' 抖音 site:douyin.com',
+                query + ' 抖音号 douyin.com',
+                query + ' 抖音视频 莆田 微信',
             ]
             video_ids = []
             seen = set()
