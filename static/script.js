@@ -186,3 +186,107 @@
     <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>
+// ============================================================
+// SMART SEARCH FIX - Added at bottom
+// Prevents generic "leather factory" results for specific products
+// ============================================================
+
+function buildSmartQuery(brand, product, mode) {
+    const lowerProduct = product.toLowerCase();
+    
+    // Detect product type and use CORRECT Chinese keywords
+    let chineseKeywords = "";
+    
+    // Toy / Stress ball (Needoh, Nice Cube, squishy toys)
+    if (lowerProduct.includes("needoh") || lowerProduct.includes("cube") || 
+        lowerProduct.includes("stress") || lowerProduct.includes("ball") ||
+        lowerProduct.includes("squishy") || lowerProduct.includes("toy") ||
+        lowerProduct.includes("plush") || lowerProduct.includes("fidget")) {
+        chineseKeywords = "玩具厂 塑胶制品 硅胶玩具 厂家 微信号";
+    }
+    // Sneakers / Shoes
+    else if (lowerProduct.includes("jordan") || lowerProduct.includes("nike") || 
+             lowerProduct.includes("yeezy") || lowerProduct.includes("dunk") ||
+             lowerProduct.includes("shoe") || lowerProduct.includes("sneaker") ||
+             lowerProduct.includes("af1") || lowerProduct.includes("air force")) {
+        chineseKeywords = "莆田鞋 运动鞋厂 一手货源 微信";
+    }
+    // Clothing / Hoodies / Tech Fleece
+    else if (lowerProduct.includes("hoodie") || lowerProduct.includes("shirt") ||
+             lowerProduct.includes("jacket") || lowerProduct.includes("pants") ||
+             lowerProduct.includes("tech fleece") || lowerProduct.includes("sweatshirt")) {
+        chineseKeywords = "服装厂 卫衣 批发 厂家直销 微信";
+    }
+    // Bags / Wallets
+    else if (lowerProduct.includes("bag") || lowerProduct.includes("purse") ||
+             lowerProduct.includes("wallet") || lowerProduct.includes("backpack") ||
+             lowerProduct.includes("lv") || lowerProduct.includes("gucci")) {
+        chineseKeywords = "箱包厂 皮具 代工 一手货源 微信";
+    }
+    // Watches
+    else if (lowerProduct.includes("watch") || lowerProduct.includes("rolex") ||
+             lowerProduct.includes("omega") || lowerProduct.includes("ap")) {
+        chineseKeywords = "手表厂 复刻 高仿 微信 厂家";
+    }
+    // Default - minimal keywords, don't pollute with 70+ terms
+    else {
+        chineseKeywords = "厂家 微信 一手货源";
+    }
+    
+    // Build clean query - product first, then ONLY relevant keywords
+    const brandPart = brand ? `${brand} ` : "";
+    const smartQuery = `${brandPart}${product} ${chineseKeywords}`;
+    
+    console.log(`[Smart Query] ${smartQuery}`);
+    return smartQuery;
+}
+
+// Hook into existing search if possible
+(function enhanceSearch() {
+    // Try to intercept supplier form submission
+    const supplierForm = document.getElementById('supplierForm');
+    if (supplierForm) {
+        const originalSubmit = supplierForm.onsubmit;
+        supplierForm.addEventListener('submit', function(e) {
+            const brandInput = document.getElementById('brandInput');
+            const queryInput = document.getElementById('queryInput');
+            const modeSelect = document.getElementById('supplierMode') || document.getElementById('modeSelect');
+            
+            if (queryInput && queryInput.value) {
+                const brand = brandInput ? brandInput.value : '';
+                const product = queryInput.value;
+                const mode = modeSelect ? modeSelect.value : 'supplier';
+                const enhancedQuery = buildSmartQuery(brand, product, mode);
+                
+                // Store enhanced query in a hidden field or data attribute
+                queryInput.setAttribute('data-smart-query', enhancedQuery);
+            }
+        });
+    }
+    
+    // Also enhance the fetch calls in existing search functions
+    const originalFetch = window.fetch;
+    window.fetch = function(url, options) {
+        // If it's a search request, check if we need to enhance the query
+        if (url === '/search' && options && options.body) {
+            try {
+                const body = JSON.parse(options.body);
+                if (body.query && !body._enhanced) {
+                    const brand = body.brand || '';
+                    const product = body.query;
+                    const mode = body.mode || 'supplier';
+                    const enhancedQuery = buildSmartQuery(brand, product, mode);
+                    
+                    // Create new body with enhanced query
+                    const newBody = { ...body, query: enhancedQuery, _enhanced: true };
+                    options.body = JSON.stringify(newBody);
+                }
+            } catch(e) {
+                console.log('Enhance error:', e);
+            }
+        }
+        return originalFetch.call(this, url, options);
+    };
+    
+    console.log('✅ Smart search enhancement loaded');
+})();
