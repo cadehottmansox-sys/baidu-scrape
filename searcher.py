@@ -116,7 +116,22 @@ TIER_INJECT = {
     "chunyuan":  "纯原 顶级纯原 原单 外贸原单",
 }
 
-PASSING_INJECT = "工厂 微信 一手货源 莆田"
+PASSING_INJECT = (
+    # Core passing/NFC terms
+    "过验 NFC芯片 防伪芯片 1:1 纯原 同厂出品 原厂 "
+    # Quality tiers - what real factories say
+    "纯原版 公司级 真标 原单 外贸原单 出口转内销 "
+    # Batch codes used by actual factories
+    "PK版 OG版 LJR版 H12版 G版 BC版 DT版 M9版 "
+    # Factory direct terms
+    "莆田工厂 福建工厂 莆田直发 一手货源 工厂直出 "
+    # Authentication / passing terms
+    "过机场 专柜验货 真标同材质 品控 验货无忧 "
+    # Contact/order terms
+    "微信号 工厂微信 货源微信 代理加盟 批发价格 "
+    # English rep community terms
+    "passing quality factory direct same materials wechat supplier rep"
+)
 
 REP_INJECT = "复刻 高仿 1:1 莆田 代工 原单 余单 工厂货 rep replica fashionreps"
 FACTORY_INJECT = "厂家直销 源头工厂 一手货源 微信号 联系方式 批发 代理 工厂"
@@ -169,8 +184,7 @@ def build_inject(base_query):
 
     if is_rep:
         # Rep/sneaker/luxury — inject rep keywords + factory contact
-        _intent_zh = detect_intent(product or brand or "")
-        q1 = f"{_intent_zh} {REP_INJECT} 微信号"
+        q1 = f"{FACTORY_INJECT} {REP_INJECT} 微信号"
         q2 = f"yupoo 1688 weidian 厂家直销 微信 {REP_INJECT} 莆田"
     else:
         # Generic product — factory direct, wholesale, no rep terms
@@ -199,13 +213,6 @@ ALL_Q2_INJECT = ALL_Q2_INJECT_BASE
 
 
 BLOCKED_DOMAINS = {
-    # Explicitly added (Change #5)
-    "amazon.com","tmall.com","wikipedia.org","blogger.com","blogspot.com",
-    "stockx.com","goat.com","farfetch.com","ssense.com","grailed.com",
-    "endclothing.com","footlocker.com","finishline.com","jdsports.com",
-    "reddit.com","quora.com","youtube.com","instagram.com","twitter.com",
-    # Already existing below:
-
     # Official brand sites
     "nike.com","nike.com.cn","jordan.com","adidas.com","yeezy.com",
     "newbalance.com","puma.com","reebok.com","vans.com","converse.com",
@@ -347,51 +354,6 @@ def _merge(a,b):
         "phones":sorted(set(a["phones"])|set(b["phones"])),
     }
 
-
-# ── INTENT DETECTION (Change #2) ─────────────────────────────────────────────
-INTENT_MAP = {
-    "stress_toy":   {"kw":["needoh","stress ball","squishy","cube","fidget","slow rise","anti stress"],       "zh":"减压球 慢回弹 硅胶玩具 工厂"},
-    "sneaker":      {"kw":["jordan","nike","yeezy","dunk","air force","travis","off white","sacai","nb","new balance","samba","adidas","puma","vans","converse","asics"], "zh":"运动鞋 莆田鞋厂 一手货源"},
-    "clothing":     {"kw":["hoodie","tech fleece","jacket","tee","t-shirt","shorts","sweater","coat","pants","jeans"], "zh":"服装厂 卫衣 工厂 微信"},
-    "bag":          {"kw":["bag","handbag","tote","wallet","purse","backpack","lv","gucci","prada","dior"],    "zh":"包包工厂 皮具厂 微信"},
-    "watch":        {"kw":["watch","rolex","omega","ap","audemars","richard mille"],                           "zh":"手表厂 钟表 微信"},
-    "electronics":  {"kw":["airpods","earbuds","headphones","iphone","phone case","charger"],                  "zh":"数码工厂 厂家直销 微信"},
-}
-
-def detect_intent(query):
-    """Return focused Chinese factory terms based on product type."""
-    q = query.lower()
-    for cat, data in INTENT_MAP.items():
-        if any(k in q for k in data["kw"]):
-            return data["zh"]
-    return "工厂 微信 一手货源"  # safe generic fallback
-
-# ── LOCATION SCORING (Change #3) ─────────────────────────────────────────────
-PUTIAN_SIGNALS   = ["莆田","福建","putian","fujian","晋江","石狮","泉州"]
-OFFICIAL_DOMAINS = ["nike.com","adidas.com","jordan.com","louis vuitton.com","gucci.com",
-                    "prada.com","chanel.com","balenciaga.com","supreme.com","stockx.com",
-                    "goat.com","farfetch.com","ssense.com","endclothing.com","foot locker.com",
-                    "amazon.com","ebay.com","wikipedia.org","blogger.com","blogspot.com","reddit.com"]
-
-def location_score(text, link):
-    """Return location-based score adjustment."""
-    bonus = 0
-    tl = (text + " " + link).lower()
-    if any(p in tl for p in PUTIAN_SIGNALS):
-        bonus += 15
-    if any(d in link.lower() for d in OFFICIAL_DOMAINS):
-        bonus -= 50
-    return bonus
-
-# ── FAILED SEARCH LOGGER (Change #10) ────────────────────────────────────────
-import time as _time
-def log_failed_search(query, reason):
-    try:
-        with open("failed_searches.log", "a", encoding="utf-8") as f:
-            f.write(f"{_time.ctime()}|{query}|{reason}\n")
-    except Exception:
-        pass
-
 def _score(title, snippet, link, mode, brand="", product=""):
     text = f"{title} {snippet} {link}".lower()
     t_lower = title.lower()
@@ -498,11 +460,6 @@ def _score(title, snippet, link, mode, brand="", product=""):
     generic_penalty = sum(1 for g in GENERIC_SIGNALS if g in text) if not is_social else 0
 
     total = s + contact_bonus + factory_bonus + prod_score - retail_penalty - generic_penalty
-    # Location bonus (Change #3): Putian +15, official retail sites -50
-    total += location_score(text, link)
-    # Yupoo boost (Change #6): strong rep seller signal
-    if "yupoo" in text or "yupoo" in link:
-        total += 15
     return int(total)
 
 def _find_chromium():
@@ -654,9 +611,6 @@ def _parse_baidu_html(html, full_q, platform_label, mode, seen_links, max_r, pag
             "deep_scanned":False,"page_num":page_num,"variation":0,
         })
 
-    # Log failed searches for improvement (Change #10)
-    if not results:
-        log_failed_search(f"{brand} {product}", "zero_results")
     return results
 
 
@@ -1059,38 +1013,6 @@ async def scan_single(url):
         finally: await ctx.close(); await browser.close()
     return result
 
-
-
-# ── CROSS-PLATFORM WECHAT ENRICHMENT (Change #4) ────────────────────────────
-async def enrich_wechat_cross_platform(company_name, page, timeout=15000):
-    """
-    Given a company name from 1688, search Douyin, Weidian, and Baidu
-    to find WeChat IDs that aren't visible on 1688 directly.
-    Returns list of WeChat ID strings found.
-    """
-    import re as _re
-    found = []
-    search_targets = [
-        f"https://www.baidu.com/s?wd={company_name}+微信",
-        f"https://www.douyin.com/search/{company_name}",
-    ]
-    wc_re = _re.compile(
-        r'(?:微信|wechat|wx|weixin)[号:：s]*([A-Za-z0-9_-.]{5,25})',
-        _re.IGNORECASE
-    )
-    for url in search_targets:
-        try:
-            await page.goto(url, timeout=timeout, wait_until="domcontentloaded")
-            html = await page.content()
-            for m in wc_re.finditer(html):
-                wc = m.group(1)
-                if wc not in found and len(wc) >= 5:
-                    found.append(wc)
-            if found:
-                break  # stop once we find something
-        except Exception:
-            continue
-    return found
 
 async def search_platform(
     query, brand="", platform="all", mode="supplier",
