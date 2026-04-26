@@ -880,99 +880,98 @@ FILE SIZE: {len(html)} chars
         user = get_user()
         if not user:
             return jsonify({"error": "Unauthorized"}), 401
-        import base64, tempfile, os, requests as _req, anthropic as _ant
+        import base64, tempfile, os, time as _t
+        try:
+            import requests as _req
+        except ImportError:
+            return jsonify({"error": "requests not available"}), 500
         data = request.get_json(silent=True) or {}
         image_b64 = data.get("image", "")
-        brand_hint = (data.get("brand") or "").strip()
-        product_hint = (data.get("product") or "").strip()
         if not image_b64:
             return jsonify({"error": "No image provided"}), 400
-        if ',' in image_b64:
-            image_b64 = image_b64.split(',')[1]
-        api_key = os.getenv("SCRAPINGDOG_API_KEY", "69e6b959ba3950604d5080d7")
-        ant_key = os.getenv("ANTHROPIC_API_KEY", "")
         try:
-            # Step 1: Use Claude Vision to identify what's in the image
-            identified_brand = brand_hint
-            identified_product = product_hint
-            identified_zh = ""
-            if ant_key and not (brand_hint and product_hint):
-                try:
-                    ac = _ant.Anthropic(api_key=ant_key)
-                    msg = ac.messages.create(
-                        model="claude-haiku-4-5-20251001",
-                        max_tokens=200,
-                        messages=[{
-                            "role": "user",
-                            "content": [
-                                {"type": "image", "source": {"type": "base64", "media_type": "image/jpeg", "data": image_b64}},
-                                {"type": "text", "text": "Identify this product. Reply with ONLY this JSON format, no other text: {\"brand\":\"brand name or empty\",\"product\":\"product name\",\"zh\":\"Chinese factory search terms for this product type\",\"category\":\"sneakers|clothing|bags|toys|electronics|other\"}. Be specific - e.g. {\"brand\":\"Nike\",\"product\":\"Dunk Low\",\"zh\":\"运动鞋 莆田 厂家\",\"category\":\"sneakers\"}"}
-                            ]
-                        }]
-                    )
-                    import json as _json
-                    txt = msg.content[0].text.strip()
-                    parsed = _json.loads(txt)
-                    identified_brand = parsed.get("brand") or brand_hint
-                    identified_product = parsed.get("product") or product_hint
-                    identified_zh = parsed.get("zh") or ""
-                    app.logger.info("Claude identified: brand=%s product=%s zh=%s", identified_brand, identified_product, identified_zh)
-                except Exception as _ae:
-                    app.logger.warning("Claude vision failed: %s", _ae)
-            # Step 2: Try Baidu image upload
-            results = []
-            sign = ""
+            if ',' in image_b64:
+                image_b64 = image_b64.split(',')[1]
+            img_bytes = base64.b64decode(image_b64)
+            with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as f:
+                f.write(img_bytes)
+                tmp = f.name
             try:
-                img_bytes = base64.b64decode(image_b64)
-                with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as f:
-                    f.write(img_bytes); tmp = f.name
+                import os as _os
+                api_key = _os.getenv("SCRAPINGDOG_API_KEY", "69e6b959ba3950604d5080d7")
+                brand = data.get("brand", "")
+                product = data.get("product", "")
+                # Try Baidu image upload with full browser headers
                 hdrs = {
                     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
                     "Referer": "https://image.baidu.com/",
+                    "Accept": "application/json, text/plain, */*",
                     "Accept-Language": "zh-CN,zh;q=0.9",
+                    "Origin": "https://image.baidu.com",
                 }
-                with open(tmp, 'rb') as f:
-                    r = _req.post("https://graph.baidu.com/upload", files={"image": ("img.jpg", f, "image/jpeg")}, headers=hdrs, timeout=15)
-                rd = r.json() if r.status_code == 200 else {}
-                sign = rd.get("sign", "")
-                if sign:
-                    sr = _req.get(f"https://graph.baidu.com/details?sign={sign}&tn=pc&from=pc", headers=hdrs, timeout=15)
-                    sd = sr.json() if sr.status_code == 200 else {}
-                    items = sd.get("data", {})
-                    if isinstance(items, dict): items = items.get("list", [])
-                    results = [{"title": x.get("fromPageTitleEnc",""), "link": x.get("fromUrl",""), "thumb": x.get("middleURL",""), "source": x.get("fromURLHost","")} for x in (items or [])[:15] if x.get("fromUrl")]
-            except Exception as _be:
-                app.logger.warning("Baidu image upload failed: %s", _be)
-            # Step 3: ScrapingDog text search fallback using Claude's identification
-            if not results:
-                q_parts = []
-                if identified_zh:
-                    q_parts.append(identified_zh)
-                elif identified_brand or identified_product:
-                    q_parts.append(f"{identified_brand} {identified_product}".strip())
-                q_parts.append("厂家 微信 一手货源 莆田")
-                q = " ".join(filter(None, q_parts))
-                app.logger.info("ScrapingDog fallback query: %s", q)
+                sign = ""
+                results = []
                 try:
-                    sr2 = _req.get("https://api.scrapingdog.com/baidu/search/",
-                        params={"api_key": api_key, "query": q, "results": 15, "country": "cn"},
-                        timeout=20)
-                    if sr2.status_code == 200:
-                        raw = sr2.json()
-                        organic = raw.get("Baidu_data") or raw.get("organic_data") or raw.get("data") or []
-                        if isinstance(organic, list):
-                            results = [{"title": x.get("title",""), "link": x.get("link",""), "thumb": "", "source": x.get("displayed_link","")} for x in organic[:15] if x.get("link")]
-                except Exception as _se:
-                    app.logger.warning("ScrapingDog fallback failed: %s", _se)
-            if not results:
-                return jsonify({"error": "No results found. Try uploading a clearer photo or type the product name manually.", "identified": {"brand": identified_brand, "product": identified_product}}), 404
-            return jsonify({
-                "ok": True, "sign": sign, "results": results, "count": len(results),
-                "identified": {"brand": identified_brand, "product": identified_product, "zh": identified_zh},
-                "baidu_url": f"https://image.baidu.com/search/detail?sign={sign}" if sign else ""
-            })
+                    with open(tmp, 'rb') as f:
+                        r = _req.post("https://graph.baidu.com/upload", files={"image": ("img.jpg", f, "image/jpeg")}, headers=hdrs, timeout=15)
+                    rd = r.json() if r.status_code == 200 else {}
+                    sign = rd.get("sign", "")
+                    if sign:
+                        sr = _req.get(f"https://graph.baidu.com/details?sign={sign}&tn=pc&from=pc", headers=hdrs, timeout=15)
+                        sd = sr.json() if sr.status_code == 200 else {}
+                        items = sd.get("data", {})
+                        if isinstance(items, dict): items = items.get("list", [])
+                        results = [{"title": x.get("fromPageTitleEnc",""), "link": x.get("fromUrl",""), "thumb": x.get("middleURL",""), "source": x.get("fromURLHost","")} for x in (items or [])[:15] if x.get("fromUrl")]
+                except Exception as _e:
+                    app.logger.warning("Baidu image upload failed: %s", _e)
+                # If Baidu image search failed, fall back to ScrapingDog text search
+                if not results and (brand or product):
+                    try:
+                        q = f"{brand} {product} 厂家 微信 一手货源 莆田".strip()
+                        sr2 = _req.get("https://api.scrapingdog.com/baidu/search/",
+                            params={"api_key": api_key, "query": q, "results": 15, "country": "cn"},
+                            timeout=20)
+                        if sr2.status_code == 200:
+                            raw = sr2.json()
+                            organic = raw.get("Baidu_data") or raw.get("organic_data") or raw.get("data") or []
+                            if isinstance(organic, list):
+                                results = [{"title": x.get("title",""), "link": x.get("link",""), "thumb": "", "source": x.get("displayed_link","")} for x in organic[:15] if x.get("link")]
+                    except Exception as _e2:
+                        app.logger.warning("ScrapingDog fallback failed: %s", _e2)
+                if not results:
+                    return jsonify({"error": "Image search failed - try uploading a clearer product photo"}), 500
+                return jsonify({"ok": True, "sign": sign, "results": results, "count": len(results), "baidu_url": f"https://image.baidu.com/search/detail?sign={sign}"})
+            finally:
+                try: os.unlink(tmp)
+                except: pass
         except Exception as e:
-            app.logger.error("image_search error: %s", e)
+            app.logger.error("Image search error: %s", e)
             return jsonify({"error": str(e)}), 500
 
 
+    return app
+
+
+app = create_app()
+
+
+@app.route("/api/global-stats")
+def global_stats():
+    import storage
+    stats = storage.read("sf_global_stats", {"total_searches": 0, "total_wechats": 0})
+    return jsonify(stats)
+
+@app.route("/api/global-stats/bump", methods=["POST"])
+def bump_global_stats():
+    import storage
+    data = request.get_json() or {}
+    stats = storage.read("sf_global_stats", {"total_searches": 0, "total_wechats": 0})
+    stats["total_searches"] = stats.get("total_searches", 0) + int(data.get("searches", 0))
+    stats["total_wechats"] = stats.get("total_wechats", 0) + int(data.get("wechats", 0))
+    storage.write("sf_global_stats", stats)
+    return jsonify(stats)
+
+
+if __name__ == "__main__":
+    port = int(os.getenv("PORT", 5001))
+    app.run(host="0.0.0.0", port=port, debug=os.getenv("FLASK_DEBUG","false").lower()=="true")
