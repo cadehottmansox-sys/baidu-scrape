@@ -162,15 +162,161 @@ def _translate_to_zh(query):
         q = re.sub(re.escape(en), zh, q, flags=re.IGNORECASE)
     return q
 
-def build_inject(base_query):
+# ── Chinese brand name mapping (Section 3.3 of guide) ────────────────────────
+CN_BRANDS = {
+    "nike":"耐克","adidas":"阿迪达斯","jordan":"乔丹","yeezy":"椰子",
+    "supreme":"supreme","lv":"路易威登","louis vuitton":"路易威登",
+    "gucci":"古驰","balenciaga":"巴黎世家","off white":"off white",
+    "stone island":"石头岛","chrome hearts":"克罗心","fear of god":"fog",
+    "essentials":"essentials","hellstar":"hellstar","sp5der":"sp5der",
+    "bape":"猿人头","palace":"palace","dior":"迪奥","chanel":"香奈儿",
+    "prada":"普拉达","burberry":"巴宝莉","versace":"范思哲",
+    "amiri":"amiri","rhude":"rhude","new balance":"新百伦",
+    "asics":"亚瑟士","samba":"三叶草","puma":"彪马","vans":"范斯",
+    "converse":"匡威","reebok":"锐步","under armour":"安德玛",
+}
+
+# ── Quality indicators for passing mode (Section 3.1) ────────────────────────
+PASSING_QUALITY = "纯原 过验 公司级 同厂 同材质 1:1 真标"
+SUPPLIER_QUALITY = "厂家直销 一手货源 源头工厂 正品级"
+NFC_QUALITY     = "NFC芯片 NFC防伪 扫码验真 过验"
+
+# ── Contact hints (Section 3.2) ──────────────────────────────────────────────
+CONTACT_HINT = "微信 联系方式 VX 微信号"
+
+# ── Platform-layered search targets (Section 2) ──────────────────────────────
+ZHIHU_BOOST  = "site:zhihu.com"
+TIEBA_BOOST  = "site:tieba.baidu.com"
+JIANSHU_BOOST= "site:jianshu.com"
+
+# ── Product intent banks (10 categories) ─────────────────────────────────────
+INTENT_BANKS = {
+    "sneaker": {
+        "kw": ["jordan","yeezy","dunk","air force","travis","off white","sacai",
+               "nb","new balance","samba","adidas","puma","vans","converse",
+               "asics","reebok","nike","shoe","sneaker","boot","runner"],
+        "q1": "{cn_brand} {product} 莆田 纯原 过验 鞋厂 微信号 一手货源",
+        "q2": "{cn_brand} {product} 1:1 公司级 过验 莆田鞋厂 微信 联系方式",
+    },
+    "toy": {
+        "kw": ["needoh","cube","squishy","fidget","stress ball","slow rise",
+               "anti stress","pop it","sensory","slime","putty","kinetic",
+               "fidget spinner","spinning top","satisfying"],
+        "q1": "慢回弹 解压 {product} 玩具厂 硅胶制品 微信 一手货源",
+        "q2": "减压球 捏捏乐 {product} 工厂直销 批发 微信号 联系方式",
+    },
+    "clothing": {
+        "kw": ["hoodie","tee","t-shirt","shorts","pants","jacket","coat",
+               "sweater","sweatshirt","joggers","shirt","polo","crewneck",
+               "fleece","tech fleece","windbreaker","tracksuit"],
+        "q1": "{cn_brand} {product} 纯原 过验 服装厂 卫衣 微信 一手货源",
+        "q2": "{cn_brand} {product} 同材质 工厂直销 服装批发 微信号 联系方式",
+    },
+    "bag": {
+        "kw": ["bag","handbag","tote","backpack","wallet","purse","clutch",
+               "shoulder bag","crossbody","duffel","fanny pack","card holder"],
+        "q1": "{cn_brand} {product} 原单 真皮 包包工厂 微信 一手货源",
+        "q2": "{cn_brand} {product} 纯原 皮具厂 箱包批发 微信号 联系方式",
+    },
+    "watch": {
+        "kw": ["watch","rolex","omega","ap","audemars","richard mille","patek",
+               "cartier","hublot","iwc","tudor","seiko","timepiece"],
+        "q1": "{cn_brand} {product} 纯原 同机芯 手表厂 微信 一手货源",
+        "q2": "{cn_brand} {product} 1:1 钟表工厂 手表批发 微信号 联系方式",
+    },
+    "jewelry": {
+        "kw": ["jewelry","necklace","bracelet","ring","earring","pendant",
+               "chain","bangle","anklet","brooch"],
+        "q1": "{cn_brand} {product} 纯银 首饰工厂 饰品批发 微信 一手货源",
+        "q2": "{cn_brand} {product} 工厂直销 首饰厂家 微信号 联系方式",
+    },
+    "electronics": {
+        "kw": ["airpods","earbuds","headphones","phone case","charger","cable",
+               "speaker","smartwatch","gamepad","controller","drone","led","keyboard"],
+        "q1": "{cn_brand} {product} 数码配件厂 工厂直营 微信 一手货源",
+        "q2": "{cn_brand} {product} 电子产品批发 工厂直销 微信号 联系方式",
+    },
+    "lego": {
+        "kw": ["lego","lepin","moc","technic","ninjago","duplo","minifig","brick","block set"],
+        "q1": "{product} 兼容乐高 积木厂 小颗粒积木 微信 一手货源",
+        "q2": "{product} 积木批发 乐高同款 工厂直销 微信号 联系方式",
+    },
+    "freight": {
+        "kw": ["freight","forwarder","shipping","logistics","cargo",
+               "forwarding","clearance","3pl","dhl","fedex","ups","courier"],
+        "q1": "货代 美国专线 双清包税 敏感货专线 微信 DDP 一票到底",
+        "q2": "私人货代 美线 欧线 包税清关 FedEx专线 微信号 报价",
+    },
+    "supplement": {
+        "kw": ["supplement","protein","creatine","preworkout","vitamin",
+               "collagen","whey","bcaa","glutamine","omega"],
+        "q1": "{product} 保健品工厂 营养品批发 OEM代工 微信 一手货源",
+        "q2": "{product} 营养品厂家 工厂直营 微信号 联系方式",
+    },
+}
+
+def _cn_brand(brand):
+    """Return Chinese brand name if available, else original."""
+    return CN_BRANDS.get(brand.lower().strip(), brand)
+
+def detect_intent(query, brand=""):
+    """Return (category, q1_template, q2_template) or (None,None,None)."""
+    q = (query + " " + brand).lower()
+    for cat, data in INTENT_BANKS.items():
+        if any(kw in q for kw in data["kw"]):
+            return cat, data["q1"], data["q2"]
+    return None, None, None
+
+def _fill(template, brand="", product=""):
+    """Fill template placeholders with brand/product values."""
+    cn = _cn_brand(brand) if brand else ""
+    bp = (cn + " " + product).strip() if cn else product
+    return (template
+            .replace("{cn_brand}", cn)
+            .replace("{product}", product)
+            .replace("{bp}", bp)
+            .strip())
+
+def build_inject(base_query, brand="", mode="supplier"):
+    """
+    Build smart 3-component query: Product + Quality indicator + Contact hint.
+    Implements guide sections 3.1-3.3.
+    """
     q = base_query.lower()
-    is_rep = any(kw in q for kw in REP_KEYWORDS)
+    b = brand.lower()
+
+    # ── NFC/passing mode: quality-first ──────────────────────────────────────
+    if mode == "passing":
+        cn = _cn_brand(brand) if brand else ""
+        q1 = f"{cn} {base_query} {PASSING_QUALITY} 工厂 {CONTACT_HINT} 莆田".strip()
+        q2 = f"site:zhihu.com {cn} {base_query} 纯原 过验 微信"
+        return q1, q2
+
+    if mode == "nfc":
+        cn = _cn_brand(brand) if brand else ""
+        q1 = f"{cn} {base_query} {NFC_QUALITY} 工厂 微信 联系方式".strip()
+        q2 = f"{cn} {base_query} NFC芯片 过验 一手货源 微信号 莆田"
+        return q1, q2
+
+    # ── Rep brands take priority ──────────────────────────────────────────────
+    is_rep = any(kw in q or kw in b for kw in REP_KEYWORDS)
     if is_rep:
-        q1 = f"{FACTORY_INJECT} {REP_INJECT} 微信号"
-        q2 = f"yupoo 1688 weidian 厂家直销 微信 {REP_INJECT} 莆田"
-    else:
-        q1 = f"{FACTORY_INJECT} 微信号 联系方式 QQ 厂家直营"
-        q2 = f"1688 weidian 厂家直销 批发商 微信 联系方式 源头厂家"
+        cn = _cn_brand(brand) if brand else ""
+        q1 = f"{cn} {base_query} {SUPPLIER_QUALITY} {CONTACT_HINT} 莆田 -淘宝 -天猫".strip()
+        q2 = f"site:zhihu.com {cn} {base_query} 纯原 微信 OR site:jianshu.com {cn} {base_query} 厂家"
+        return q1, q2
+
+    # ── Product intent routing ────────────────────────────────────────────────
+    cat, t1, t2 = detect_intent(base_query, brand)
+    if cat and t1:
+        q1 = _fill(t1, brand, base_query)
+        q2 = _fill(t2, brand, base_query)
+        return q1, q2
+
+    # ── Generic factory fallback ──────────────────────────────────────────────
+    cn = _cn_brand(brand) if brand else ""
+    q1 = f"{cn} {base_query} {SUPPLIER_QUALITY} {CONTACT_HINT} -淘宝 -天猫".strip()
+    q2 = f"1688 weidian {cn} {base_query} 厂家直销 批发商 {CONTACT_HINT} 源头厂家"
     return q1, q2
 
 def build_zhihu_inject(base_query):
