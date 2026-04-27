@@ -52,7 +52,6 @@ except ImportError:
     OCR_AVAILABLE = False
 
 # ── WeChat patterns ───────────────────────────────────────────────
-# WeChat validation — letter OR digit start, 5-20 chars (pure number IDs valid)
 WECHAT_VALID   = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_]{4,19}$")
 WECHAT_GARBAGE = re.compile(
     r"(1234567|test|demo|fake|xxxx|0000|abcd|admin|null|none|"
@@ -75,7 +74,6 @@ SUPPLIER_TERMS = ["factory","manufacturer","oem","odm","supplier","wholesale","�
 CONTACT_TERMS  = ["wechat","weixin","vx","微信","whatsapp","phone","tel","email","邮箱","加v","加微","联系方式","微信号"]
 FF_TERMS       = ["freight","forwarder","logistics","shipping","customs","货代","物流","运输","清关","报关","fob","cif","dhl","fedex"]
 
-# Rep / private agent freight keywords
 FF_REP_INJECT  = (
     "私人货代 私人代理 private agent 货代 微信 转运 "
     "敏感货 仿牌 特货 莆田 私包 隐藏包装 包税 包清关 "
@@ -84,52 +82,7 @@ FF_REP_INJECT  = (
 )
 FF_SAFE_INJECT = "货代 物流 微信 转运 清关 国际快递 包税 联系方式 跨境"
 
-# Additional search queries specifically for private agents
-FF_PRIVATE_AGENT_QUERIES = [
-    "莆田 私人货代 微信 美国 包税 不查验",
-    "私人代理 敏感货 国际转运 微信联系 仿牌",
-    "特货专线 微信 莆田发货 私包 低调",
-    "private agent 货代 微信 fashionreps 转运",
-    "仿牌货代 私人转运 包清关 微信号",
-    "敏感货专线 私人货代 微信 报价",
-]
 PASSING_TERMS  = ["passing","nfc","芯片","过货","验货","防伪","莆田","1:1","高仿","复刻","原单","外贸","出口","同厂","纯原","过机场","专柜验","真标"]
-
-# Batch-specific search terms for passing mode
-BATCH_INJECT = {
-    "pk":  "PK版 PK纯原 莆田PK",
-    "og":  "OG版 OG纯原 莆田OG",
-    "ljr": "LJR版 L版 莞顶 LJR纯原",
-    "h12": "H12版 H12纯原",
-    "g":   "G版 G纯原 G5版",
-    "bc":  "BC版 BC纯原",
-    "any": "纯原 公司级 原单 外贸原单",
-}
-
-# Quality tier search terms  
-TIER_INJECT = {
-    "tonghuO":   "通货 超A 高仿",
-    "zhenbiao":  "真标 真标版",
-    "gongsiji":  "公司级 公司货",
-    "chunyuan":  "纯原 顶级纯原 原单 外贸原单",
-}
-
-PASSING_INJECT = (
-    # Core passing/NFC terms
-    "过验 NFC芯片 防伪芯片 1:1 纯原 同厂出品 原厂 "
-    # Quality tiers - what real factories say
-    "纯原版 公司级 真标 原单 外贸原单 出口转内销 "
-    # Batch codes used by actual factories
-    "PK版 OG版 LJR版 H12版 G版 BC版 DT版 M9版 "
-    # Factory direct terms
-    "莆田工厂 福建工厂 莆田直发 一手货源 工厂直出 "
-    # Authentication / passing terms
-    "过机场 专柜验货 真标同材质 品控 验货无忧 "
-    # Contact/order terms
-    "微信号 工厂微信 货源微信 代理加盟 批发价格 "
-    # English rep community terms
-    "passing quality factory direct same materials wechat supplier rep"
-)
 
 REP_INJECT = "复刻 高仿 1:1 莆田 代工 原单 余单 工厂货 rep replica fashionreps"
 FACTORY_INJECT = "厂家直销 源头工厂 一手货源 微信号 联系方式 批发 代理 工厂"
@@ -143,7 +96,7 @@ REP_KEYWORDS = {
     "moncler","canada goose","rep","replica","1:1","passing","nfc","putian","莆田",
     "sneaker","shoe","kicks","hoodie","tee","jacket","coat","down","puffer",
 }
-# Auto-translate common English product terms to Chinese for better Baidu results
+
 EN_ZH_MAP = {
     "soccer cleats":"足球鞋","soccer shoes":"足球鞋","football boots":"足球鞋",
     "slides":"拖鞋","sandals":"凉鞋","loafers":"乐福鞋","mules":"穆勒鞋",
@@ -168,7 +121,6 @@ EN_ZH_MAP = {
 }
 
 def _translate_to_zh(query):
-    """Auto-translate common English product terms to Chinese."""
     q = query
     for en, zh in EN_ZH_MAP.items():
         import re
@@ -177,86 +129,87 @@ def _translate_to_zh(query):
 
 # ========================= ADDED: INTENT DETECTION =========================
 def detect_product_intent(query):
-    """Return (category, chinese_keywords) for smarter injection."""
+    """Return (category, chinese_inject, passing_inject)."""
     q = query.lower()
+    category = "general"
+    chinese_inject = "工厂 微信 一手货源"
+    passing_inject = "过验 纯原 同厂 微信"
+
     if any(w in q for w in ["needoh", "cube", "squishy", "stress", "slow rise", "fidget"]):
-        return "toy", "玩具厂 硅胶 慢回弹 捏捏乐 微信"
-    if any(w in q for w in ["lego", "building blocks", "bricks", "compatible"]):
-        return "toy", "积木 小颗粒 兼容乐高 工厂 微信"
-    if any(w in q for w in ["jordan", "nike", "yeezy", "dunk", "sneaker"]):
-        return "shoe", "鞋厂 莆田 运动鞋 微信 一手货源"
-    if any(w in q for w in ["hoodie", "tech fleece", "sweatshirt", "pants", "jacket"]):
-        return "cloth", "服装厂 卫衣 批发 微信"
-    return "general", "工厂 微信 一手货源"
+        category = "toy"
+        chinese_inject = "玩具厂 硅胶 慢回弹 捏捏乐 微信"
+        passing_inject = "过验 纯原 硅胶 捏捏 微信"
+    elif any(w in q for w in ["lego", "building blocks", "bricks", "compatible"]):
+        category = "toy"
+        chinese_inject = "积木 小颗粒 兼容乐高 工厂 微信"
+        passing_inject = "过验 纯原 积木 高砖 微信"
+    elif any(w in q for w in ["jordan", "nike", "yeezy", "dunk", "sneaker", "shoe"]):
+        category = "shoe"
+        chinese_inject = "鞋厂 莆田 运动鞋 微信 一手货源"
+        passing_inject = "过验 纯原 莆田 PK版 OG版 LJR版 微信"
+    elif any(w in q for w in ["hoodie", "tech fleece", "sweatshirt", "jacket"]):
+        category = "cloth"
+        chinese_inject = "服装厂 卫衣 批发 微信"
+        passing_inject = "过验 纯原 公司级 真标 微信"
+
+    return category, chinese_inject, passing_inject
 # ===========================================================================
 
+def _translate_to_zh(query):
+    q = query
+    for en, zh in EN_ZH_MAP.items():
+        import re
+        q = re.sub(re.escape(en), zh, q, flags=re.IGNORECASE)
+    return q
+
 def build_inject(base_query):
-    """Build smart query injection based on what user is searching for."""
     q = base_query.lower()
     is_rep = any(kw in q for kw in REP_KEYWORDS)
-
     if is_rep:
-        # Rep/sneaker/luxury — inject rep keywords + factory contact
         q1 = f"{FACTORY_INJECT} {REP_INJECT} 微信号"
         q2 = f"yupoo 1688 weidian 厂家直销 微信 {REP_INJECT} 莆田"
     else:
-        # Generic product — factory direct, wholesale, no rep terms
-        # Based on video: search Chinese name + factory + WeChat contact
         q1 = f"{FACTORY_INJECT} 微信号 联系方式 QQ 厂家直营"
         q2 = f"1688 weidian 厂家直销 批发商 微信 联系方式 源头厂家"
     return q1, q2
 
 def build_zhihu_inject(base_query):
-    """Zhihu-specific: expert discussions about which factory is best."""
     return f"哪家工厂 {base_query} 质量好 推荐 厂家 评测"
 
 def build_xianyu_inject(base_query):
-    """Xianyu-specific: factory overruns and clearance stock."""
     return f"{base_query} 工厂尾货 库存 清仓 余单 原单 微信"
 
 def build_weidian_inject(base_query):
-    """Weidian-specific: find batches, compare quality tiers."""
     return f"{base_query} 批次 weidian 微店 工厂 微信 联系"
 
 def build_xiaohongshu_inject(base_query):
-    """XHS-specific: trend intel and buyer reviews."""
     return f"{base_query} 推荐 测评 哪里买 工厂 质量 微信"
+
 ALL_Q1_INJECT = FACTORY_INJECT
 ALL_Q2_INJECT = ALL_Q2_INJECT_BASE
 
-
 BLOCKED_DOMAINS = {
-    # Official brand sites
     "nike.com","nike.com.cn","jordan.com","adidas.com","yeezy.com",
     "newbalance.com","puma.com","reebok.com","vans.com","converse.com",
     "gucci.com","louisvuitton.com","lv.com","chanel.com","prada.com",
     "balenciaga.com","supreme.com","off-white.com","bape.com",
     "underarmour.com","asics.com","salomon.com","dior.com","fendi.com",
     "apple.com","apple.com.cn","samsung.com","sony.com","huawei.com",
-    # 1688 - wholesale only, no WeChat, filter from all non-1688 searches
     "1688.com","m.1688.com","s.1688.com","detail.1688.com","offer.1688.com",
-    # Western retail
     "amazon.com","amazon.cn","ebay.com","target.com","walmart.com",
     "bestbuy.com","costco.com","etsy.com","shopify.com",
     "stockx.com","goat.com","kickscrew.com","flightclub.com","soccer.com","footlocker.com","foot-locker.com","zalando.com","asos.com","farfetch.com","ssense.com","nordstrom.com","macys.com","zappos.com","sportsdirect.com","decathlon.com",
     "klarna.com","paypal.com","aliexpress.com",
-    # Chinese retail (official)
     "tmall.com","jd.com","pinduoduo.com",
     "taobao.com",
-    
-    # Social/search/news
     "wikipedia.org","baidu.com","google.com","youtube.com",
     "instagram.com","facebook.com","twitter.com","x.com","tiktok.com",
-    # douyin.com allowed - suppliers post catalog videos
-    "alibaba.com","amazon.com","amazon.co.uk","amazon.de","chinagoods.com","hktdc.com","global.1688.com","chinese.alibaba.com","stockx.com","goat.com","grailed.com","depop.com","farfetch.com","ssense.com","mrporter.com","net-a-porter.com",
+    "alibaba.com","amazon.co.uk","amazon.de","chinagoods.com","hktdc.com","global.1688.com","chinese.alibaba.com","grailed.com","depop.com",
     "163.com","sohu.com","sina.com.cn","qq.com","ifeng.com",
-    # Maps/directories
     "mapbar.com","amap.com","dianping.com","yelp.com","maps.google.com",
-    # Gov/edu
     "gov.cn","gov.com","edu.cn","edu.com",
 }
 
-# Domains that are likely real supplier pages - get score boost
 SUPPLIER_DOMAINS = {
     "1688.com","taobao.com","weidian.com","yupoo.com",
     "pinduoduo.com","xianyu.taobao.com","2.taobao.com",
@@ -285,9 +238,7 @@ def _wq(wid):
     if len(wid) < 5 or len(wid) > 20: return 0
     has_alpha = bool(re.search(r"[a-zA-Z]", wid))
     has_digit = bool(re.search(r"[0-9]", wid))
-    # Pure numbers 6-10 digits — valid WeChat (like 8370035)
     if not has_alpha and has_digit and 6 <= len(wid) <= 10: return 3
-    # Mix of letters and numbers — high quality
     if has_alpha and has_digit and len(wid) >= 6: return 3
     if has_alpha and len(wid) >= 8: return 2
     return 1
@@ -297,40 +248,30 @@ def _conf(w):
     bonus={"qr":0.15,"ocr":0.10,"text":0.0}.get(w.get("source","text"),0.0)
     return min(round(base+bonus,2),1.0)
 
-
 def _extract_douyin(text, link=""):
-    """Extract Douyin account from text or link. Returns account string or 'N/A'. No guessing."""
     if not text and not link:
         return "N/A"
     combined = (text or "") + " " + (link or "")
-    # Direct douyin.com URL - most reliable
     import re as _re
     url_m = _re.search(r'douyin\.com/user/([A-Za-z0-9_\-\.]{4,30})', combined)
     if url_m:
         return url_m.group(1)
-    # Video URL - extract from douyin.com/video/ links too
     vid_m = _re.search(r'douyin\.com/(?:video/)?([0-9]{15,20})', combined)
     if vid_m:
         return 'video:' + vid_m.group(1)
-    # Explicit text mention: 抖音号/抖音ID followed by the account
     txt_m = _re.search(r'(?:抖音号?|抖音ID|douyin)[\s：:号]+([A-Za-z0-9_\-\.]{4,30})', combined, _re.IGNORECASE)
     if txt_m:
         return txt_m.group(1).strip()
-    # If the result link IS a douyin link, extract just the domain context
     if 'douyin.com' in (link or ''):
         return link.split('douyin.com/')[-1].split('?')[0][:30] or "N/A"
     return "N/A"
 
-
 def _extract_xhs(text, link=""):
-    """Extract Xiaohongshu (RedNote) account. Returns account or 'N/A'."""
     combined = (text or "") + " " + (link or "")
     import re as _re
-    # xiaohongshu.com URL
     url_m = _re.search(r'xiaohongshu\.com/user/profile/([a-f0-9]{24})', combined)
     if url_m:
         return url_m.group(1)
-    # Text mention
     txt_m = _re.search(r'(?:小红书号?|RED)[\s：:]+([A-Za-z0-9_]{4,30})', combined, _re.IGNORECASE)
     if txt_m:
         return txt_m.group(1)
@@ -372,7 +313,7 @@ def _score(title, snippet, link, mode, brand="", product=""):
     t_lower = title.lower()
     s_lower = snippet.lower()
 
-    # ======================= ADDED: BRAND LOCK =======================
+    # Brand lock (hard reject if brand given but not found)
     if brand:
         brand_lower = brand.lower()
         brand_aliases = {
@@ -385,123 +326,61 @@ def _score(title, snippet, link, mode, brand="", product=""):
         }
         aliases = brand_aliases.get(brand_lower, [brand_lower])
         if not any(alias in text for alias in aliases):
-            return -99   # completely irrelevant
-    # =================================================================
+            return -99
 
-    # ======================= ADDED: BLOG DOMAIN PENALTY =======================
+    # Blog / article penalty
     BLOG_DOMAINS = ["jianshu.com", "weibo.com", "smzdm.com", "zhihu.com",
                     "post.smzdm.com", "blogger.com", "wordpress.com"]
     if any(domain in link for domain in BLOG_DOMAINS):
         return -50
-    # ==========================================================================
 
-    # ── 1. BRAND LOCK ────────────────────────────────────────────────────────
-    # If a brand was specified, the result MUST mention it somewhere
-    # Chinese brand aliases map
-    BRAND_ALIASES = {
-        "nike": ["nike","耐克","莆田鞋","aj","jordan","airmax","air max","air force"],
-        "adidas": ["adidas","阿迪达斯","阿迪","yeezy","boost"],
-        "lv": ["lv","louis vuitton","路易威登","lv包","lv带","lv皮带"],
-        "louis vuitton": ["lv","louis vuitton","路易威登"],
-        "gucci": ["gucci","古驰"],
-        "chanel": ["chanel","香奈儿"],
-        "supreme": ["supreme","潮牌"],
-        "jordan": ["jordan","乔丹","aj","air jordan","耐克"],
-        "balenciaga": ["balenciaga","巴黎世家"],
-        "off white": ["off white","off-white","ow"],
-        "stone island": ["stone island","石头岛"],
-        "chrome hearts": ["chrome hearts","克罗心"],
-        "moncler": ["moncler","盟可睐"],
-        "dior": ["dior","迪奥"],
-        "prada": ["prada","普拉达"],
-        "versace": ["versace","范思哲"],
-        "burberry": ["burberry","博柏利"],
-        "fendi": ["fendi","芬迪"],
-        "alo": ["alo","alo yoga"],
-        "lululemon": ["lululemon","露露乐蒙"],
-        "stone island": ["stone island","石头岛","si"],
-        "moncler": ["moncler","盟可睐","蒙口"],
-        "trapstar": ["trapstar","陷阱星"],
-        "corteiz": ["corteiz","crtz"],
-        "rhude": ["rhude"],
-        "represent": ["represent","代表"],
-        "fear of god": ["fog","fear of god","恐惧上帝"],
-        "essentials": ["essentials","fog essentials"],
-        "new balance": ["new balance","nb","纽巴伦","新百伦"],
-        "asics": ["asics","亚瑟士"],
-        "samba": ["samba","桑巴"],
-        "cp company": ["cp company","cp"],
-        "arc teryx": ["arc teryx","始祖鸟","arcteryx"],
-    }
-    if brand:
-        b = brand.strip().lower()
-        aliases = BRAND_ALIASES.get(b, [b])
-        brand_found = any(a in text for a in aliases)
-        if not brand_found:
-            return -99  # Hard reject — wrong brand entirely
+    # Location bonus (Putian/Fujian)
+    location_bonus = 0
+    if any(place in text for place in ["莆田", "putian", "福建", "fujian", "晋江", "泉州"]):
+        location_bonus = 15
 
-    # ── 2. PRODUCT RELEVANCE ─────────────────────────────────────────────────
-    # Split product into keywords and check at least half appear
-    prod_score = 0
-    if product:
-        prod_words = [w.lower() for w in product.split() if len(w) > 2]
-        if prod_words:
-            hits = sum(1 for w in prod_words if w in text)
-            prod_score = (hits / len(prod_words)) * 6  # up to 6 points
+    # Rep platform bonus
+    rep_platform_bonus = 0
+    if any(p in link for p in ["yupoo", "weidian", "douyin", "xianyu"]):
+        rep_platform_bonus = 20
 
-    # ── 3. MODE TERMS ────────────────────────────────────────────────────────
+    # Original scoring logic (simplified but kept)
     terms = FF_TERMS if mode == "ff" else (PASSING_TERMS if mode == "passing" else SUPPLIER_TERMS)
     s = sum(2 for t in terms if t in text)
 
-    # ── 4. CONTACT BONUS ─────────────────────────────────────────────────────
     contact_bonus = sum(1 for t in CONTACT_TERMS if t in text)
-    # Extra big bonus if WeChat is in title specifically
     if any(t in t_lower for t in ["微信", "wechat", "wx:", "wx："]):
         contact_bonus += 5
-    # Passing mode - score based on quality tier keywords found
+
     if mode == "passing":
         tier_hits = 0
         for kw in ["过验","nfc","nfc芯片","芯片","真标","同厂","纯原","原单","外贸原单","出口转内销","公司级","pk版","og版","ljr","h12","莆田","工厂直发","一手货源"]:
             if kw in text:
                 tier_hits += 1
-        s += min(tier_hits * 2, 12)  # Up to +12 bonus for passing results
-    # Bonus if WeChat ID pattern found (letters+numbers 6-20 chars after wx/微信)
-    import re
+        s += min(tier_hits * 2, 12)
+
     if re.search(r'(?:微信|wx)[：:]s*[a-zA-Z0-9_-]{5,20}', text):
         contact_bonus += 8
 
-    # ── 5. FACTORY/DIRECT BONUS ──────────────────────────────────────────────
     factory_bonus = 0
     for kw in ["厂家直销","源头工厂","一手货源","工厂直销","厂家","工厂","原厂","直销"]:
         if kw in text:
             factory_bonus += 2
             break
 
-    # ── 5b. 1688 PENALTY (wholesale, never has WeChat)
     if "1688.com" in text:
-        return -99  # Hard reject 1688 results in non-1688 searches
+        return -99
 
-    # ── 6. RETAILER PENALTY ──────────────────────────────────────────────────
-    # Big Chinese retail platforms = not what we want
     RETAIL_SIGNALS = ["京东","淘宝","天猫","tmall","jd.com","taobao","amazon",
                       "官网","official","官方","旗舰店","正品","brand new","全新正品"]
     retail_penalty = sum(3 for r in RETAIL_SIGNALS if r in text)
 
-    # ── 7. DUPE/GENERIC PENALTY ──────────────────────────────────────────────
-    # Articles/listicles that just mention the brand aren't suppliers
     GENERIC_SIGNALS = ["如何","怎么","什么是","介绍","推荐","排行","top10","best","review",
                        "评测","攻略","教程","指南","百科","百度百科","wikipedia"]
-    # Lighter penalty for generic articles - douyin/weibo supplier posts often look like articles
     is_social = any(d in (link.lower() if link else "") for d in ["douyin","weibo","xiaohongshu","xhs"])
     generic_penalty = sum(1 for g in GENERIC_SIGNALS if g in text) if not is_social else 0
 
-    # ======================= ADDED: LOCATION BONUS =======================
-    location_bonus = 0
-    if any(place in text for place in ["莆田", "putian", "福建", "fujian", "晋江", "泉州"]):
-        location_bonus = 15
-    # ======================================================================
-
-    total = s + contact_bonus + factory_bonus + prod_score - retail_penalty - generic_penalty + location_bonus
+    total = s + contact_bonus + factory_bonus - retail_penalty - generic_penalty + location_bonus + rep_platform_bonus
     return int(total)
 
 def _find_chromium():
@@ -520,15 +399,7 @@ async def _launch(pw,headless):
         if path: return await pw.chromium.launch(headless=headless,executable_path=path)
         raise
 
-
-# ScraperAPI removed — using Baidu AI Search API + Playwright
-
 def _baidu_ai_search(query, count=20):
-    """
-    Call Baidu AI Search API directly.
-    Returns list of {title, url, snippet} dicts.
-    API key from console.bce.baidu.com/ai-search/qianfan/ais/console/apiKey
-    """
     import requests
     key = os.getenv("BAIDU_API_KEY", "")
     if not key:
@@ -536,35 +407,22 @@ def _baidu_ai_search(query, count=20):
     try:
         resp = requests.post(
             "https://qianfan.baidubce.com/v2/ai_search",
-            headers={
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {key}",
-            },
-            json={
-                "messages": [{"role": "user", "content": query}],
-                "resource_type_filter": [{"type": "web", "top_k": count}],
-            },
+            headers={"Content-Type": "application/json", "Authorization": f"Bearer {key}"},
+            json={"messages": [{"role": "user", "content": query}], "resource_type_filter": [{"type": "web", "top_k": count}]},
             timeout=30,
         )
         logger.info("Baidu AI Search status: %d", resp.status_code)
         data = resp.json()
-        logger.info("Baidu AI Search full response: %s", str(data)[:500])
         if resp.status_code != 200:
             logger.warning("Baidu AI Search error: %s", resp.text[:200])
             return None
-        # Extract references/results
         results = []
-        # Try different response structures
-        refs = (data.get("search_results") or 
-                data.get("references") or 
-                data.get("results") or
-                data.get("web_search_results") or [])
+        refs = (data.get("search_results") or data.get("references") or data.get("results") or data.get("web_search_results") or [])
         if not refs and "result" in data:
             refs = data["result"].get("search_results") or data["result"].get("references") or []
-        logger.info("Baidu AI Search: got %d references", len(refs))
         for r in refs:
-            title   = r.get("title") or r.get("name") or ""
-            url     = r.get("url") or r.get("link") or r.get("id") or ""
+            title = r.get("title") or r.get("name") or ""
+            url = r.get("url") or r.get("link") or r.get("id") or ""
             snippet = r.get("content") or r.get("snippet") or r.get("summary") or ""
             if title or url:
                 results.append({"title": title, "url": url, "snippet": snippet})
@@ -573,62 +431,31 @@ def _baidu_ai_search(query, count=20):
         logger.warning("Baidu AI Search exception: %s", e)
         return None
 
-
-
-
 def _parse_baidu_html(html, full_q, platform_label, mode, seen_links, max_r, page_num):
-    """
-    Parse Baidu search result HTML.
-    Tries multiple selector strategies since Baidu changes their HTML structure.
-    """
     import html as html_module
     results = []
-    tag_re  = re.compile(r"<[^>]+>")
-
-    # Log a sample so we can debug
+    tag_re = re.compile(r"<[^>]+>")
     logger.info("Parsing Baidu HTML len=%d sample=%s", len(html), html[1000:1300].replace("\n"," ")[:200])
 
-    # Strategy 1: find <h3> tags with links (standard Baidu result)
-    h3_pattern = re.compile(
-        r'<h3[^>]*>\s*<a[^>]+href="([^"]+)"[^>]*>(.*?)</a>',
-        re.S|re.I
-    )
-    # Strategy 2: data-log or mu attributes on divs
-    mu_pattern = re.compile(r'mu="([^"]+)"', re.I)
-    # Strategy 3: tpl result divs
-    result_pattern = re.compile(
-        r'<div[^>]+class="[^"]*result[^"]*"[^>]*>.*?<a[^>]+href="([^"]+)"[^>]*>(.*?)</a>.*?'
-        r'(?:class="[^"]*c-abstract[^"]*"[^>]*>(.*?)</)',
-        re.S|re.I
-    )
+    h3_pattern = re.compile(r'<h3[^>]*>\s*<a[^>]+href="([^"]+)"[^>]*>(.*?)</a>', re.S|re.I)
+    result_pattern = re.compile(r'<div[^>]+class="[^"]*result[^"]*"[^>]*>.*?<a[^>]+href="([^"]+)"[^>]*>(.*?)</a>.*?(?:class="[^"]*c-abstract[^"]*"[^>]*>(.*?)</)', re.S|re.I)
 
     found_titles = []
-
-    # Try h3 strategy first
     for m in h3_pattern.finditer(html):
-        href  = html_module.unescape(m.group(1)).strip()
+        href = html_module.unescape(m.group(1)).strip()
         title = html_module.unescape(tag_re.sub("", m.group(2))).strip()
-        # Accept any link — not just baidu.com/link redirects
         if title and href and len(title) > 3 and not _is_blocked(href):
             found_titles.append((href, title, ""))
-
-    # If that failed try result divs
     if not found_titles:
         for m in result_pattern.finditer(html):
-            href    = html_module.unescape(m.group(1)).strip()
-            title   = html_module.unescape(tag_re.sub("", m.group(2))).strip()
+            href = html_module.unescape(m.group(1)).strip()
+            title = html_module.unescape(tag_re.sub("", m.group(2))).strip()
             snippet = html_module.unescape(tag_re.sub("", m.group(3))).strip() if m.group(3) else ""
             if title and href:
                 found_titles.append((href, title, snippet))
 
-    # Extract all abstracts/snippets separately
-    snippet_pattern = re.compile(
-        r'class="[^"]*(?:c-abstract|content-right)[^"]*"[^>]*>(.*?)</(?:span|div|p)>',
-        re.S|re.I
-    )
+    snippet_pattern = re.compile(r'class="[^"]*(?:c-abstract|content-right)[^"]*"[^>]*>(.*?)</(?:span|div|p)>', re.S|re.I)
     snippets = [html_module.unescape(tag_re.sub("",s)).strip() for s in snippet_pattern.findall(html)]
-
-    logger.info("Found %d titles from Baidu HTML", len(found_titles))
 
     for i,(href,title,snippet) in enumerate(found_titles):
         if len(results) >= max_r: break
@@ -636,46 +463,37 @@ def _parse_baidu_html(html, full_q, platform_label, mode, seen_links, max_r, pag
         if href in seen_links or _is_blocked(href): continue
         if not snippet and i < len(snippets):
             snippet = snippets[i]
-        c       = _contacts(title + "\n" + snippet + "\n" + href)
-        sc      = _score(title, snippet, href, mode)
+        c = _contacts(title + "\n" + snippet + "\n" + href)
+        sc = _score(title, snippet, href, mode)
         best_wq = max((w["quality"] for w in c["wechat_ids"]),default=0)
         results.append({
             "title":title,"link":href,"snippet":snippet,
             "wechat_ids":c["wechat_ids"],"emails":c["emails"],"phones":c["phones"],
-            "douyin":_extract_douyin(combined,href),
-            "xhs":_extract_xhs(combined,href),
-            "douyin":_extract_douyin(combined if 'combined' in dir() else (title+' '+snippet+' '+href), href if 'href' in dir() else (link if 'link' in dir() else '')),
-            "xhs":_extract_xhs(combined if 'combined' in dir() else (title+' '+snippet+' '+href), href if 'href' in dir() else (link if 'link' in dir() else '')),
+            "douyin":_extract_douyin(title+" "+snippet+" "+href, href),
+            "xhs":_extract_xhs(title+" "+snippet+" "+href, href),
             "factory_score":sc,"wechat_quality":best_wq,
             "has_contact":bool(c["wechat_ids"] or c["emails"] or c["phones"]),
             "has_verified_wechat":best_wq>=3,"is_factory_like":sc>=3,
             "platform":platform_label,"baidu_query":full_q,"mode":mode,
             "deep_scanned":False,"page_num":page_num,"variation":0,
         })
-
     return results
 
-
 async def _baidu_search(page, full_q, max_r, timeout, delay, seen_links, platform_label, mode, page_num=1):
-    """Search Baidu — uses official AI Search API if key set, else Playwright."""
     results = []
-    pn  = (page_num - 1) * 10
+    pn = (page_num - 1) * 10
     url = f"https://www.baidu.com/s?wd={quote_plus(full_q)}&pn={pn}&rn=20"
 
-    # Try Baidu AI Search API first (no IP blocks, clean JSON)
     if os.getenv("BAIDU_API_KEY"):
-        logger.info("Using Baidu AI Search API for: %s", full_q[:60])
-        api_results = await asyncio.get_event_loop().run_in_executor(
-            None, lambda: _baidu_ai_search(full_q, count=max_r)
-        )
+        api_results = await asyncio.get_event_loop().run_in_executor(None, lambda: _baidu_ai_search(full_q, count=max_r))
         if api_results:
             for r in api_results:
-                href    = r["url"]
-                title   = r["title"]
+                href = r["url"]
+                title = r["title"]
                 snippet = r["snippet"]
                 if not title or href in seen_links or _is_blocked(href): continue
-                c       = _contacts(" ".join([title, snippet, href]))
-                sc      = _score(title, snippet, href, mode)
+                c = _contacts(" ".join([title, snippet, href]))
+                sc = _score(title, snippet, href, mode)
                 best_wq = max((w["quality"] for w in c["wechat_ids"]), default=0)
                 results.append({
                     "title": title, "link": href or url, "snippet": snippet,
@@ -687,90 +505,59 @@ async def _baidu_search(page, full_q, max_r, timeout, delay, seen_links, platfor
                     "deep_scanned": False, "page_num": page_num, "variation": 0,
                 })
                 seen_links.add(href)
-            logger.info("Baidu AI API: %d results", len(results))
             if results:
                 return results
-        logger.warning("Baidu AI API returned nothing, trying ScrapingDog...")
-        # Middle tier: ScrapingDog structured API
         sd_refs = await asyncio.get_event_loop().run_in_executor(None, _do_scrapingdog, full_q, max_r)
         if sd_refs:
-            logger.info("ScrapingDog: processing %d refs into results", len(sd_refs))
             for ref in sd_refs[:max_r]:
                 if len(results) >= max_r: break
-                title   = ref.get("title","")
-                href    = ref.get("url","")
+                title = ref.get("title","")
+                href = ref.get("url","")
                 snippet = ref.get("snippet","")
                 combined = " ".join(filter(None,[title,snippet,href]))
-                c  = _contacts(combined)
+                c = _contacts(combined)
                 sc = _score(title,snippet,href,mode)
                 best_wq = max((w["quality"] for w in c["wechat_ids"]),default=0)
                 results.append({
                     "title":title,"link":href or url,"snippet":snippet,
                     "wechat_ids":c["wechat_ids"],"emails":c["emails"],"phones":c["phones"],
-                    "douyin":_extract_douyin(combined if 'combined' in dir() else (title+' '+snippet+' '+href), href if 'href' in dir() else (link if 'link' in dir() else '')),
-            "xhs":_extract_xhs(combined if 'combined' in dir() else (title+' '+snippet+' '+href), href if 'href' in dir() else (link if 'link' in dir() else '')),
-            "factory_score":sc,"wechat_quality":best_wq,
+                    "factory_score":sc,"wechat_quality":best_wq,
                     "has_contact":bool(c["wechat_ids"] or c["emails"] or c["phones"]),
                     "has_verified_wechat":best_wq>=3,"is_factory_like":sc>=3,
                     "platform":platform_label,"baidu_query":full_q,"mode":mode,
                     "deep_scanned":False,"page_num":page_num,"variation":0,
                 })
             if results:
-                logger.info("ScrapingDog: returning %d results", len(results))
                 return results
-        logger.warning("ScrapingDog returned nothing, falling back to Playwright")
 
     try:
         await page.goto(url, wait_until="domcontentloaded", timeout=timeout)
-        # Wait for results or timeout
         try:
-            await page.wait_for_selector(
-                "#content_left, .result, [class*='result']",
-                timeout=15000
-            )
+            await page.wait_for_selector("#content_left, .result, [class*='result']", timeout=15000)
         except:
             pass
         await asyncio.sleep(1.5)
-
-        # Check what we got
         content_left = await page.locator("#content_left").count()
         logger.info("Baidu: content_left=%s url=%s", content_left > 0, page.url[:60])
 
-        # Try multiple block selectors
         blocks = None
-        total  = 0
-        for selector in [
-            "#content_left > div.result",
-            "#content_left > div.c-container",
-            "#content_left > div",
-            ".result[class*='c-container']",
-            "[tpl]",
-        ]:
+        total = 0
+        for selector in ["#content_left > div.result", "#content_left > div.c-container", "#content_left > div", ".result[class*='c-container']", "[tpl]"]:
             b = page.locator(selector)
             t = await b.count()
             if t > 0:
                 blocks = b
-                total  = t
-                logger.info("Baidu: %d blocks with '%s'", t, selector)
+                total = t
                 break
-
         if not blocks or total == 0:
-            logger.warning("Baidu: no result blocks found")
             return results
 
         for i in range(total):
             if len(results) >= max_r: break
             block = blocks.nth(i)
-
-            # Try multiple title selectors - Baidu changes structure frequently
             title = ""
-            href  = ""
-            for title_sel in [
-                "h3 a", ".c-title a", "h3", "a.c-title",
-                "[class*='title'] a", "[class*='Title'] a",
-                "a[href*='baidu']", "a[href^='http']",
-                "a", "h3 span",
-            ]:
+            href = ""
+            for title_sel in ["h3 a", ".c-title a", "h3", "a.c-title", "[class*='title'] a", "[class*='Title'] a", "a[href*='baidu']", "a[href^='http']", "a", "h3 span"]:
                 tn = block.locator(title_sel).first
                 if await tn.count() > 0:
                     try:
@@ -778,30 +565,23 @@ async def _baidu_search(page, full_q, max_r, timeout, delay, seen_links, platfor
                         h = (await tn.get_attribute("href") or "").strip()
                         if t and len(t) > 3:
                             title = t
-                            href  = h
+                            href = h
                             break
                     except: continue
-
-            # Last resort: use full block text as title
             if not title:
                 try:
                     block_text_raw = (await block.inner_text()).strip()
                     if block_text_raw and len(block_text_raw) > 5:
                         title = block_text_raw[:80]
                 except: pass
-
-            # Get href from any link if we still don't have one
             if not href:
                 try:
                     any_a = block.locator("a").first
                     if await any_a.count() > 0:
                         href = (await any_a.get_attribute("href") or "").strip()
                 except: pass
-
             if not title: continue
             if href in seen_links or _is_blocked(href): continue
-
-            # Snippet
             snippet = ""
             for snip_sel in [".c-abstract", ".c-color-text", "p", ".content-right_8Zs40"]:
                 sn = block.locator(snip_sel).first
@@ -810,18 +590,14 @@ async def _baidu_search(page, full_q, max_r, timeout, delay, seen_links, platfor
                         snippet = (await sn.inner_text()).strip()
                         if snippet: break
                     except: continue
-
-            # Full block text for WeChat scanning
             try:
                 block_text = await block.inner_text()
             except:
                 block_text = ""
-
             combined = " ".join(filter(None, [title, snippet, block_text, href]))
-            c        = _contacts(combined)
-            sc       = _score(title, snippet + block_text, href, mode)
-            best_wq  = max((w["quality"] for w in c["wechat_ids"]), default=0)
-
+            c = _contacts(combined)
+            sc = _score(title, snippet + block_text, href, mode)
+            best_wq = max((w["quality"] for w in c["wechat_ids"]), default=0)
             results.append({
                 "title": title, "link": href or url, "snippet": snippet,
                 "wechat_ids": c["wechat_ids"], "emails": c["emails"], "phones": c["phones"],
@@ -831,20 +607,13 @@ async def _baidu_search(page, full_q, max_r, timeout, delay, seen_links, platfor
                 "platform": platform_label, "baidu_query": full_q, "mode": mode,
                 "deep_scanned": False, "page_num": page_num, "variation": 0,
             })
-
-        logger.info("Baidu: parsed %d results", len(results))
-
     except Exception as e:
         logger.warning("Baidu search error: %s", e)
-
     return results
 
-
 async def _deep_scan_page(page, url, nav_timeout=22000):
-    """Visit actual page and extract all contacts."""
     result={"wechat_ids":[],"emails":[],"phones":[]}
     try:
-        # Resolve Baidu redirect
         actual_url = url
         if "baidu.com/link" in url:
             try:
@@ -852,34 +621,22 @@ async def _deep_scan_page(page, url, nav_timeout=22000):
                 await asyncio.sleep(0.5)
                 actual_url = page.url
                 if "baidu.com" in actual_url: actual_url = url
-                logger.info("Redirect: %s", actual_url[:70])
             except: pass
-
-        # Navigate to actual page
         if actual_url != page.url:
             try:
                 await page.goto(actual_url, wait_until="domcontentloaded", timeout=nav_timeout)
             except:
                 try: await page.goto(actual_url, wait_until="commit", timeout=nav_timeout)
-                except Exception as e:
-                    logger.debug("Nav failed: %s", e)
-                    return result
-
+                except: return result
         await asyncio.sleep(1.0)
-
-        # Full text
         try:
             body = await page.inner_text("body")
             result = _merge(result, _contacts(body))
         except: pass
-
-        # Full HTML
         try:
             html = await page.content()
             result = _merge(result, _contacts(html))
         except: pass
-
-        # Images
         try:
             img_data = await page.evaluate("""() => [...document.querySelectorAll('img')].map(i=>({
                 alt:i.alt||'',title:i.title||'',src:i.src||'',
@@ -888,14 +645,8 @@ async def _deep_scan_page(page, url, nav_timeout=22000):
             for img in img_data:
                 result = _merge(result, _contacts(img['alt']+" "+img['title']+" "+img['src']))
         except: img_data=[]
-
-        # QR decode
         if QR_AVAILABLE and img_data:
-            for img in [i for i in img_data if i['w']>60 and i['h']>60 and i['w']<800
-                        and i['src'] and not i['src'].endswith('.gif')
-                        and (any(k in i['src'].lower() for k in ['qr','weixin','wechat','wx'])
-                            or any(k in (i['alt']+i.get('cls','')).lower() for k in ['二维码','扫码'])
-                            or (0.7<i['w']/max(i['h'],1)<1.3 and i['w']>80))][:10]:
+            for img in [i for i in img_data if i['w']>60 and i['h']>60 and i['w']<800 and i['src'] and not i['src'].endswith('.gif') and (any(k in i['src'].lower() for k in ['qr','weixin','wechat','wx']) or any(k in (i['alt']+i.get('cls','')).lower() for k in ['二维码','扫码']) or (0.7<i['w']/max(i['h'],1)<1.3 and i['w']>80))][:10]:
                 try:
                     el=page.locator(f"img[src='{img['src']}']").first
                     if await el.count()==0: continue
@@ -909,8 +660,6 @@ async def _deep_scan_page(page, url, nav_timeout=22000):
                             w["source"]="qr";w["quality"]=max(w["quality"],3);w["confidence"]=1.0
                         result=_merge(result,qc)
                 except: continue
-
-        # OCR
         if OCR_AVAILABLE and img_data:
             for img in [i for i in img_data if i['w']>100 and i['h']>80 and i['src'] and not i['src'].endswith('.gif')][:6]:
                 try:
@@ -927,28 +676,17 @@ async def _deep_scan_page(page, url, nav_timeout=22000):
                         for w2 in oc["wechat_ids"]: w2["source"]="ocr"
                         result=_merge(result,oc)
                 except: continue
-
     except Exception as e:
         logger.warning("Deep scan failed %s: %s", url[:50], e)
-
     result["wechat_ids"].sort(key=lambda x:x["quality"],reverse=True)
     return result
 
-
-
 def _cross_validate_wechats(wechat_ids, existing_results):
-    """
-    Boost confidence of WeChat IDs that appear on multiple sources.
-    Also checks if ID appears in Baidu search results for that specific ID.
-    """
-    # Count how many results each WeChat appears in
     id_counts = {}
     for result in existing_results:
         for w in result.get("wechat_ids", []):
             wid = w["id"]
             id_counts[wid] = id_counts.get(wid, 0) + 1
-
-    # Boost confidence for IDs appearing multiple times
     validated = []
     for w in wechat_ids:
         wid = w["id"]
@@ -962,37 +700,22 @@ def _cross_validate_wechats(wechat_ids, existing_results):
             boosted["confidence"] = min(boosted.get("confidence", 0.5) + 0.15, 1.0)
             boosted["appearances"] = count
         validated.append(boosted)
-
     validated.sort(key=lambda x: (x.get("appearances", 1), x.get("confidence", 0)), reverse=True)
     return validated
 
-
 async def verify_wechat_via_baidu(wechat_id, page, timeout=15000):
-    """
-    Verify a WeChat ID by:
-    1. Searching Baidu AI for the exact ID
-    2. Checking how many independent sources mention it
-    3. Checking if it appears on known supplier sites
-    Returns: {"status": "verified"|"likely"|"weak"|"not_found", "score": 0-100, "sources": [...]}
-    """
     import requests as req
     key = os.getenv("BAIDU_API_KEY", "")
     sources = []
     score = 0
-
-    # Check 1: Format quality (already validated before this point)
     if re.search(r"[a-zA-Z]", wechat_id) and re.search(r"[0-9]", wechat_id) and len(wechat_id) >= 6:
-        score += 20  # good format
-
-    # Check 2: Search Baidu AI for this specific WeChat ID
+        score += 20
     if key:
         try:
-            # Search 1: exact WeChat ID
             resp = req.post(
                 "https://qianfan.baidubce.com/v2/ai_search",
                 headers={"Content-Type": "application/json", "Authorization": f"Bearer {key}"},
-                json={"messages": [{"role": "user", "content": f"微信号 {wechat_id} 厂家 供应商"}],
-                      "resource_type_filter": [{"type": "web", "top_k": 10}]},
+                json={"messages": [{"role": "user", "content": f"微信号 {wechat_id} 厂家 供应商"}], "resource_type_filter": [{"type": "web", "top_k": 10}]},
                 timeout=20,
             )
             if resp.status_code == 200:
@@ -1004,21 +727,14 @@ async def verify_wechat_via_baidu(wechat_id, page, timeout=15000):
                         url = r.get("url","")
                         title = r.get("title","")
                         sources.append({"url": url, "title": title})
-                        # Bonus for supplier domains
                         if any(d in url for d in ["1688","taobao","weidian","yupoo","ptx","nkt","莆田"]):
                             score += 25
                         else:
                             score += 15
-
-            logger.info("WeChat verify %s: %d sources, score=%d", wechat_id, len(sources), score)
         except Exception as e:
             logger.warning("WeChat verify error: %s", e)
-
-    # Check 3: Known Putian seller format (ptx351, nkt858 etc)
     if re.match(r"^[a-z]{2,4}\d{3,6}$", wechat_id, re.I):
-        score += 15  # classic Putian seller format
-
-    # Score → status
+        score += 15
     if score >= 60 or len(sources) >= 3:
         status = "verified"
     elif score >= 35 or len(sources) >= 1:
@@ -1027,7 +743,6 @@ async def verify_wechat_via_baidu(wechat_id, page, timeout=15000):
         status = "weak"
     else:
         status = "not_found"
-
     return {"status": status, "score": min(score, 100), "sources": sources[:3]}
 
 async def scan_single(url):
@@ -1035,39 +750,25 @@ async def scan_single(url):
     ua="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
     async with async_playwright() as p:
         browser=await _launch(p,headless)
-        ctx=await browser.new_context(
-            user_agent=ua,
-            locale="zh-CN",
-            timezone_id="Asia/Shanghai",
-            viewport={"width":1366,"height":768},
-            extra_http_headers={
-                "Accept-Language":"zh-CN,zh;q=0.9,en;q=0.8",
-                "Accept":"text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-            }
-        )
+        ctx=await browser.new_context(user_agent=ua, locale="zh-CN", timezone_id="Asia/Shanghai", viewport={"width":1366,"height":768}, extra_http_headers={"Accept-Language":"zh-CN,zh;q=0.9,en;q=0.8","Accept":"text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8"})
         page=await ctx.new_page()
-        # Set cookies to look like returning user
-        await ctx.add_cookies([{
-            "name":"BAIDUID","value":"ABCDEF1234567890ABCDEF1234567890:FG=1",
-            "domain":".baidu.com","path":"/"
-        }])
+        await ctx.add_cookies([{"name":"BAIDUID","value":"ABCDEF1234567890ABCDEF1234567890:FG=1","domain":".baidu.com","path":"/"}])
         try: result=await _deep_scan_page(page,url)
         finally: await ctx.close(); await browser.close()
     return result
-
 
 async def search_platform(
     query, brand="", platform="all", mode="supplier",
     deep_scan=False, wechat_only=False,
     page_num=1, variation=0, seen_links=None,
 ):
-    seen_links= set(seen_links or [])
-    max_r     = int(os.getenv("MAX_RESULTS","10"))
-    headless  = os.getenv("HEADLESS","true").lower()!="false"
-    timeout   = int(os.getenv("PLAYWRIGHT_TIMEOUT_MS","30000"))
-    delay     = float(os.getenv("ACTION_DELAY_SECONDS","1.0"))
-    ua        = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
-    results   = []
+    seen_links = set(seen_links or [])
+    max_r = int(os.getenv("MAX_RESULTS","10"))
+    headless = os.getenv("HEADLESS","true").lower()!="false"
+    timeout = int(os.getenv("PLAYWRIGHT_TIMEOUT_MS","30000"))
+    delay = float(os.getenv("ACTION_DELAY_SECONDS","1.0"))
+    ua = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+    results = []
 
     base_raw = f"{brand.strip()} {query.strip()}".strip() if brand.strip() else query.strip()
     base = _translate_to_zh(base_raw)
@@ -1076,117 +777,60 @@ async def search_platform(
 
     async with async_playwright() as p:
         browser=await _launch(p,headless)
-        ctx=await browser.new_context(
-            user_agent=ua,
-            locale="zh-CN",
-            timezone_id="Asia/Shanghai",
-            viewport={"width":1366,"height":768},
-            extra_http_headers={
-                "Accept-Language":"zh-CN,zh;q=0.9,en;q=0.8",
-                "Accept":"text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-            }
-        )
+        ctx=await browser.new_context(user_agent=ua, locale="zh-CN", timezone_id="Asia/Shanghai", viewport={"width":1366,"height":768}, extra_http_headers={"Accept-Language":"zh-CN,zh;q=0.9,en;q=0.8","Accept":"text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8"})
         page=await ctx.new_page()
-        # Set cookies to look like returning user
-        await ctx.add_cookies([{
-            "name":"BAIDUID","value":"ABCDEF1234567890ABCDEF1234567890:FG=1",
-            "domain":".baidu.com","path":"/"
-        }])
+        await ctx.add_cookies([{"name":"BAIDUID","value":"ABCDEF1234567890ABCDEF1234567890:FG=1","domain":".baidu.com","path":"/"}])
 
         try:
-            if platform=="all":
-                seen_all=set(seen_links)
-                # ========== USE INTENT DETECTION INSTEAD OF GIANT INJECT ==========
-                intent, inject = detect_product_intent(query)
+            if platform == "all":
+                seen_all = set(seen_links)
                 if mode == "passing":
-                    # for passing, still use the passing-specific terms
-                    q1 = f"{base} {PASSING_INJECT}"
-                    q2 = f"{base} {PASSING_INJECT}"   # fallback
+                    _, _, passing_inject = detect_product_intent(query)
+                    full_q = f"{base} {passing_inject}"
+                    r1 = await _baidu_search(page, full_q, max_r, timeout, delay, seen_all, "All-in-One", mode)
+                    for r in r1: seen_all.add(r["link"])
+                    results.extend(r1)
                 else:
-                    # use the targeted inject from intent detection
-                    q1 = f"{base} {inject}"
-                    q2 = f"{base} {inject}"
-                # ===================================================================
-                # Add Zhihu expert intel query
-                q3 = f"site:zhihu.com {base} 工厂 推荐 哪家好"
-                # Add Weidian batch query
-                q4 = f"weidian {base} {build_weidian_inject(base)}"
-                r1=await _baidu_search(page,q1,max_r,timeout,delay,seen_all,"All-in-One",mode)
-                for r in r1: seen_all.add(r["link"])
-                results.extend(r1)
-                r2=await _baidu_search(page,q2,max_r,timeout,delay,seen_all,"All-in-One",mode)
-                for r in r2: seen_all.add(r["link"])
-                results.extend(r2)
-            else:
-                from searcher import PLATFORMS as PLAT
-                if platform in PLAT:
-                    # For direct platform chips, still search via Baidu with platform keyword
-                    injects = {
-                        "1688": f"1688 厂家直销 批发 微信 回购率 联系方式",
-                        "taobao": f"淘宝 厂家店 工厂 微信 销量",
-                        "xianyu": f"闲鱼 {build_xianyu_inject(base)}",
-                        "weidian": f"微店 {build_weidian_inject(base)}",
-                        "xiaohongshu": f"小红书 {build_xiaohongshu_inject(base)}",
-                        "zhihu": f"知乎 {build_zhihu_inject(base)}",
-                        "weibo": f"微博 工厂 {base} 微信 联系方式 厂家",
-                        "douyin": f"site:douyin.com {base} 微信 OR 抖音 {base} 厂家直销 微信 货源 联系方式 工厂直播",
-                        "pinduoduo": f"拼多多 {base} 工厂直营 微信 厂家 批发 一件代发",
-                        "douyin2": f"抖音号 {base} 工厂 微信 货源 厂家直销 代理",
-                        "dewu": f"得物 {base} 莆田 1:1 复刻 高仿 微信 厂家 同款",
-                        "poizon": f"得物 {base} 莆田 1:1 复刻 高仿 微信 厂家 同款",
-                        "taobao": f"淘宝 {base} 工厂直营 微信 店主 货源 厂家",
-                        "xhs": f"小红书 {base} 厂家 微信 代购 货源",
-                    }
-                    _pi1, _ = build_inject(base)
-                    inject = injects.get(platform, _pi1)
+                    _, inject, _ = detect_product_intent(query)
                     full_q = f"{base} {inject}"
-                    results = await _baidu_search(page,full_q,max_r,timeout,delay,seen_links,platform.title(),mode,page_num)
+                    r1 = await _baidu_search(page, full_q, max_r, timeout, delay, seen_all, "All-in-One", mode)
+                    for r in r1: seen_all.add(r["link"])
+                    results.extend(r1)
+            else:
+                if mode == "ff":
+                    q_lower = query.lower()
+                    is_rep_ff = any(kw in q_lower for kw in ["rep","putian","sensitive","private","莆田","仿","counterfeit","shoes","bag","sneaker","luxury","fake","1:1"])
+                    ff_inject = FF_REP_INJECT if is_rep_ff else FF_SAFE_INJECT
+                    full_q = f"{base} {ff_inject}"
+                elif mode == "passing":
+                    _, _, passing_inject = detect_product_intent(query)
+                    full_q = f"{base} {passing_inject}"
                 else:
-                    if mode == "ff":
-                        q_lower = query.lower()
-                        is_rep_ff = any(kw in q_lower for kw in [
-                            "rep","putian","sensitive","private","莆田","仿","counterfeit",
-                            "shoes","bag","sneaker","luxury","fake","1:1"
-                        ])
-                        ff_inject = FF_REP_INJECT if is_rep_ff else FF_SAFE_INJECT
-                        full_q = f"{base} {ff_inject}"
-                    elif mode == "passing":
-                        # Use NFC inject if NFC in query, else general passing inject
-                        if "nfc" in query.lower():
-                            full_q = f"{base} {PASSING_INJECT}"
-                        else:
-                            full_q = f"{base} {PASSING_INJECT}"
-                    else:
-                        # ========== USE INTENT DETECTION ==========
-                        _, inject = detect_product_intent(query)
-                        full_q = f"{base} {inject}"
-                        # ==========================================
-                    results=await _baidu_search(page,full_q,max_r,timeout,delay,seen_links,"Baidu",mode,page_num)
+                    _, inject, _ = detect_product_intent(query)
+                    full_q = f"{base} {inject}"
+                results = await _baidu_search(page, full_q, max_r, timeout, delay, seen_links, "Baidu", mode, page_num)
 
-            results.sort(key=lambda r:r["factory_score"]*2+r["wechat_quality"],reverse=True)
+            results.sort(key=lambda r: r["factory_score"]*2 + r["wechat_quality"], reverse=True)
 
-            # Deep scan — follow every link and scrape the actual page
             if deep_scan:
-                TOTAL_TO=int(os.getenv("DEEP_SCAN_TOTAL_TIMEOUT","60"))
-                MAX_PAGES=5  # only scan top 5 results
-                start=asyncio.get_event_loop().time()
+                TOTAL_TO = int(os.getenv("DEEP_SCAN_TOTAL_TIMEOUT","60"))
+                MAX_PAGES = 5
+                start = asyncio.get_event_loop().time()
                 for item in results[:MAX_PAGES]:
-                    if asyncio.get_event_loop().time()-start>TOTAL_TO: break
+                    if asyncio.get_event_loop().time()-start > TOTAL_TO: break
                     try:
-                        extra=await _deep_scan_page(page,item["link"],nav_timeout=12000)
-                        merged=_merge({"wechat_ids":item["wechat_ids"],"emails":item["emails"],"phones":item["phones"]},extra)
-                        best_wq=max((w["quality"] for w in merged["wechat_ids"]),default=0)
+                        extra = await _deep_scan_page(page, item["link"], nav_timeout=12000)
+                        merged = _merge({"wechat_ids":item["wechat_ids"],"emails":item["emails"],"phones":item["phones"]}, extra)
+                        best_wq = max((w["quality"] for w in merged["wechat_ids"]), default=0)
                         item.update({"wechat_ids":merged["wechat_ids"],"emails":merged["emails"],"phones":merged["phones"],
-                            "deep_scanned":True,"wechat_quality":best_wq,"has_verified_wechat":best_wq>=3,
-                            "has_contact":bool(merged["wechat_ids"] or merged["emails"] or merged["phones"])})
-                        logger.info("Deep scanned %s — %d WeChats", item["link"][:50], len(merged["wechat_ids"]))
+                                     "deep_scanned":True,"wechat_quality":best_wq,"has_verified_wechat":best_wq>=3,
+                                     "has_contact":bool(merged["wechat_ids"] or merged["emails"] or merged["phones"])})
                     except Exception as e:
                         logger.warning("Deep scan error: %s", e)
-
-                results.sort(key=lambda r:r["factory_score"]*2+r["wechat_quality"],reverse=True)
+                results.sort(key=lambda r: r["factory_score"]*2 + r["wechat_quality"], reverse=True)
 
             if wechat_only:
-                results=[r for r in results if r["wechat_ids"]]
+                results = [r for r in results if r["wechat_ids"]]
 
         finally:
             await ctx.close()
@@ -1195,7 +839,6 @@ async def search_platform(
     return results
 
 
-# Keep PLATFORMS dict for chip reference
 PLATFORMS = {
     "1688": {"label":"1688"},
     "taobao": {"label":"Taobao"},
@@ -1203,71 +846,39 @@ PLATFORMS = {
     "weidian": {"label":"Weidian"},
 }
 
-
-# ── ImportYeti scraper ────────────────────────────────────────────
 async def _scrape_importyeti(brand, page, timeout=20000):
-    """
-    Scrape ImportYeti for real verified factory names.
-    Returns list of factory dicts with name, address, shipments.
-    """
     factories = []
     try:
-        # Search by brand name
         url = f"https://www.importyeti.com/company/{brand.lower().replace(' ','-')}"
         await page.goto(url, wait_until="domcontentloaded", timeout=timeout)
         await asyncio.sleep(2.0)
-
-        # Get supplier names from the page
         text = await page.inner_text("body")
-
-        # Also try the product search
         url2 = f"https://www.importyeti.com/search?q={quote_plus(brand)}"
         await page.goto(url2, wait_until="domcontentloaded", timeout=timeout)
         await asyncio.sleep(2.0)
         text2 = await page.inner_text("body")
-
         combined = text + "\n" + text2
-
-        # Extract Chinese company names
         cn_pattern = re.compile(r'[\u4e00-\u9fff]{2,}(?:有限公司|工厂|制造|鞋业|服装|科技|实业|贸易|集团|皮具|箱包)', re.U)
         en_pattern = re.compile(r'[A-Z][A-Z\s]{5,50}(?:CO\.|LTD|LIMITED|FACTORY|MFG|MANUFACTURING|INTL|INTERNATIONAL)', re.I)
-
         cn_names = list(set(cn_pattern.findall(combined)))[:8]
         en_names = list(set(en_pattern.findall(combined)))[:8]
-
         for name in cn_names + en_names:
             name = name.strip()
             if len(name) > 3:
                 factories.append({"name": name, "source": "importyeti"})
-
         logger.info("ImportYeti found %d factories for %s", len(factories), brand)
     except Exception as e:
         logger.warning("ImportYeti scrape error: %s", e)
     return factories
 
-
-# ── Yupoo direct scraper ─────────────────────────────────────────
 async def _scrape_yupoo(query, brand, page, timeout=25000, max_results=6):
-    """
-    Scrape Yupoo albums directly — sellers post WeChat in descriptions.
-    """
     results = []
     try:
         q = f"{brand} {query}".strip() if brand else query
         url = f"https://www.yupoo.com/search/?q={quote_plus(q)}&tab=album"
         await page.goto(url, wait_until="domcontentloaded", timeout=timeout)
         await asyncio.sleep(2.0)
-
-        # Get album links
-        links = await page.evaluate("""() => {
-            return [...document.querySelectorAll('a[href*="/photos/"]')]
-                .map(a => a.href)
-                .filter(h => h.includes('yupoo.com'))
-                .slice(0, 8);
-        }""")
-
-        logger.info("Yupoo found %d album links", len(links))
-
+        links = await page.evaluate("""() => { return [...document.querySelectorAll('a[href*="/photos/"]')].map(a => a.href).filter(h => h.includes('yupoo.com')).slice(0, 8); }""")
         for link in links[:max_results]:
             try:
                 await page.goto(link, wait_until="domcontentloaded", timeout=timeout)
@@ -1291,11 +902,8 @@ async def _scrape_yupoo(query, brand, page, timeout=25000, max_results=6):
                     "platform": "Yupoo", "baidu_query": q, "mode": "supplier",
                     "deep_scanned": True, "page_num": 1, "variation": 0,
                 })
-                logger.info("Yupoo album %s: %d WeChats", link[:50], len(c["wechat_ids"]))
             except Exception as e:
-                logger.debug("Yupoo album error: %s", e)
                 continue
-
     except Exception as e:
         logger.warning("Yupoo scrape error: %s", e)
     return results
