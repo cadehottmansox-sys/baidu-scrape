@@ -3041,3 +3041,59 @@ function dyDownloadVideo() {
     res.appendChild(err);
   });
 }
+// ======================= ADDED: BLOCK & RERUN (paste at the very bottom of script.js) =======================
+let currentSearchParams = null;
+
+async function blockDomainAndRerun(domain) {
+    await fetch('/api/block_domain', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ domain: domain })
+    });
+    if (currentSearchParams && typeof window.runSearch === 'function') {
+        window.runSearch(currentSearchParams);
+    } else {
+        location.reload();
+    }
+}
+
+async function setExclude1688(exclude) {
+    await fetch('/api/set_exclude_1688', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ exclude: exclude })
+    });
+}
+
+async function unblockAllDomains() {
+    await fetch('/api/unblock_all', { method: 'POST' });
+    location.reload();
+}
+
+// Wire up the new UI elements (call this after DOM is ready – your existing init will handle it)
+document.getElementById('exclude1688Toggle')?.addEventListener('change', (e) => {
+    setExclude1688(e.target.checked);
+    if (currentSearchParams) window.runSearch(currentSearchParams);
+});
+document.getElementById('unblockAllBtn')?.addEventListener('click', unblockAllDomains);
+
+// Store current search params inside your runSearch function – add this line at the beginning of runSearch:
+// currentSearchParams = { query, brand, platform, mode, deepScan, wcOnly };
+
+// Add a "Block domain" button inside your buildCard function – find where you create action buttons and add:
+/*
+let linkDomain = "";
+try { linkDomain = new URL(item.link).hostname; } catch(e) {}
+if (linkDomain) {
+    const blockBtn = document.createElement('button');
+    blockBtn.className = "act-btn act-flag";
+    blockBtn.textContent = "🚫 Block domain";
+    blockBtn.title = `Block ${linkDomain} and re-run search`;
+    blockBtn.onclick = (e) => {
+        e.stopPropagation();
+        blockDomainAndRerun(linkDomain);
+    };
+    actions.appendChild(blockBtn);
+}
+*/
+// ===========================================================================================================
