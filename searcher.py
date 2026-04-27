@@ -177,20 +177,101 @@ def _translate_to_zh(query):
         q = re.sub(re.escape(en), zh, q, flags=re.IGNORECASE)
     return q
 
+# ── INTENT KEYWORD BANKS (additive — no existing code changed) ────────────────
+INTENT_BANKS = {
+    "toy": {
+        "keywords": ["needoh","cube","squishy","fidget","stress ball","slow rise",
+                     "anti stress","pop it","sensory","slime","putty","kinetic",
+                     "sand","fidget spinner","magnetic","spinning top"],
+        "q1": "玩具厂 硅胶制品 注塑模具 减压球 工厂 微信 一手货源",
+        "q2": "1688 玩具批发 硅胶玩具厂 捏捏乐 慢回弹 工厂直销 微信",
+    },
+    "lego": {
+        "keywords": ["lego","lepin","moc","technic","ninjago","duplo","creator",
+                     "minifig","bricklink","block","brick","building set"],
+        "q1": "积木厂 兼容乐高 小颗粒积木 工厂 批发 微信 一手货源",
+        "q2": "1688 积木批发 兼容积木 乐高同款 工厂直销 微信 厂家",
+    },
+    "electronics": {
+        "keywords": ["airpods","earbuds","headphones","phone case","charger",
+                     "cable","speaker","smartwatch","gamepad","controller",
+                     "drone","led","light strip","keyboard","mouse"],
+        "q1": "数码配件厂 电子产品 工厂 批发 微信 一手货源 厂家直销",
+        "q2": "1688 数码批发 电子产品厂家 工厂直营 微信 联系方式",
+    },
+    "clothing": {
+        "keywords": ["hoodie","tee","t-shirt","shorts","pants","jacket","coat",
+                     "sweater","sweatshirt","joggers","shirt","polo","zip up",
+                     "crewneck","windbreaker","tracksuit","fleece"],
+        "q1": "服装厂 卫衣工厂 一手货源 微信 厂家直销 批发代理",
+        "q2": "1688 服装批发 卫衣厂家 工厂直营 微信 联系方式 莆田",
+    },
+    "bag": {
+        "keywords": ["bag","handbag","tote","backpack","wallet","purse","clutch",
+                     "shoulder bag","crossbody","duffel","fanny pack","card holder"],
+        "q1": "包包工厂 皮具厂 箱包批发 微信 一手货源 厂家直销",
+        "q2": "1688 包包批发 皮具工厂 厂家直营 微信 联系方式",
+    },
+    "watch": {
+        "keywords": ["watch","rolex","omega","audemars","richard mille","patek",
+                     "cartier","hublot","iwc","tudor","seiko","timepiece"],
+        "q1": "手表厂 钟表工厂 手表批发 微信 一手货源 厂家直销",
+        "q2": "1688 手表批发 钟表厂家 工厂直营 微信 联系方式",
+    },
+    "jewelry": {
+        "keywords": ["jewelry","necklace","bracelet","ring","earring","pendant",
+                     "chain","bangle","anklet","brooch"],
+        "q1": "首饰工厂 饰品批发 珠宝厂家 微信 一手货源 厂家直销",
+        "q2": "1688 饰品批发 首饰厂家 工厂直营 微信 联系方式",
+    },
+    "freight": {
+        "keywords": ["freight","forwarder","shipping","logistics","cargo",
+                     "forwarding","clearance","warehouse","3pl","consolidation"],
+        "q1": "货代 美国专线 双清包税 敏感货专线 微信 DDP 一票到底",
+        "q2": "国际货代 私人货代 美线 欧线 包税清关 微信 联系方式 报价",
+    },
+    "supplement": {
+        "keywords": ["supplement","protein","creatine","preworkout","vitamin",
+                     "collagen","whey","bcaa","glutamine","omega"],
+        "q1": "保健品工厂 营养品批发 OEM代工 微信 一手货源 厂家直销",
+        "q2": "1688 保健品批发 营养品厂家 工厂直营 微信 联系方式",
+    },
+    "cosmetic": {
+        "keywords": ["skincare","moisturizer","serum","foundation","lipstick",
+                     "perfume","cologne","makeup","lotion","cream","beauty"],
+        "q1": "化妆品工厂 护肤品批发 美妆OEM 微信 一手货源 厂家直销",
+        "q2": "1688 化妆品批发 护肤品厂家 工厂直营 微信 联系方式",
+    },
+}
+
+def detect_intent(query):
+    """Detect product category. Returns (category, q1, q2) or (None,None,None)."""
+    q = query.lower()
+    for category, data in INTENT_BANKS.items():
+        if any(kw in q for kw in data["keywords"]):
+            return category, data["q1"], data["q2"]
+    return None, None, None
+
+
 def build_inject(base_query):
     """Build smart query injection based on what user is searching for."""
     q = base_query.lower()
-    is_rep = any(kw in q for kw in REP_KEYWORDS)
 
+    # Rep/luxury brands take priority
+    is_rep = any(kw in q for kw in REP_KEYWORDS)
     if is_rep:
-        # Rep/sneaker/luxury — inject rep keywords + factory contact
         q1 = f"{FACTORY_INJECT} {REP_INJECT} 微信号"
         q2 = f"yupoo 1688 weidian 厂家直销 微信 {REP_INJECT} 莆田"
-    else:
-        # Generic product — factory direct, wholesale, no rep terms
-        # Based on video: search Chinese name + factory + WeChat contact
-        q1 = f"{FACTORY_INJECT} 微信号 联系方式 QQ 厂家直营"
-        q2 = f"1688 weidian 厂家直销 批发商 微信 联系方式 源头厂家"
+        return q1, q2
+
+    # Specific product intent
+    category, intent_q1, intent_q2 = detect_intent(base_query)
+    if category:
+        return intent_q1, intent_q2
+
+    # Generic fallback
+    q1 = f"{FACTORY_INJECT} 微信号 联系方式 QQ 厂家直营"
+    q2 = f"1688 weidian 厂家直销 批发商 微信 联系方式 源头厂家"
     return q1, q2
 
 def build_zhihu_inject(base_query):
