@@ -897,49 +897,18 @@ FILE SIZE: {len(html)} chars
                 f.write(img_bytes)
                 tmp = f.name
             try:
-                import os as _os
-                api_key = _os.getenv("SCRAPINGDOG_API_KEY", "69e6b959ba3950604d5080d7")
-                brand = data.get("brand", "")
-                product = data.get("product", "")
-                # Try Baidu image upload with full browser headers
-                hdrs = {
-                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-                    "Referer": "https://image.baidu.com/",
-                    "Accept": "application/json, text/plain, */*",
-                    "Accept-Language": "zh-CN,zh;q=0.9",
-                    "Origin": "https://image.baidu.com",
-                }
-                sign = ""
-                results = []
-                try:
-                    with open(tmp, 'rb') as f:
-                        r = _req.post("https://graph.baidu.com/upload", files={"image": ("img.jpg", f, "image/jpeg")}, headers=hdrs, timeout=15)
-                    rd = r.json() if r.status_code == 200 else {}
-                    sign = rd.get("sign", "")
-                    if sign:
-                        sr = _req.get(f"https://graph.baidu.com/details?sign={sign}&tn=pc&from=pc", headers=hdrs, timeout=15)
-                        sd = sr.json() if sr.status_code == 200 else {}
-                        items = sd.get("data", {})
-                        if isinstance(items, dict): items = items.get("list", [])
-                        results = [{"title": x.get("fromPageTitleEnc",""), "link": x.get("fromUrl",""), "thumb": x.get("middleURL",""), "source": x.get("fromURLHost","")} for x in (items or [])[:15] if x.get("fromUrl")]
-                except Exception as _e:
-                    app.logger.warning("Baidu image upload failed: %s", _e)
-                # If Baidu image search failed, fall back to ScrapingDog text search
-                if not results and (brand or product):
-                    try:
-                        q = f"{brand} {product} 厂家 微信 一手货源 莆田".strip()
-                        sr2 = _req.get("https://api.scrapingdog.com/baidu/search/",
-                            params={"api_key": api_key, "query": q, "results": 15, "country": "cn"},
-                            timeout=20)
-                        if sr2.status_code == 200:
-                            raw = sr2.json()
-                            organic = raw.get("Baidu_data") or raw.get("organic_data") or raw.get("data") or []
-                            if isinstance(organic, list):
-                                results = [{"title": x.get("title",""), "link": x.get("link",""), "thumb": "", "source": x.get("displayed_link","")} for x in organic[:15] if x.get("link")]
-                    except Exception as _e2:
-                        app.logger.warning("ScrapingDog fallback failed: %s", _e2)
-                if not results:
-                    return jsonify({"error": "Image search failed - try uploading a clearer product photo"}), 500
+                hdrs = {"User-Agent": "Mozilla/5.0", "Referer": "https://image.baidu.com/"}
+                with open(tmp, 'rb') as f:
+                    r = _req.post("https://graph.baidu.com/upload", files={"image": ("img.jpg", f, "image/jpeg")}, headers=hdrs, timeout=15)
+                rd = r.json()
+                sign = rd.get("sign", "")
+                if not sign:
+                    return jsonify({"error": "Baidu upload failed", "detail": str(rd)[:200]}), 500
+                sr = _req.get(f"https://graph.baidu.com/details?sign={sign}&tn=pc&from=pc", headers=hdrs, timeout=15)
+                sd = sr.json() if sr.status_code==200 else {}
+                items = sd.get("data", {})
+                if isinstance(items, dict): items = items.get("list", [])
+                results = [{"title": x.get("fromPageTitleEnc",""), "link": x.get("fromUrl",""), "thumb": x.get("middleURL",""), "source": x.get("fromURLHost","")} for x in (items or [])[:15] if x.get("fromUrl")]
                 return jsonify({"ok": True, "sign": sign, "results": results, "count": len(results), "baidu_url": f"https://image.baidu.com/search/detail?sign={sign}"})
             finally:
                 try: os.unlink(tmp)

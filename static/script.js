@@ -1,5 +1,3 @@
-/* Track last search for CRM */
-window._lastSearchQuery='';
 // Inject popup animations
 const _popStyle = document.createElement('style');
 _popStyle.textContent = `
@@ -518,54 +516,6 @@ function buildCard(item, index){
     showToast(nowSaved?"⭐ Saved!":"Removed");
     renderSavedTab();
   });
-
-
-  // ── Block & Redo button (#2) ──────────────────────────────────────────────
-  var blockRow=document.createElement('div');
-  blockRow.style.cssText='display:flex;gap:8px;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.06)';
-
-  var blockBtn=document.createElement('button');
-  blockBtn.textContent='🚫 Block & Redo';
-  blockBtn.style.cssText='flex:1;padding:6px 10px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);color:#f87171;border-radius:8px;font-size:11px;cursor:pointer;font-family:inherit;font-weight:600';
-  blockBtn.onclick=function(){
-    var url=card.dataset.link||item.link||'';
-    if(!url)return;
-    fetch('/api/block',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:url})})
-    .then(function(){
-      showToast('🚫 Blocked — re-running search...');
-      card.style.opacity='0.3';
-      card.style.pointerEvents='none';
-      setTimeout(function(){doSearch();},600);
-    }).catch(function(){showToast('Block failed');});
-  };
-  blockRow.appendChild(blockBtn);
-
-  // ── Add to CRM button (#15) ───────────────────────────────────────────────
-  var crmBtn=document.createElement('button');
-  crmBtn.textContent='➕ Add to CRM';
-  crmBtn.style.cssText='flex:1;padding:6px 10px;background:rgba(34,211,238,.08);border:1px solid rgba(34,211,238,.2);color:#22d3ee;border-radius:8px;font-size:11px;cursor:pointer;font-family:inherit;font-weight:600';
-  crmBtn.onclick=function(){
-    var wc=wechats[0]||'';
-    var name=(item.title||'').slice(0,60);
-    var url=item.link||'';
-    var product=window._lastSearchQuery||'';
-    var entry={
-      supplier_name:name,
-      wechat:wc,
-      link:url,
-      product:product,
-      platform:item.platform||'Baidu',
-      note:'Added from search result',
-      factory_score:score||0
-    };
-    fetch('/api/crm',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify(entry)})
-    .then(function(r){return r.json();}).then(function(d){
-      if(d.ok||d.id){showToast('✅ Added to CRM!');crmBtn.style.opacity='0.5';crmBtn.style.pointerEvents='none';}
-      else showToast('CRM error: '+(d.error||'unknown'));
-    }).catch(function(){showToast('CRM failed');});
-  };
-  blockRow.appendChild(crmBtn);
-  card.appendChild(blockRow);
 
   return card;
 }
@@ -2626,7 +2576,7 @@ async function _sfLoadMore(query,brand,platform,mode,deepScan,wcOnly,resultsEl,b
   try{
     var r=await fetch('/search',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({query:query,brand:brand,platform:platform,mode:mode,deep_scan:deepScan,wechat_only:wcOnly,page_num:page})});
-    var d=await r.json(); var res=d.results||[]; window._lastSearchQuery=query||"";
+    var d=await r.json(); var res=d.results||[];
     btn.remove();
     if(!res.length){var nd=document.createElement('p');nd.style.cssText='text-align:center;color:#475569;padding:16px;font-size:13px';nd.textContent='No more results found.';resultsEl.appendChild(nd);return;}
     res.forEach(function(item,i){resultsEl.appendChild(buildCard(item,i));});
@@ -3089,12 +3039,5 @@ function dyDownloadVideo() {
     var err=document.createElement("div"); err.style.cssText="color:#ef4444;padding:16px;text-align:center";
     err.textContent="Error: "+e.message+" - Try opening the Douyin app, tap Share → Copy Link, paste here.";
     res.appendChild(err);
-  });
-}
-
-function unblockAll(){
-  fetch('/api/unblock_all',{method:'POST',credentials:'include'}).then(function(){
-    showToast('✅ All blocked results cleared');
-    doSearch();
   });
 }
