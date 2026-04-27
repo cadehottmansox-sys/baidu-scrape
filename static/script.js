@@ -3153,3 +3153,403 @@ if (linkDomain) {
 }
 */
 // ==================================================================================
+// ======================= RESTORE MISSING SIDEBAR & TOOLS =======================
+// Hamburger menu toggle
+var _sfMO = false;
+function _sfMT() {
+    _sfMO = !_sfMO;
+    var p = document.getElementById("_sfNavPanel");
+    var o = document.getElementById("_sfOverlay");
+    if (p) p.style.right = _sfMO ? "0" : "-285px";
+    if (o) o.style.display = _sfMO ? "block" : "none";
+}
+function _sfNG(t) {
+    _sfMO = false;
+    var p = document.getElementById("_sfNavPanel");
+    var o = document.getElementById("_sfOverlay");
+    if (p) p.style.right = "-285px";
+    if (o) o.style.display = "none";
+    document.querySelectorAll("._ni").forEach(function(el) { el.classList.remove("active"); });
+    var ab = document.querySelector("._ni[data-tab=" + JSON.stringify(t) + "]");
+    if (ab) ab.classList.add("active");
+    if (typeof switchTab === "function") switchTab(t);
+    if (t === "douyin") setTimeout(dyInit, 100);
+}
+function _sfOT(t) {
+    _sfMO = false;
+    var p = document.getElementById("_sfNavPanel");
+    var o = document.getElementById("_sfOverlay");
+    if (p) p.style.right = "-285px";
+    if (o) o.style.display = "none";
+    var m = document.getElementById("_sfTModal");
+    var c = document.getElementById("_sfTC");
+    if (!m || !c) return;
+    m.style.display = "flex";
+    var fns = { cny:_sfTCny, ship:_sfTShip, agent:_sfTAgent, link:_sfTLink, ffcalc:_sfTFF, qc:_sfTQC, size:_sfTSize, duty:_sfTDuty, gloss:_sfTGloss };
+    if (fns[t]) fns[t](c);
+}
+function _sfCT() {
+    var m = document.getElementById("_sfTModal");
+    if (m) m.style.display = "none";
+    var i = document.getElementById("_sfTInner");
+    if (i) { i.style.width = "390px"; i.style.maxHeight = "86vh"; }
+}
+document.addEventListener("keydown", function(e) {
+    if (e.key === "Escape") { _sfCT(); _sfMO = false;
+        var p = document.getElementById("_sfNavPanel");
+        var o = document.getElementById("_sfOverlay");
+        if (p) p.style.right = "-285px";
+        if (o) o.style.display = "none"; }
+});
+
+// Buyer tools
+function _sfTCny(el) {
+    el.innerHTML = "";
+    var h3 = document.createElement("h3");
+    h3.style.cssText = "color:#e2e8f0;margin:0 0 14px;font-size:16px;font-weight:700";
+    h3.textContent = "CNY Converter";
+    el.appendChild(h3);
+    var inp = document.createElement("input");
+    inp.id = "_cn"; inp.type = "number"; inp.placeholder = "Amount in CNY";
+    inp.style.cssText = "width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#e2e8f0;padding:9px 12px;border-radius:9px;font-size:13px;outline:none;box-sizing:border-box;margin-bottom:9px;font-family:inherit";
+    el.appendChild(inp);
+    var grid = document.createElement("div");
+    grid.style.cssText = "display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px";
+    ["USD","EUR","GBP"].forEach(function(c) {
+        var b = document.createElement("button");
+        b.textContent = c;
+        b.onclick = function() { _cCnv(c); };
+        b.style.cssText = "padding:9px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#94a3b8;border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit";
+        grid.appendChild(b);
+    });
+    el.appendChild(grid);
+    var out = document.createElement("div"); out.id = "_cr";
+    out.style.cssText = "font-size:15px;font-weight:700;text-align:center;padding:10px;min-height:36px;border-radius:9px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);margin-bottom:6px";
+    el.appendChild(out);
+}
+function _cCnv(to) {
+    var a = parseFloat((document.getElementById("_cn")||{}).value||0);
+    var r = document.getElementById("_cr");
+    if (!a||!r) { if(r) r.textContent="Enter amount"; return; }
+    var rt = {USD:7.25, EUR:7.8, GBP:9.1};
+    r.textContent = "CNY "+a+" = "+to+" "+(a/rt[to]).toFixed(2);
+    r.style.color = "#22d3ee";
+}
+function _mkH(tag,attrs,text){
+    var el=document.createElement(tag);
+    Object.keys(attrs||{}).forEach(function(k){el[k]=attrs[k];});
+    if(text!==undefined) el.textContent=text;
+    return el;
+}
+function _sfTShip(el){
+    el.innerHTML="";
+    var h3=_mkH("h3",{style:"color:#e2e8f0;margin:0 0 14px;font-size:16px;font-weight:700"},"Shipping Estimator");
+    el.appendChild(h3);
+    var s1=_mkH("select",{id:"_shd",style:"width:100%;background:#060c18;border:1px solid rgba(255,255,255,.1);color:#e2e8f0;padding:9px;border-radius:9px;font-size:13px;margin-bottom:9px;outline:none;font-family:inherit"});
+    [{v:"US",t:"USA"},{v:"UK",t:"UK"},{v:"EU",t:"Europe"},{v:"AU",t:"Australia"},{v:"CA",t:"Canada"}].forEach(function(o){var op=document.createElement("option");op.value=o.v;op.textContent=o.t;s1.appendChild(op);});
+    el.appendChild(s1);
+    var s2=_mkH("select",{id:"_sht",style:"width:100%;background:#060c18;border:1px solid rgba(255,255,255,.1);color:#e2e8f0;padding:9px;border-radius:9px;font-size:13px;margin-bottom:9px;outline:none;font-family:inherit"});
+    s2.onchange=_sShTy;
+    [{v:".8",t:"Sneakers 800g"},{v:".25",t:"T-Shirt 250g"},{v:".6",t:"Hoodie 600g"},{v:"1.2",t:"Bag 1.2kg"},{v:".9",t:"Jacket 900g"},{v:"0",t:"Custom"}].forEach(function(o){var op=document.createElement("option");op.value=o.v;op.textContent=o.t;s2.appendChild(op);});
+    el.appendChild(s2);
+    var cw=_mkH("div",{id:"_shcw",style:"display:none"});
+    var ki=_mkH("input",{id:"_shkg",type:"number",placeholder:"Weight kg",style:"width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#e2e8f0;padding:9px 12px;border-radius:9px;font-size:13px;outline:none;box-sizing:border-box;margin-bottom:9px;font-family:inherit"});
+    cw.appendChild(ki); el.appendChild(cw);
+    var btn=_mkH("button",{style:"width:100%;padding:10px;background:linear-gradient(135deg,rgba(34,211,238,.18),rgba(99,102,241,.18));border:1px solid rgba(34,211,238,.32);color:#22d3ee;border-radius:9px;font-size:13px;cursor:pointer;font-weight:700;margin-bottom:9px;font-family:inherit"},"Estimate");
+    btn.onclick=_sShC; el.appendChild(btn);
+    var out=_mkH("div",{id:"_shr",style:"font-size:15px;font-weight:700;text-align:center;padding:10px;min-height:36px;border-radius:9px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);margin-bottom:6px"});
+    el.appendChild(out);
+}
+function _sShTy(){var v=(document.getElementById("_sht")||{}).value;var w=document.getElementById("_shcw");if(w)w.style.display=v==="0"?"block":"none";}
+function _sShC(){
+    var d=(document.getElementById("_shd")||{}).value||"US",tv=(document.getElementById("_sht")||{}).value||".8";
+    var w=tv==="0"?parseFloat((document.getElementById("_shkg")||{}).value||0):parseFloat(tv);
+    var r=document.getElementById("_shr");
+    if(!w||!r){if(r)r.textContent="Enter weight";return;}
+    var b={US:[8,18],UK:[10,22],EU:[9,20],AU:[12,25],CA:[10,22]}[d]||[8,18];
+    r.textContent="Economy ~$"+Math.max(b[0],w*b[0]).toFixed(0)+" | DHL ~$"+Math.max(b[1],w*b[1]).toFixed(0);
+    r.style.color="#22c55e";
+}
+function _sfTAgent(el){
+    var ag=[{n:"Sugargoo",f:0,c:"#22c55e"},{n:"CNFans",f:0.015,c:"#22d3ee"},{n:"ACBuy",f:0,c:"#22c55e"},{n:"Kakobuy",f:0.03,c:"#22d3ee"},{n:"Pandabuy",f:0.05,c:"#f59e0b"},{n:"Superbuy",f:0.08,c:"#ef4444"}];
+    window._sfAg=ag; el.innerHTML="";
+    var h3=_mkH("h3",{style:"color:#e2e8f0;margin:0 0 14px;font-size:16px;font-weight:700"},"Agent Fee Compare"); el.appendChild(h3);
+    var inp=_mkH("input",{id:"_agamt",type:"number",placeholder:"Order total in CNY",style:"width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#e2e8f0;padding:9px 12px;border-radius:9px;font-size:13px;outline:none;box-sizing:border-box;margin-bottom:9px;font-family:inherit"});
+    el.appendChild(inp);
+    var btn=_mkH("button",{style:"width:100%;padding:10px;background:linear-gradient(135deg,rgba(34,211,238,.18),rgba(99,102,241,.18));border:1px solid rgba(34,211,238,.32);color:#22d3ee;border-radius:9px;font-size:13px;cursor:pointer;font-weight:700;margin-bottom:9px;font-family:inherit"},"Compare");
+    btn.onclick=_sAgC; el.appendChild(btn);
+    var grid=_mkH("div",{style:"display:grid;grid-template-columns:1fr 1fr;gap:8px"}); el.appendChild(grid);
+    ag.forEach(function(a,i){
+        var cell=_mkH("div",{style:"padding:10px;background:rgba(255,255,255,.04);border-radius:9px;text-align:center;border:1px solid rgba(255,255,255,.06)"});
+        cell.appendChild(_mkH("div",{style:"color:#475569;font-size:10px;margin-bottom:5px"},a.n));
+        var val=_mkH("div",{id:"_ag"+i,style:"color:"+a.c+";font-size:17px;font-weight:700"},"-");
+        cell.appendChild(val);
+        grid.appendChild(cell);
+    });
+}
+function _sAgC(){var amt=parseFloat((document.getElementById("_agamt")||{}).value||0);if(!amt)return;(window._sfAg||[]).forEach(function(a,i){var el=document.getElementById("_ag"+i);if(el)el.textContent=a.f===0?"FREE":"$"+(amt*a.f/7.25).toFixed(2);});}
+function _sfTLink(el){
+    el.innerHTML=""; var h3=_mkH("h3",{style:"color:#e2e8f0;margin:0 0 14px;font-size:16px;font-weight:700"},"Agent Link Converter"); el.appendChild(h3);
+    var ta=document.createElement("textarea"); ta.id="_lnk"; ta.placeholder="Paste Taobao / Weidian / 1688 URL...";
+    ta.style.cssText="width:100%;height:72px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#e2e8f0;padding:9px;border-radius:9px;font-size:12px;resize:none;outline:none;box-sizing:border-box;margin-bottom:9px;font-family:inherit";
+    el.appendChild(ta);
+    var btn=_mkH("button",{style:"width:100%;padding:10px;background:linear-gradient(135deg,rgba(34,211,238,.18),rgba(99,102,241,.18));border:1px solid rgba(34,211,238,.32);color:#22d3ee;border-radius:9px;font-size:13px;cursor:pointer;font-weight:700;margin-bottom:9px;font-family:inherit"},"Generate All Agent Links");
+    btn.onclick=_sLnkG; el.appendChild(btn);
+    var out=document.createElement("div"); out.id="_lnkr"; el.appendChild(out);
+}
+function _sLnkG(){
+    var url=((document.getElementById("_lnk")||{}).value||"").trim();
+    var r=document.getElementById("_lnkr");
+    if(!url||!r){if(r)r.textContent="Paste a URL first";return;}
+    var e=encodeURIComponent(url); r.innerHTML="";
+    [["CNFans","https://cnfans.com/?num="],["Kakobuy","https://www.kakobuy.com/item/details?url="],["Sugargoo","https://www.sugargoo.com/#/home/productDetail?productLink="],["ACBuy","https://acbuy.com/product?url="],["Pandabuy","https://www.pandabuy.com/product?url="],["Superbuy","https://www.superbuy.com/en/page/buy/?url="],["Hagobuy","https://www.hagobuy.com/item/details?url="],["Mulebuy","https://mulebuy.com/product/?url="]].forEach(function(ag){
+        var link=document.createElement("a"); link.href=ag[1]+e; link.target="_blank"; link.textContent=ag[0]+" →";
+        link.style.cssText="display:block;padding:9px 13px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:8px;color:#94a3b8;font-size:12px;text-decoration:none;margin-bottom:5px";
+        r.appendChild(link);
+    });
+}
+function _sfTFF(el){
+    var inner=document.getElementById("_sfTInner");
+    if(inner){inner.style.width="min(720px,95vw)";inner.style.maxHeight="92vh";}
+    el.innerHTML="";
+    var h3=_mkH("h3",{style:"color:#e2e8f0;margin:0 0 14px;font-size:16px;font-weight:700"},"FF Rate Calculator (AI)"); el.appendChild(h3);
+    var p=_mkH("p",{style:"color:#475569;font-size:12px;margin:0 0 14px"},"Upload rate sheet photo. AI reads rates and estimates weights. All in RMB yuan."); el.appendChild(p);
+    var inp=document.createElement("input"); inp.type="file"; inp.id="_ffFile"; inp.accept="image/*"; inp.style.display="none";
+    inp.onchange=function(){_ffLoad(this);};
+    var lbl=document.createElement("label"); lbl.htmlFor="_ffFile";
+    lbl.style.cssText="display:block;border:2px dashed rgba(34,211,238,.3);border-radius:12px;padding:16px;text-align:center;margin-bottom:14px;cursor:pointer;background:rgba(34,211,238,.04)";
+    lbl.innerHTML="<div style=\"font-size:26px;margin-bottom:5px\">📷</div><div style=\"color:#22d3ee;font-size:13px;font-weight:600\">Upload Rate Sheet Photo</div><div style=\"color:#334155;font-size:11px;margin-top:3px\">AI reads all rates automatically</div>";
+    el.appendChild(lbl); el.appendChild(inp);
+    var wrap=_mkH("div",{id:"_ffImgWrap",style:"display:none;margin-bottom:14px;position:relative"});
+    var img=_mkH("img",{id:"_ffImgEl",style:"width:100%;border-radius:10px;border:1px solid rgba(255,255,255,.1);max-height:200px;object-fit:contain;background:#000"});
+    var badge=_mkH("div",{id:"_ffBadge",style:"position:absolute;top:8px;right:8px;background:rgba(0,0,0,.85);border-radius:6px;padding:5px 10px;font-size:11px;color:#f59e0b;font-weight:600"},"Scanning...");
+    wrap.appendChild(img); wrap.appendChild(badge); el.appendChild(wrap);
+    var rbox=_mkH("div",{id:"_ffRBox",style:"display:none;background:rgba(34,211,238,.05);border:1px solid rgba(34,211,238,.18);border-radius:10px;padding:12px;margin-bottom:14px"});
+    rbox.appendChild(_mkH("div",{style:"color:#22d3ee;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px"},"Rates Detected (RMB/kg)"));
+    var rl=_mkH("div",{id:"_ffRL"}); rbox.appendChild(rl); el.appendChild(rbox);
+    el.appendChild(_mkH("div",{style:"color:#22d3ee;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px"},"Your Items"));
+    var items=_mkH("div",{id:"_ffItems"}); el.appendChild(items);
+    var btns=_mkH("div",{style:"display:flex;gap:8px;margin-bottom:12px"});
+    var addBtn=_mkH("button",{style:"flex:1;padding:9px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#94a3b8;border-radius:9px;font-size:12px;cursor:pointer;font-family:inherit"},"+ Add Item");
+    addBtn.onclick=_ffAdd; btns.appendChild(addBtn);
+    var calcBtn=_mkH("button",{style:"flex:2;padding:9px;background:linear-gradient(135deg,rgba(34,211,238,.2),rgba(99,102,241,.2));border:1px solid rgba(34,211,238,.35);color:#22d3ee;border-radius:9px;font-size:13px;cursor:pointer;font-weight:700;font-family:inherit"},"Calculate with AI");
+    calcBtn.onclick=_ffCalc; btns.appendChild(calcBtn);
+    el.appendChild(btns);
+    var res=_mkH("div",{id:"_ffRes"}); el.appendChild(res);
+    _ffAdd();
+}
+function _ffLoad(inp){var f=inp.files[0];if(!f)return;var rd=new FileReader();rd.onload=function(e){var img=document.getElementById("_ffImgEl"),wrap=document.getElementById("_ffImgWrap");if(img)img.src=e.target.result;if(wrap)wrap.style.display="block";window._ffB=e.target.result.split(",")[1];window._ffM=f.type||"image/jpeg";_ffScan();};rd.readAsDataURL(f);}
+function _ffScan(){var badge=document.getElementById("_ffBadge"),rb=document.getElementById("_ffRBox"),rl=document.getElementById("_ffRL");if(badge){badge.textContent="AI scanning...";badge.style.color="#f59e0b";}if(rb)rb.style.display="none";fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:800,messages:[{role:"user",content:[{type:"image",source:{type:"base64",media_type:window._ffM||"image/jpeg",data:window._ffB}},{type:"text",text:"Extract shipping lines and per-kg rates in RMB from this freight forwarder rate chart. Return ONLY JSON: [{line:string,rate:number}]. Convert USD to RMB at 7.25."}]}]})}).then(function(r){return r.json();}).then(function(d){try{var txt=(d.content||[]).map(function(b){return b.type==="text"?b.text:"";}).join("").replace(/```json|```/g,"").trim();var rates=JSON.parse(txt);window._ffRates=rates;var opts=rates.map(function(r){return "<option value="+JSON.stringify(r.rate)+">"+r.line+" ("+r.rate+" RMB/kg)</option>";}).join("");document.querySelectorAll("._ffS").forEach(function(s){s.innerHTML="<option value=>Select line...</option>"+opts;});if(rl)rl.innerHTML=rates.map(function(r){return "<div style=display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.05)><span style=color:#94a3b8;font-size:12px>"+r.line+"</span><span style=color:#22d3ee;font-size:12px;font-weight:700>"+r.rate+" RMB/kg</span></div>";}).join("");if(rb)rb.style.display="block";if(badge){badge.textContent="Rates loaded";badge.style.color="#22c55e";}}catch(e){if(badge){badge.textContent="Could not read chart";badge.style.color="#ef4444";}}}).catch(function(){if(badge){badge.textContent="Scan failed";badge.style.color="#ef4444";}});}
+function _ffMakeRow(){var opts="<option value=>Select line...</option>"+((window._ffRates||[]).map(function(r){return "<option value="+JSON.stringify(r.rate)+">"+r.line+" ("+r.rate+" RMB/kg)</option>";})).join("");var d=document.createElement("div");d.className="_ffi";d.style.cssText="display:grid;grid-template-columns:1fr 60px 110px 28px;gap:7px;margin-bottom:7px;align-items:center";var n=document.createElement("input");n.className="_ffN";n.placeholder="Item name";n.style.cssText="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#e2e8f0;padding:8px 11px;border-radius:9px;font-size:13px;outline:none;box-sizing:border-box;font-family:inherit";var q=document.createElement("input");q.className="_ffQ";q.type="number";q.min="1";q.value="1";q.style.cssText="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#e2e8f0;padding:8px;border-radius:9px;font-size:13px;outline:none;text-align:center;box-sizing:border-box;font-family:inherit";var s=document.createElement("select");s.className="_ffS";s.innerHTML=opts;s.style.cssText="background:#060c18;border:1px solid rgba(255,255,255,.1);color:#e2e8f0;padding:8px;border-radius:9px;font-size:12px;outline:none;font-family:inherit";var x=document.createElement("button");x.textContent="x";x.type="button";x.style.cssText="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);color:#f87171;border-radius:7px;cursor:pointer;font-size:14px;height:36px";x.onclick=function(){d.remove();};d.appendChild(n);d.appendChild(q);d.appendChild(s);d.appendChild(x);return d;}
+function _ffAdd(){var list=document.getElementById("_ffItems");if(list)list.appendChild(_ffMakeRow());}
+function _ffCalc(){var res=document.getElementById("_ffRes");if(!res)return;var items=[];document.querySelectorAll("._ffi").forEach(function(row){var n=(row.querySelector("._ffN")||{}).value||"",q=parseInt((row.querySelector("._ffQ")||{}).value||1),rate=parseFloat((row.querySelector("._ffS")||{}).value||0);if(n)items.push({name:n,qty:q,rate:rate});});if(!items.length){res.textContent="Add at least one item";return;}if(items.some(function(i){return !i.rate;})){res.textContent="Select a shipping line for every item";return;}res.textContent="AI estimating weights...";var prompt="Estimate weights for these streetwear items. Return ONLY JSON: [{name,qty,kg_each,rate}]. Weights: sneakers 0.9,tshirt 0.25,hoodie 0.6,jacket 0.9,bag 0.8,hat 0.15,jeans 0.6. Items: "+items.map(function(i){return i.qty+"x "+i.name;}).join(", ");fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:600,messages:[{role:"user",content:prompt}]})}).then(function(r){return r.json();}).then(function(d){try{var txt=(d.content||[]).map(function(b){return b.type==="text"?b.text:"";}).join("").replace(/```json|```/g,"").trim();var parsed=JSON.parse(txt);var tR=0,tK=0,tI=0;var rows=parsed.map(function(it){var tkg=(it.kg_each||0)*it.qty,cost=tkg*(it.rate||0);tK+=tkg;tR+=cost;tI+=it.qty;return "<div style=display:flex;justify-content:space-between;align-items:center;padding:9px 12px;background:rgba(255,255,255,.04);border-radius:9px;margin-bottom:6px><div><div style=color:#e2e8f0;font-size:13px;font-weight:600>"+it.name+"</div><div style=color:#475569;font-size:11px>x"+it.qty+" @"+it.kg_each+"kg="+tkg.toFixed(2)+"kg</div></div><div style=color:#22d3ee;font-size:15px;font-weight:700>"+cost.toFixed(0)+" RMB</div></div>";}).join("");res.innerHTML="<div style=background:rgba(34,211,238,.05);border:1px solid rgba(34,211,238,.2);border-radius:12px;padding:14px>"+rows+"<div style=border-top:1px solid rgba(34,211,238,.2);margin-top:10px;padding-top:10px><div style=display:flex;justify-content:space-between><span style=color:#94a3b8;font-size:13px>"+tI+" items "+tK.toFixed(2)+"kg</span><span style=color:#22c55e;font-size:22px;font-weight:700>"+tR.toFixed(0)+" RMB</span></div><div style=text-align:right;color:#475569;font-size:12px>~$"+(tR/7.25).toFixed(0)+" USD</div></div></div>";}catch(e){res.textContent="Calc failed.";}}).catch(function(){res.textContent="Request failed.";});}
+function _sfTQC(el){window._qcd={"Sneakers":["Toe box shape","Sole thickness","Stitching clean","Tongue label","Lace color","Box barcode","Insole","No glue marks"],"Clothing":["Tag position","Seams even","No loose threads","Material weight","Zipper brand","Print placement"],"Bags":["Stitching matches","Hardware color","Zipper branded","Serial number","Lining correct","Leather smell"],"Watches":["Crown functions","Crystal clear","Caseback correct","Clasp locks","Dial text","Hands aligned"]};el.innerHTML="";var h3=_mkH("h3",{style:"color:#e2e8f0;margin:0 0 14px;font-size:16px;font-weight:700"},"QC Checklist");el.appendChild(h3);var btns=document.createElement("div");Object.keys(window._qcd).forEach(function(c){var b=document.createElement("button");b.className="_qb";b.dataset.cat=c;b.textContent=c;b.style.cssText="padding:6px 11px;border-radius:8px;font-size:12px;cursor:pointer;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#64748b;margin:0 5px 7px 0;font-family:inherit";b.onclick=function(){_qcC(c);};btns.appendChild(b);});el.appendChild(btns);el.appendChild(_mkH("div",{id:"_qcl"}));}
+function _qcC(cat){document.querySelectorAll("._qb").forEach(function(b){b.style.background="rgba(255,255,255,.05)";b.style.color="#64748b";b.style.borderColor="rgba(255,255,255,.1)";});var ab=document.querySelector("._qb[data-cat="+JSON.stringify(cat)+"]");if(ab){ab.style.background="rgba(34,211,238,.15)";ab.style.color="#22d3ee";ab.style.borderColor="rgba(34,211,238,.3)";}var items=(window._qcd||{})[cat]||[];var out=document.getElementById("_qcl");if(!out)return;out.innerHTML="";items.forEach(function(t){var lbl=document.createElement("label");lbl.style.cssText="display:flex;gap:9px;align-items:flex-start;padding:8px 0;cursor:pointer;color:#94a3b8;font-size:13px;border-bottom:1px solid rgba(255,255,255,.04)";var cb=document.createElement("input");cb.type="checkbox";cb.style.cssText="margin-top:2px;accent-color:#22d3ee;flex-shrink:0";cb.onchange=function(){_qcU(items.length);};lbl.appendChild(cb);lbl.appendChild(document.createTextNode(" "+t));out.appendChild(lbl);});var sc=_mkH("div",{id:"_qcs",style:"margin-top:9px;text-align:center;font-size:14px;font-weight:700;padding:8px;border-radius:8px;background:rgba(255,255,255,.03)"},"0/"+items.length);out.appendChild(sc);}
+function _qcU(total){var n=document.querySelectorAll("#_qcl input:checked").length,el=document.getElementById("_qcs");if(!el)return;el.textContent=n+"/"+total+" "+(n===total?"Approve":"Review");el.style.color=n===total?"#22c55e":n>total*.6?"#f59e0b":"#ef4444";}
+function _sfTSize(el){window._szm=[["6","39","5.5","24"],["6.5","39.5","6","24.5"],["7","40","6.5","25"],["7.5","40.5","7","25.5"],["8","41","7.5","26"],["8.5","42","8","26.5"],["9","42.5","8.5","27"],["9.5","43","9","27.5"],["10","44","9.5","28"],["10.5","44.5","10","28.5"],["11","45","10.5","29"],["12","46","11.5","30"]];el.innerHTML="";el.appendChild(_mkH("h3",{style:"color:#e2e8f0;margin:0 0 14px;font-size:16px;font-weight:700"},"Size Converter"));var sel=document.createElement("select");sel.id="_szus";sel.style.cssText="width:100%;background:#060c18;border:1px solid rgba(255,255,255,.1);color:#e2e8f0;padding:9px;border-radius:9px;font-size:13px;margin-bottom:9px;outline:none;font-family:inherit";sel.onchange=_sSzC;window._szm.forEach(function(r){var op=document.createElement("option");op.value=r[0];op.textContent="US "+r[0];sel.appendChild(op);});el.appendChild(sel);el.appendChild(_mkH("div",{id:"_szout",style:"display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px"}));_sSzC();}
+function _sSzC(){var us=((document.getElementById("_szus")||{}).value)||"6";var row=(window._szm||[]).filter(function(r){return r[0]===us;})[0];if(!row)return;var out=document.getElementById("_szout");if(!out)return;out.innerHTML="";[["EU",row[1]],["UK",row[2]],["CM",row[3]+"cm"],["US",row[0]]].forEach(function(v){var cell=_mkH("div",{style:"background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:12px;text-align:center"});cell.appendChild(_mkH("div",{style:"color:#475569;font-size:9px;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px"},v[0]));cell.appendChild(_mkH("div",{style:"color:#22d3ee;font-size:26px;font-weight:700"},v[1]));out.appendChild(cell);});}
+function _sfTDuty(el){el.innerHTML="";el.appendChild(_mkH("h3",{style:"color:#e2e8f0;margin:0 0 14px;font-size:16px;font-weight:700"},"Customs Duty"));var sel=document.createElement("select");sel.id="_dtd";sel.style.cssText="width:100%;background:#060c18;border:1px solid rgba(255,255,255,.1);color:#e2e8f0;padding:9px;border-radius:9px;font-size:13px;margin-bottom:9px;outline:none;font-family:inherit";[["800,0","USA (under $800 free)"],["135,20","UK (over $135 = 20%)"],["171,20","EU (over $171 = 20%)"],["740,10","Australia 10%"],["31,20","Canada 20%"]].forEach(function(o){var op=document.createElement("option");op.value=o[0];op.textContent=o[1];sel.appendChild(op);});el.appendChild(sel);var inp=_mkH("input",{id:"_dtv",type:"number",placeholder:"Order value in USD",style:"width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#e2e8f0;padding:9px 12px;border-radius:9px;font-size:13px;outline:none;box-sizing:border-box;margin-bottom:9px;font-family:inherit"});el.appendChild(inp);var btn=_mkH("button",{style:"width:100%;padding:10px;background:linear-gradient(135deg,rgba(34,211,238,.18),rgba(99,102,241,.18));border:1px solid rgba(34,211,238,.32);color:#22d3ee;border-radius:9px;font-size:13px;cursor:pointer;font-weight:700;margin-bottom:9px;font-family:inherit"},"Calculate");btn.onclick=_sDtC;el.appendChild(btn);el.appendChild(_mkH("div",{id:"_dtr",style:"font-size:15px;font-weight:700;text-align:center;padding:10px;min-height:36px;border-radius:9px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);margin-bottom:6px"}));}
+function _sDtC(){var parts=((document.getElementById("_dtd")||{}).value||"800,0").split(","),val=parseFloat((document.getElementById("_dtv")||{}).value||0),r=document.getElementById("_dtr");if(!r)return;if(!val){r.textContent="Enter order value";return;}var thresh=parseFloat(parts[0]),rate=parseFloat(parts[1])/100;r.textContent=val<=thresh?"Under threshold - no duty":"~$"+((val-thresh)*rate).toFixed(2)+" est. duty";r.style.color=val<=thresh?"#22c55e":"#f59e0b";}
+function _sfTGloss(el){var terms=[["W2C","Where to Cop"],["QC","Quality Check"],["GL","Green Light - approve, ship"],["1:1","Same quality as retail"],["Haul","Multiple items shipped together"],["PK","Top Putian batch"],["OG","High quality Jordan batch"],["LJR","Dongguan top batch - AJ1s"],["H12","Popular AJ1 batch"],["Chun Yuan","Pure Original - highest tier"],["Gong Si Ji","Company Grade 95%+"],["Zhen Biao","True Label - real tags"],["Pu Tian","Putian city - sneaker capital"],["Middleman","Reseller 30-100% markup"],["CNFans","Agent - 0-1.5% fees"],["Sugargoo","Agent - 0% fees"],["MOQ","Minimum Order Quantity"],["Yupoo","Chinese photo album for catalogs"]];el.innerHTML="";el.appendChild(_mkH("h3",{style:"color:#e2e8f0;margin:0 0 14px;font-size:16px;font-weight:700"},"Rep Glossary"));terms.forEach(function(t){var row=document.createElement("div");row.style.cssText="padding:7px 0;border-bottom:1px solid rgba(255,255,255,.04)";var b=_mkH("b",{style:"color:#22d3ee;font-size:12px"},t[0]);var d=_mkH("div",{style:"color:#64748b;font-size:11px;margin-top:2px"},t[1]);row.appendChild(b);row.appendChild(d);el.appendChild(row);});}
+
+// Douyin functions
+var _dyMode="supplier";
+function dyInit(){var qb=document.getElementById("dy-quick-btns");if(!qb||qb.children.length>0)return;[{label:"Jordan Factory",brand:"Jordan",product:"球鞋 厂家 微信 莆田"},{label:"Nike Passing",brand:"Nike",product:"纯原 过验 PK版"},{label:"Supreme",brand:"Supreme",product:"厂家直销 一手货源"},{label:"LV Bags",brand:"LV",product:"包包 厂家 货源 微信"},{label:"Freight Agent",brand:"",product:"转运 集运 代发货 微信"},{label:"Wholesale",brand:"",product:"球鞋 批发 货源 一件代发"},{label:"Stone Island",brand:"Stone Island",product:"石头岛 厂家 直销"},{label:"Tech Fleece",brand:"Nike",product:"科技套装 厂家 莆田"}].forEach(function(t){var btn=document.createElement("button");btn.textContent=t.label;btn.style.cssText="padding:6px 14px;border-radius:20px;font-size:12px;cursor:pointer;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#94a3b8;transition:all .2s;font-family:inherit;margin-bottom:4px";btn.onmouseover=function(){this.style.background="rgba(34,211,238,.1)";this.style.color="#22d3ee";};btn.onmouseout=function(){this.style.background="rgba(255,255,255,.05)";this.style.color="#94a3b8";};btn.onclick=function(){var bEl=document.getElementById("dy-brand"),pEl=document.getElementById("dy-product");if(bEl)bEl.value=t.brand;if(pEl)pEl.value=t.product;dySearch();};qb.appendChild(btn);});}
+function dySetMode(mode){_dyMode=mode;document.querySelectorAll(".dy-mode").forEach(function(b){b.style.background="rgba(255,255,255,.05)";b.style.borderColor="rgba(255,255,255,.1)";b.style.color="#64748b";});var ab=document.querySelector(".dy-mode[data-mode="+JSON.stringify(mode)+"]");if(ab){ab.style.background="rgba(34,211,238,.15)";ab.style.borderColor="rgba(34,211,238,.3)";ab.style.color="#22d3ee";}}
+function dyBuildQ(brand,product,mode){var b=brand?brand+" ":"";if(mode==="supplier")return b+product+" 厂家 微信 一手货源 联系方式";if(mode==="passing")return b+product+" 纯原 过验 莆田 PK版 工厂";if(mode==="wholesale")return b+product+" 批发 货源 代发 一件代发";if(mode==="freight")return "转运 集运 "+product+" 代购 微信 报价";if(mode==="live")return b+product+" 直播 货源 工厂直播";return b+product;}
+function dyCopy(q){try{navigator.clipboard.writeText(q);}catch(e){}}
+function dySearch() {
+    var brand = (document.getElementById("dy-brand")||{}).value||"";
+    var product = (document.getElementById("dy-product")||{}).value||"";
+    var res = document.getElementById("dy-results");
+    if (!brand && !product) { if (res) res.textContent="Enter a brand or product first"; return; }
+    var query = dyBuildQ(brand, product, _dyMode);
+    window._dyQ = query;
+    var qd=document.getElementById("dy-query-display"), qt=document.getElementById("dy-query-text");
+    if (qd) qd.style.display="block";
+    if (qt) qt.textContent = query;
+    if (!res) return;
+    res.innerHTML="";
+    var spin=document.createElement("div"); spin.style.cssText="text-align:center;padding:40px";
+    spin.innerHTML="<div style=\"font-size:36px;margin-bottom:12px\">🔍</div><div style=\"color:#22d3ee;font-size:15px;font-weight:700;margin-bottom:6px\">Searching Douyin...</div><div style=\"color:#475569;font-size:12px\">Finding videos, downloading, scanning for WeChat IDs</div>";
+    res.appendChild(spin);
+    fetch("/api/douyin-search", {method:"POST", credentials:"include", headers:{"Content-Type":"application/json"}, body: JSON.stringify({query:query, max_results:5})})
+        .then(function(r){return r.json();}).then(function(d){
+            res.innerHTML="";
+            if (!d.ok || d.error) { var err=document.createElement("div"); err.style.cssText="color:#ef4444;padding:20px;text-align:center;font-size:13px"; err.textContent="Error: "+(d.error||"Search failed"); res.appendChild(err); return; }
+            var results = d.results||[];
+            if (!results.length) { var empty=document.createElement("div"); empty.style.cssText="text-align:center;padding:40px;color:#475569"; empty.innerHTML="<div style=\"font-size:32px;margin-bottom:8px\">🔍</div><div>No videos found. Try different keywords.</div>"; res.appendChild(empty); return; }
+            var hdr=document.createElement("div"); hdr.style.cssText="color:#475569;font-size:12px;margin-bottom:14px"; hdr.textContent="Found "+results.length+" Douyin videos for: "+query; res.appendChild(hdr);
+            results.forEach(function(r, idx){
+                var card=document.createElement("div"); card.style.cssText="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:18px;margin-bottom:14px";
+                var meta=document.createElement("div"); meta.style.cssText="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px";
+                var auth=document.createElement("div"); auth.style.cssText="color:#22d3ee;font-size:13px;font-weight:700"; auth.textContent=(r.author||"Unknown") + (r.play_count?" · "+Number(r.play_count).toLocaleString()+" views":"");
+                var num=document.createElement("div"); num.style.cssText="color:#334155;font-size:11px"; num.textContent="#"+(idx+1);
+                meta.appendChild(auth); meta.appendChild(num); card.appendChild(meta);
+                var wechats=r.wechats||[];
+                if (wechats.length) {
+                    var wb=document.createElement("div"); wb.style.cssText="background:rgba(34,211,238,.08);border:1px solid rgba(34,211,238,.25);border-radius:10px;padding:12px;margin-bottom:12px";
+                    var wlbl=document.createElement("div"); wlbl.style.cssText="color:#22d3ee;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px"; wlbl.textContent="WeChat IDs Found";
+                    wb.appendChild(wlbl);
+                    wechats.forEach(function(w){
+                        var row=document.createElement("div"); row.style.cssText="display:flex;justify-content:space-between;align-items:center;background:rgba(0,0,0,.35);border-radius:8px;padding:9px 13px;margin-bottom:6px";
+                        var sp=document.createElement("span"); sp.style.cssText="color:#22d3ee;font-size:16px;font-weight:700;font-family:monospace"; sp.textContent=w;
+                        var cp=document.createElement("button"); cp.textContent="Copy"; cp.style.cssText="padding:5px 13px;background:rgba(34,211,238,.15);border:1px solid rgba(34,211,238,.35);color:#22d3ee;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;font-family:inherit";
+                        cp.onclick=(function(wc,btn){return function(){navigator.clipboard.writeText(wc);btn.textContent="Copied";setTimeout(function(){btn.textContent="Copy";},2000);};})(w,cp);
+                        row.appendChild(sp); row.appendChild(cp); wb.appendChild(row);
+                    });
+                    card.appendChild(wb);
+                }
+                if (r.has_video && r.video_b64) {
+                    var vsrc="data:video/mp4;base64,"+r.video_b64;
+                    var vid=document.createElement("video"); vid.controls=true; vid.style.cssText="width:100%;border-radius:12px;background:#000;max-height:400px;margin-bottom:10px";
+                    var src=document.createElement("source"); src.src=vsrc; src.type="video/mp4";
+                    vid.appendChild(src); card.appendChild(vid);
+                    var dl=document.createElement("a"); dl.href=vsrc; dl.download="douyin_"+(idx+1)+".mp4";
+                    dl.style.cssText="display:block;padding:9px;background:rgba(34,211,238,.1);border:1px solid rgba(34,211,238,.25);color:#22d3ee;border-radius:8px;font-size:12px;font-weight:600;text-align:center;text-decoration:none;margin-bottom:10px";
+                    dl.textContent="Download Video (No Watermark)";
+                    card.appendChild(dl);
+                } else if (r.video_url) {
+                    var ext=document.createElement("a"); ext.href=r.video_url; ext.target="_blank";
+                    ext.style.cssText="display:block;padding:9px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#94a3b8;border-radius:8px;font-size:12px;text-align:center;text-decoration:none;margin-bottom:10px";
+                    ext.textContent="Open Video ↗";
+                    card.appendChild(ext);
+                }
+                if (r.desc) {
+                    var descBox=document.createElement("div"); descBox.style.cssText="background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:12px;margin-bottom:10px";
+                    var dlbl=document.createElement("div"); dlbl.style.cssText="color:#475569;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px"; dlbl.textContent="Description";
+                    var dtxt=document.createElement("div"); dtxt.style.cssText="color:#94a3b8;font-size:12px;line-height:1.6;white-space:pre-wrap"; dtxt.textContent=r.desc;
+                    descBox.appendChild(dlbl); descBox.appendChild(dtxt); card.appendChild(descBox);
+                }
+                if (r.author_sig) {
+                    var sigBox=document.createElement("div"); sigBox.style.cssText="background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:12px;margin-bottom:10px";
+                    var slbl=document.createElement("div"); slbl.style.cssText="color:#475569;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px"; slbl.textContent="Author Bio";
+                    var stxt=document.createElement("div"); stxt.style.cssText="color:#94a3b8;font-size:12px;line-height:1.6"; stxt.textContent=r.author_sig;
+                    sigBox.appendChild(slbl); sigBox.appendChild(stxt); card.appendChild(sigBox);
+                }
+                if (r.url) {
+                    var vlink=document.createElement("a"); vlink.href=r.url; vlink.target="_blank";
+                    vlink.style.cssText="color:#334155;font-size:11px;text-decoration:none"; vlink.textContent="View on Douyin ↗";
+                    card.appendChild(vlink);
+                }
+                res.appendChild(card);
+            });
+        }).catch(function(e){ res.innerHTML=""; var err=document.createElement("div"); err.style.cssText="color:#ef4444;padding:20px;text-align:center;font-size:13px"; err.textContent="Search failed: "+e.message; res.appendChild(err); });
+}
+function dyOpenApp(){var brand=(document.getElementById("dy-brand")||{}).value||"",product=(document.getElementById("dy-product")||{}).value||"";window.open("https://www.douyin.com/search/"+encodeURIComponent(dyBuildQ(brand,product,_dyMode)),"_blank");}
+function dyBuildKw(){var type=(document.getElementById("dy-kw-type")||{}).value||"sneakers",tier=(document.getElementById("dy-kw-tier")||{}).value||"",goal=(document.getElementById("dy-kw-goal")||{}).value||"factory";var tm={sneakers:"球鞋 运动鞋",clothing:"衣服 服装",bags:"包包",watches:"手表",jewelry:"饰品"};var gm={factory:"厂家直销 工厂 微信",wechat:"微信 联系方式 加我",wholesale:"批发 货源 代发",video:"实物视频 开箱"};var parts=[tm[type]||type,tier,gm[goal]||""].filter(Boolean).join(" ");window._dyKw=parts;var res=document.getElementById("dy-kw-result"),txt=document.getElementById("dy-kw-text");if(res)res.style.display="block";if(txt)txt.textContent=parts;}
+function dyKwCopy(){var txt=document.getElementById("dy-kw-text");if(txt){dyCopy(txt.textContent);var btn=document.getElementById("dy-kw-copy");if(btn){btn.textContent="Copied";setTimeout(function(){btn.textContent="Copy";},2000);}}}
+function dyDownloadVideo() {
+    var urlEl = document.getElementById("dy-video-url");
+    var url = (urlEl ? urlEl.value : "").trim();
+    var res = document.getElementById("dy-video-result");
+    if (!url) { if (res) res.textContent="Paste a Douyin video URL first"; return; }
+    if (!res) return;
+    res.innerHTML="";
+    var loading=document.createElement("div"); loading.style.cssText="text-align:center;padding:24px";
+    loading.innerHTML="<div style=\"font-size:32px;margin-bottom:8px\">⏳</div><div style=\"color:#f59e0b;font-size:14px;font-weight:600\">Fetching video info...</div><div style=\"color:#475569;font-size:12px;margin-top:4px\">Parsing URL and scanning for WeChat IDs</div>";
+    res.appendChild(loading);
+    var apiUrl = "https://api.douyin.wtf/api/hybrid/video_data?url="+encodeURIComponent(url)+"&minimal=false";
+    fetch(apiUrl).then(function(r){return r.json();}).then(function(d){
+        res.innerHTML="";
+        if (d.status === "failed" || (!d.video && !d.images)) { var err=document.createElement("div"); err.style.cssText="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:10px;padding:16px;color:#ef4444;text-align:center"; err.textContent=d.message||"Could not parse video. Try copying the URL from the Douyin app (Share → Copy Link)."; res.appendChild(err); return; }
+        var desc = d.desc || d.title || "";
+        var author = (d.author && (d.author.nickname||d.author.unique_id)) || "";
+        var videoUrl = d.video && (d.video.play_addr||d.video.download_addr||d.video.wm_video_url_HQ||d.video.wm_video_url||"");
+        var stats = d.statistics || {};
+        var views = stats.play_count || stats.view_count || 0;
+        var wechats = [];
+        var wcPatterns = [/[微信][：:]{0,1}s*([A-Za-z0-9_-]{5,25})/g, /wx[：:]{0,1}s*([A-Za-z0-9_-]{5,25})/gi, /weixin[：:]{0,1}s*([A-Za-z0-9_-]{5,25})/gi, /V[信][：:]{0,1}s*([A-Za-z0-9_-]{5,25})/g];
+        var fullText = desc + " " + author;
+        wcPatterns.forEach(function(pat){var m;while((m=pat.exec(fullText))!==null){if(m[1]&&wechats.indexOf(m[1])<0)wechats.push(m[1]);}});
+        if (videoUrl) {
+            var vidWrap=document.createElement("div"); vidWrap.style.marginBottom="14px";
+            var auth=document.createElement("div"); auth.style.cssText="color:#94a3b8;font-size:11px;margin-bottom:6px"; auth.textContent="By: "+author;
+            vidWrap.appendChild(auth);
+            var video=document.createElement("video"); video.controls=true; video.style.cssText="width:100%;border-radius:12px;background:#000;max-height:360px";
+            var vsrc=document.createElement("source"); vsrc.src=videoUrl; vsrc.type="video/mp4";
+            video.appendChild(vsrc); vidWrap.appendChild(video);
+            var dl=document.createElement("a"); dl.href=videoUrl; dl.target="_blank"; dl.download="douyin.mp4";
+            dl.style.cssText="display:block;margin-top:8px;padding:9px;background:rgba(34,211,238,.1);border:1px solid rgba(34,211,238,.25);color:#22d3ee;border-radius:8px;font-size:12px;font-weight:600;text-align:center;text-decoration:none";
+            dl.textContent="Download Video (No Watermark)";
+            vidWrap.appendChild(dl); res.appendChild(vidWrap);
+        }
+        var sWrap=document.createElement("div"); sWrap.style.cssText="display:flex;gap:8px;margin-bottom:14px";
+        [{l:"Views",v:views.toLocaleString()},{l:"Duration",v:(d.video&&d.video.duration||0)+"s"},{l:"Author",v:author.slice(0,12)}].forEach(function(st){
+            var cell=document.createElement("div"); cell.style.cssText="flex:1;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:8px;padding:10px;text-align:center";
+            var val=document.createElement("div"); val.style.cssText="color:#22d3ee;font-size:13px;font-weight:700"; val.textContent=st.v;
+            var lbl=document.createElement("div"); lbl.style.cssText="color:#334155;font-size:10px"; lbl.textContent=st.l;
+            cell.appendChild(val); cell.appendChild(lbl); sWrap.appendChild(cell);
+        }); res.appendChild(sWrap);
+        if (wechats.length) {
+            var wb=document.createElement("div"); wb.style.cssText="background:rgba(34,211,238,.07);border:1px solid rgba(34,211,238,.2);border-radius:10px;padding:14px;margin-bottom:14px";
+            var wt=document.createElement("div"); wt.style.cssText="color:#22d3ee;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px"; wt.textContent="WeChat IDs Found";
+            wb.appendChild(wt);
+            wechats.forEach(function(w){
+                var row=document.createElement("div"); row.style.cssText="display:flex;justify-content:space-between;align-items:center;background:rgba(0,0,0,.3);border-radius:8px;padding:9px 12px;margin-bottom:6px";
+                var sp=document.createElement("span"); sp.style.cssText="color:#22d3ee;font-size:15px;font-weight:700;font-family:monospace"; sp.textContent=w;
+                var cp=document.createElement("button"); cp.textContent="Copy"; cp.style.cssText="padding:5px 12px;background:rgba(34,211,238,.15);border:1px solid rgba(34,211,238,.3);color:#22d3ee;border-radius:6px;font-size:11px;cursor:pointer;font-family:inherit";
+                cp.onclick=(function(wc){return function(){navigator.clipboard.writeText(wc);};})(w);
+                row.appendChild(sp); row.appendChild(cp); wb.appendChild(row);
+            }); res.appendChild(wb);
+        } else {
+            var nw=document.createElement("div"); nw.style.cssText="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:12px;margin-bottom:14px;color:#475569;font-size:12px;text-align:center";
+            nw.textContent="No WeChat IDs found in description"; res.appendChild(nw);
+        }
+        if (desc) {
+            var db=document.createElement("div"); db.style.cssText="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:14px";
+            var dt=document.createElement("div"); dt.style.cssText="color:#94a3b8;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px"; dt.textContent="Description";
+            var dd=document.createElement("div"); dd.style.cssText="color:#e2e8f0;font-size:13px;line-height:1.6;white-space:pre-wrap"; dd.textContent=desc;
+            db.appendChild(dt); db.appendChild(dd); res.appendChild(db);
+        }
+    }).catch(function(e){ res.innerHTML=""; var err=document.createElement("div"); err.style.cssText="color:#ef4444;padding:16px;text-align:center"; err.textContent="Error: "+e.message+" - Try opening the Douyin app, tap Share → Copy Link, paste here."; res.appendChild(err); });
+}
+
+// History and UI
+function _sfUI(name){
+    document.getElementById('_sfhdr')?.remove();
+    document.getElementById('_sfhp')?.remove();
+    var hdr = document.createElement('div'); hdr.id = '_sfhdr'; hdr.style.cssText = 'position:fixed;top:10px;right:14px;z-index:10000;display:flex;gap:8px;align-items:center;font-family:inherit';
+    var counter = document.createElement('span'); counter.style.cssText = 'font-size:10px;color:#475569'; counter.innerHTML = '<span style="color:#22c55e">●</span> <span id="_sf_today">'+parseInt(localStorage.getItem('_sfd' + new Date().toDateString()) || '0')+'</span> today';
+    var histBtn = document.createElement('button'); histBtn.style.cssText = 'background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#94a3b8;padding:5px 10px;border-radius:6px;font-size:11px;cursor:pointer'; histBtn.textContent = 'History'; histBtn.onclick = _sfTH;
+    var logoutBtn = document.createElement('button'); logoutBtn.style.cssText = 'background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.3);color:#f87171;padding:5px 12px;border-radius:6px;font-size:11px;cursor:pointer;font-weight:600'; logoutBtn.textContent = 'Log out'; logoutBtn.onclick = function() { if(confirm('Log out?')) logout(); };
+    hdr.appendChild(counter); hdr.appendChild(histBtn); hdr.appendChild(logoutBtn); document.body.appendChild(hdr);
+    var panel = document.createElement('div'); panel.id = '_sfhp'; panel.style.cssText = 'position:fixed;top:44px;right:14px;z-index:9999;background:#0f172a;border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:8px;width:300px;display:none;box-shadow:0 8px 32px rgba(0,0,0,.6);max-height:360px;overflow-y:auto';
+    var panelHdr = document.createElement('div'); panelHdr.style.cssText = 'font-size:11px;color:#475569;padding:4px 8px 8px;border-bottom:1px solid rgba(255,255,255,.06);display:flex;justify-content:space-between';
+    var panelTitle = document.createElement('span'); panelTitle.textContent = 'Recent Searches';
+    var clearBtn = document.createElement('span'); clearBtn.style.cssText = 'cursor:pointer;color:#ef4444;font-size:10px'; clearBtn.textContent = 'Clear'; clearBtn.onclick = function() { localStorage.removeItem('_sfh'); _sfRH(); };
+    panelHdr.appendChild(panelTitle); panelHdr.appendChild(clearBtn);
+    var list = document.createElement('div'); list.id = '_sfhl';
+    panel.appendChild(panelHdr); panel.appendChild(list);
+    document.body.appendChild(panel);
+    document.addEventListener('click', function(e) { var p2 = document.getElementById('_sfhp'); var h2 = document.getElementById('_sfhdr'); if (p2 && p2.style.display !== 'none' && !p2.contains(e.target) && h2 && !h2.contains(e.target)) p2.style.display = 'none'; });
+}
+function _sfRH(){
+    var el = document.getElementById('_sfhl'); if(!el) return;
+    var h = []; try { h = JSON.parse(localStorage.getItem('_sfh') || '[]'); } catch(e) {}
+    if(!h.length){ el.innerHTML='<div style="color:#475569;font-size:12px;padding:10px 8px">No searches yet</div>'; return; }
+    el.innerHTML='';
+    h.forEach(function(x,i){
+        var a = Math.floor((Date.now() - x.ts) / 60000); var ag = a < 1 ? 'now' : a < 60 ? a + 'm' : Math.floor(a/60) + 'h';
+        var row = document.createElement('div'); row.style.cssText = 'cursor:pointer;padding:6px 10px;border-radius:6px;font-size:12px;color:#94a3b8;display:flex;justify-content:space-between;align-items:center';
+        row.onmouseover = function(){this.style.background='rgba(255,255,255,.05)';}; row.onmouseout = function(){this.style.background='';};
+        var lbl = document.createElement('span'); if(x.b){ var bold=document.createElement('b'); bold.style.color='#e2e8f0'; bold.textContent=x.b; lbl.appendChild(bold); lbl.appendChild(document.createTextNode(' · ')); } lbl.appendChild(document.createTextNode(x.q));
+        var time = document.createElement('span'); time.style.cssText='opacity:.4;font-size:10px;white-space:nowrap;margin-left:8px'; time.textContent=ag;
+        row.appendChild(lbl); row.appendChild(time);
+        (function(idx){ row.onclick=function(){ _sfLH(idx); }; })(i);
+        el.appendChild(row);
+    });
+}
+function _sfLH(i){
+    var h = []; try { h = JSON.parse(localStorage.getItem('_sfh') || '[]'); } catch(e) {}
+    var x = h[i]; if(!x) return;
+    var q = document.querySelector('input[placeholder*="Tech Fleece"],input[placeholder*="Jordan"]');
+    var b = document.querySelector('input[placeholder*="Nike"],input[placeholder*="Brand"]');
+    if(q){ q.value = x.q; q.dispatchEvent(new Event('input')); }
+    if(b && x.b){ b.value = x.b; b.dispatchEvent(new Event('input')); }
+    var p = document.getElementById('_sfhp'); if(p) p.style.display = 'none';
+    showToast('Loaded: ' + x.q, 'info');
+}
+function _sfTH(){ var p = document.getElementById('_sfhp'); if(!p) return; p.style.display = p.style.display === 'none' ? 'block' : 'none'; if(p.style.display !== 'none') _sfRH(); }
+
+// ======================= END OF RESTORED FUNCTIONS =======================
