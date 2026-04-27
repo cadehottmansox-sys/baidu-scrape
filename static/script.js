@@ -1221,7 +1221,7 @@ async function checkTrend(){
   if(!q){ showToast('Enter a product name'); return; }
   result.innerHTML = '<div class="loader"><div class="loader-dots"><span></span><span></span><span></span></div>Checking trends...</div>';
   try{
-    const r = await fetch('/search', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({query:q, brand:'', platform:'xiaohongshu', mode:'trend', deep_scan:false, wechat_only:false, max_results:6})});
+    const r = await fetch('/search', {method:'POST',credentials:'include', headers:{'Content-Type':'application/json'}, body:JSON.stringify({query:q, brand:'', platform:'xiaohongshu', mode:'trend', deep_scan:false, wechat_only:false, max_results:6})});
     const d = await r.json();
     const results = d.results||[];
     if(!results.length){ result.innerHTML = '<div class="empty">No trend data found</div>'; return; }
@@ -1244,7 +1244,7 @@ async function compareBatches(){
   if(!q){ showToast('Enter a product name'); return; }
   result.innerHTML = '<div class="loader"><div class="loader-dots"><span></span><span></span><span></span></div>Comparing batches on Weidian...</div>';
   try{
-    const r = await fetch('/search', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({query:q+' 批次 质量对比', brand:'', platform:'weidian', mode:'supplier', deep_scan:false, wechat_only:false, max_results:8})});
+    const r = await fetch('/search', {method:'POST',credentials:'include', headers:{'Content-Type':'application/json'}, body:JSON.stringify({query:q+' 批次 质量对比', brand:'', platform:'weidian', mode:'supplier', deep_scan:false, wechat_only:false, max_results:8})});
     const d = await r.json();
     const results = d.results||[];
     if(!results.length){ result.innerHTML = '<div class="empty">No batches found — try a more specific product name</div>'; return; }
@@ -1794,7 +1794,7 @@ async function runPrivateAgentSearch(){
   for(let i=0; i<queries.length; i++){
     try{
       const r = await fetch('/search', {
-        method:'POST',
+        method:'POST',credentials:'include',
         headers:{'Content-Type':'application/json'},
         body: JSON.stringify({
           query: queries[i],
@@ -1854,7 +1854,7 @@ async function runSearch({query, brand='', platform='all', mode='supplier', deep
   const timer = setTimeout(()=>controller.abort(), 180000);
 
   try{
-    const r = await fetch('/search',{method:'POST',headers:{'Content-Type':'application/json'},
+    const r = await fetch('/search',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},
       signal:controller.signal,
       body:JSON.stringify({query,brand,platform,mode,deep_scan:deepScan,wechat_only:wcOnly})});
     clearTimeout(timer);
@@ -1998,7 +1998,7 @@ async function runBatchIntel(brand, query){
   const all = [];
   for(const {q, platform, label} of queries){
     try{
-      const r = await fetch('/search',{method:'POST',headers:{'Content-Type':'application/json'},
+      const r = await fetch('/search',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},
         body:JSON.stringify({query:q, brand:'', platform, mode:'passing', deep_scan:false, wechat_only:false})});
       const d = await r.json();
       (d.results||[]).forEach(item=>{
@@ -2045,7 +2045,7 @@ document.getElementById('passingForm')?.addEventListener('submit', async e=>{
   if(hint){ hint.style.display='block'; hint.textContent=`Passing search: ${brand} ${query}`.trim(); }
 
   try{
-    const r = await fetch('/search',{method:'POST',headers:{'Content-Type':'application/json'},
+    const r = await fetch('/search',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({query:fullQuery, brand:'', platform:'baidu', mode:'passing', deep_scan:deepScan, wechat_only:wcOnly})});
     const d = await r.json();
     const res = d.results||[];
