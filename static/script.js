@@ -2575,7 +2575,7 @@ async function _sfLoadMore(query,brand,platform,mode,deepScan,wcOnly,resultsEl,b
   btn.textContent='Loading page '+page+'...'; btn.disabled=true;
   try{
     var r=await fetch('/search',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({query:query,brand:brand,platform:platform,mode:mode,deep_scan:deepScan,wechat_only:wcOnly,page_num:page})});
+      body:JSON.stringify({query:query,brand:brand,platform:platform,mode:mode,deep_scan:deepScan,wechat_only:wcOnly,page_num:page,variation:page-1,seen_links:Array.from(resultsEl.querySelectorAll('[data-link]')).map(function(el){return el.dataset.link||'';}).filter(Boolean)})});
     var d=await r.json(); var res=d.results||[];
     btn.remove();
     if(!res.length){var nd=document.createElement('p');nd.style.cssText='text-align:center;color:#475569;padding:16px;font-size:13px';nd.textContent='No more results found.';resultsEl.appendChild(nd);return;}
