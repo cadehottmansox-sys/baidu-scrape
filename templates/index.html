@@ -25,8 +25,6 @@
       </div>
     </header>
 
-    
-
     <!-- SUPPLIER -->
     <section class="tab-panel active" id="tab-supplier">
       <div class="search-card">
@@ -74,6 +72,14 @@
               <span class="toggle-track"><span class="toggle-thumb"></span></span>
               <span class="toggle-label">WeChat Only</span>
             </label>
+            <!-- ========== ADDED: Exclude 1688 toggle and Unblock All button ========== -->
+            <label class="toggle-wrap">
+              <input type="checkbox" id="exclude1688Toggle" checked />
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+              <span class="toggle-label">Exclude 1688</span>
+            </label>
+            <button type="button" id="unblockAllBtn" class="tool-btn" style="margin-left: 8px;">🚫 Unblock All</button>
+            <!-- ========================================================================= -->
             <div class="status-wrap">
               <span class="status-dot" id="supplierDot"></span>
               <span class="status-txt" id="supplierStatus">Ready</span>
@@ -834,3 +840,5 @@
 
 <div id="_sfTModal"><div id="_sfTInner"><button class="_tc" onclick="_sfCT()">&#215;</button><div id="_sfTC"></div></div></div>
 <script src="/static/script.js"></script>
+</body>
+</html>
