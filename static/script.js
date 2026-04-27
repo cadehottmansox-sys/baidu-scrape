@@ -3098,7 +3098,6 @@ if (linkDomain) {
 */
 // ===========================================================================================================
 // ======================= ADDED: BLOCK & RERUN (paste at the very bottom) =======================
-let currentSearchParams = null;
 
 async function blockDomainAndRerun(domain) {
     await fetch('/api/block_domain', {
