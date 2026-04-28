@@ -3833,3 +3833,20 @@ function removePresets() {
 // Run after DOM is ready
 setTimeout(removePresets, 100);
 // ========== END REMOVE PRESETS ==========
+// ========== REMOVE SUGGESTION PILLS (Hellstar, Sp5der, Tech Fleece, etc.) ==========
+function removeSuggestionPills() {
+    // Remove the entire suggestion wrap div
+    const suggestionWrap = document.querySelector('.suggestion-wrap');
+    if (suggestionWrap) suggestionWrap.remove();
+
+    // Also remove any leftover pills that might be outside that wrapper
+    document.querySelectorAll('.suggestion-pill').forEach(pill => pill.remove());
+}
+
+// Run after DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', removeSuggestionPills);
+} else {
+    removeSuggestionPills();
+}
+// ========== END REMOVAL ==========
