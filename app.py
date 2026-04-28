@@ -480,7 +480,7 @@ def create_app() -> Flask:
             results = [r for r in results if not any(dom in r.get('link', '') for dom in official_domains)]
             return jsonify({"query": query, "brand": brand, "platform": platform,
                 "mode": mode, "deep_scan": deep_scan, "wechat_only": wechat_only,
-                "page_num": page_num, "variation": variation, "results": [r for r in results if r.get("link","") not in session.get("blocked_links",[]) and not any(d in r.get("link","") for d in ["nike.com","adidas.com","stockx.com","goat.com","amazon.com","ebay.com","farfetch.com","ssense.com"])]}), 200
+                "page_num": page_num, "variation": variation, "results": results}), 200
         except PlaywrightError as exc:
             msg = str(exc)
             if "Executable doesn't exist" in msg:
@@ -850,27 +850,6 @@ def create_app() -> Flask:
 app = create_app()
 
 
-
-@app.route("/api/block", methods=["POST"])
-def block_link():
-    user = get_user()
-    if not user: return jsonify({"error": "Unauthorized"}), 401
-    data = request.get_json(silent=True) or {}
-    url = (data.get("url") or "").strip()
-    if url:
-        blocked = session.get("blocked_links", [])
-        if url not in blocked:
-            blocked.append(url)
-        session["blocked_links"] = blocked
-    return jsonify({"ok": True, "count": len(session.get("blocked_links", []))})
-
-@app.route("/api/unblock_all", methods=["POST"])
-def unblock_all():
-    get_user()
-    session["blocked_links"] = []
-    return jsonify({"ok": True})
-
-
 @app.route("/api/global-stats")
 def global_stats():
     import storage
@@ -891,66 +870,3 @@ def bump_global_stats():
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5001))
     app.run(host="0.0.0.0", port=port, debug=os.getenv("FLASK_DEBUG","false").lower()=="true")
-# ========== ADDED: ENHANCED SEARCH & FREIGHT ENDPOINTS ==========
-from searcher import build_brand_aware_query, build_freight_query, score_freight_forwarder
-
-@app.route("/api/brand_aware_search", methods=["POST"])
-@require_auth
-def brand_aware_search():
-    data = request.get_json(silent=True) or {}
-    query = data.get("query", "").strip()
-    brand = data.get("brand", "").strip()
-    if not query:
-        return jsonify({"error": "Query required"}), 400
-    enhanced_query = build_brand_aware_query(query, brand)
-    try:
-        results = asyncio.run(search_platform(
-            query=enhanced_query,
-            brand=brand,
-            platform="all",
-            mode="supplier",
-            deep_scan=False,
-            wechat_only=False,
-            page_num=1
-        ))
-        return jsonify({
-            "ok": True,
-            "original_query": query,
-            "enhanced_query": enhanced_query,
-            "results": results[:20],
-            "count": len(results)
-        })
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-@app.route("/api/freight_search", methods=["POST"])
-@require_auth
-def freight_search():
-    data = request.get_json(silent=True) or {}
-    origin = data.get("origin", "")
-    destination = data.get("destination", "USA")
-    cargo_type = data.get("cargo_type", "replica")
-    query = build_freight_query(origin, destination, cargo_type)
-    try:
-        results = asyncio.run(search_platform(
-            query=query,
-            brand="",
-            platform="baidu",
-            mode="ff",
-            deep_scan=False,
-            wechat_only=False,
-            page_num=1
-        ))
-        for r in results:
-            text = f"{r.get('title','')} {r.get('snippet','')}"
-            r["ff_score"] = score_freight_forwarder(text)
-        results.sort(key=lambda x: x.get("ff_score", 0), reverse=True)
-        return jsonify({
-            "ok": True,
-            "query": query,
-            "results": results[:15],
-            "count": len(results)
-        })
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-# ========== END OF ADDED CODE ==========
