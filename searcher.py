@@ -1053,3 +1053,140 @@ async def _scrape_yupoo(query, brand, page, timeout=25000, max_results=6):
     except Exception as e:
         logger.warning("Yupoo scrape error: %s", e)
     return results
+# ========== ADDED: DYNAMIC BRAND ENRICHMENT & FREIGHT ENHANCEMENTS ==========
+import json, urllib.parse, urllib.request
+from typing import Tuple, Dict, List
+
+# -------------------------------
+# 1. ENRICH PRODUCT QUERY WITH REAL BRAND INFO
+# -------------------------------
+# In a real implementation, you would call a search API (Baidu, Google, or a knowledge graph)
+# Here we provide a mock + a structure you can later replace with a real API.
+# The function returns a dict: {"brand": str, "chinese_name": str, "category_hint": str}
+
+# For demo, we include a manual dictionary that you can seed with known products.
+# The bot will first check this cache, then optionally call an external API.
+PRODUCT_BRAND_CACHE = {
+    "needoh": {"brand": "Schylling", "chinese_name": "斯基林", "category": "toy"},
+    "nice cube": {"brand": "Schylling", "chinese_name": "斯基林", "category": "toy"},
+    "squishy cube": {"brand": "Schylling", "chinese_name": "斯基林", "category": "toy"},
+    # Add more as you discover them
+}
+
+def enrich_product_with_brand(product_name: str) -> Dict[str, str]:
+    """
+    Try to find brand and Chinese name for a product.
+    Returns dict with keys: 'brand', 'chinese_brand', 'category', 'source'
+    """
+    product_lower = product_name.lower()
+    # 1. Check local cache
+    for key, info in PRODUCT_BRAND_CACHE.items():
+        if key in product_lower:
+            info['source'] = 'local_cache'
+            return info.copy()
+
+    # 2. If not cached, optionally call a search API (Baidu or Google)
+    # Example using Google Custom Search or SerpAPI – you would replace this with real API call.
+    # For now, return a placeholder that triggers a generic search.
+    return {
+        "brand": "",
+        "chinese_name": "",
+        "category": "general",
+        "source": "none"
+    }
+
+def build_brand_aware_query(query: str, brand: str = "") -> str:
+    """
+    Enhance the search query using detected brand info and category.
+    """
+    q_lower = query.lower()
+    # First, try to enrich the query itself
+    enrichment = enrich_product_with_brand(query)
+    if enrichment.get("brand"):
+        # Use the brand's Chinese name if available
+        chinese_brand = enrichment.get("chinese_name", enrichment["brand"])
+        category = enrichment.get("category", "general")
+        if category == "toy":
+            return f"{query} {chinese_brand} 玩具 工厂 微信 一手货源"
+        elif category == "shoe":
+            return f"{query} {chinese_brand} 鞋厂 莆田 运动鞋 微信"
+        # fallback
+        return f"{query} {chinese_brand} 厂家 微信"
+    # If no brand info, but user typed a brand separately, use that
+    if brand:
+        return f"{query} {brand} 厂家 微信"
+    # Generic
+    return f"{query} 厂家 微信 一手货源"
+
+# -------------------------------
+# 2. FREIGHT FORWARDER ENHANCED QUERY BUILDING
+# -------------------------------
+FREIGHT_KEYWORDS = {
+    "core": ["货代", "货运代理", "物流公司"],
+    "sensitive": ["敏感货", "仿牌", "特货", "不查验"],
+    "ddp": ["双清包税", "DDP", "包清关"],
+    "routes": {
+        "USA": ["美国专线", "中美专线", "美线"],
+        "UK": ["英国专线", "中英专线"],
+        "EU": ["欧洲专线", "中欧铁路"],
+        "AU": ["澳洲专线"],
+        "CA": ["加拿大专线"]
+    },
+    "hubs": {
+        "putian": ["莆田货运", "莆田货代"],
+        "guangzhou": ["广州货代", "广州物流"],
+        "yiwu": ["义乌货代"]
+    },
+    "couriers": ["FedEx", "DHL", "UPS", "EMS"]
+}
+
+def build_freight_query(origin: str = "", destination: str = "USA", cargo_type: str = "replica") -> str:
+    """
+    Build a targeted Chinese query for rep-friendly freight forwarders.
+    """
+    parts = []
+    # Core terms
+    parts.extend(FREIGHT_KEYWORDS["core"])
+    # Route
+    route_key = destination.upper()
+    if route_key in FREIGHT_KEYWORDS["routes"]:
+        parts.extend(FREIGHT_KEYWORDS["routes"][route_key])
+    # Sensitive cargo (always for reps)
+    if cargo_type in ["replica", "sensitive"]:
+        parts.extend(FREIGHT_KEYWORDS["sensitive"])
+        parts.extend(FREIGHT_KEYWORDS["ddp"])
+    # Origin hub (if known)
+    if origin.lower() in FREIGHT_KEYWORDS["hubs"]:
+        parts.extend(FREIGHT_KEYWORDS["hubs"][origin.lower()])
+    # Contact hint
+    parts.append("微信")
+    # Remove duplicates and join
+    return " ".join(list(dict.fromkeys(parts)))
+
+def score_freight_forwarder(text: str) -> int:
+    """
+    Score a freight forwarder result (0-100) based on positive/negative signals.
+    """
+    score = 0
+    text_lower = text.lower()
+    # Positive signals
+    if any(k in text_lower for k in ["敏感货", "仿牌"]):
+        score += 25
+    if any(k in text_lower for k in ["双清包税", "包清关"]):
+        score += 20
+    if any(k in text_lower for k in ["美国专线", "中美专线"]):
+        score += 15
+    if any(k in text_lower for k in ["莆田", "广州", "义乌"]):
+        score += 10
+    if any(c in text_lower for c in ["fedex", "dhl", "ups"]):
+        score += 5
+    # The "honesty alert" – forwarder says they don't take reps
+    if any(k in text_lower for k in ["不接仿牌", "只接普货"]):
+        score += 30   # trust bonus
+    # Negative signals
+    if "只做普货" in text_lower:
+        score -= 30
+    if "海运" in text_lower and "空运" not in text_lower and "快递" not in text_lower:
+        score -= 15   # sea freight only is less useful for small rep parcels
+    return max(0, min(100, score))
+# ========== END OF ADDED CODE ==========
