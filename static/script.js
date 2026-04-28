@@ -3552,3 +3552,105 @@ function _sfLH(i){
 function _sfTH(){ var p = document.getElementById('_sfhp'); if(!p) return; p.style.display = p.style.display === 'none' ? 'block' : 'none'; if(p.style.display !== 'none') _sfRH(); }
 
 // ======================= END OF RESTORED FUNCTIONS =======================
+
+
+// ========== BRAND-AWARE SEARCH & FREIGHT MODE UI ==========
+function escapeHtml(str){
+  if(!str) return '';
+  return str.replace(/[&<>]/g,function(m){
+    if(m==='&') return '&amp;';
+    if(m==='<') return '&lt;';
+    if(m==='>') return '&gt;';
+    return m;
+  });
+}
+
+function initEnhancedSearchUI(){
+  // Smart Search button
+  var actionRow=document.querySelector('.action-row');
+  if(actionRow&&!document.getElementById('brandAwareBtn')){
+    var baBtn=document.createElement('button');
+    baBtn.id='brandAwareBtn';
+    baBtn.textContent='🧠 Smart';
+    baBtn.className='btn-primary';
+    baBtn.style.cssText='margin-left:6px;padding:0 14px;font-size:12px;';
+    baBtn.onclick=async function(){
+      var brand=document.getElementById('brandInput')?.value||document.getElementById('brand-input')?.value||'';
+      var query=document.getElementById('queryInput')?.value||document.getElementById('query-input')?.value||'';
+      if(!query){showToast('Enter a product first','error');return;}
+      showToast('Smart searching...','info');
+      try{
+        var res=await fetch('/api/brand_aware_search',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({query:query,brand:brand})});
+        var data=await res.json();
+        if(data.results&&data.results.length){
+          var rd=document.getElementById('supplierResults')||document.getElementById('results');
+          if(rd){rd.innerHTML='';data.results.forEach(function(item,i){rd.appendChild(buildCard(item,i));});}
+          showToast('Smart: '+data.enhanced_query,'success');
+        } else { showToast(data.error||'No results','error'); }
+      } catch(e){showToast('Smart search failed','error');}
+    };
+    actionRow.appendChild(baBtn);
+  }
+}
+
+function showFreightModal(){
+  var modal=document.getElementById('freightModal');
+  if(!modal){
+    modal=document.createElement('div');
+    modal.id='freightModal';
+    modal.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);z-index:10001;display:flex;align-items:center;justify-content:center;';
+    var inner=document.createElement('div');
+    inner.style.cssText='background:#0f172a;border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:24px;width:90%;max-width:420px;max-height:90vh;overflow-y:auto;';
+    inner.innerHTML='<h3 style="color:#e2e8f0;margin:0 0 18px;font-size:16px">✈️ Freight Forwarder Search</h3>'+
+      '<label style="color:#94a3b8;font-size:12px;display:block;margin-bottom:4px">Origin</label>'+
+      '<input id="ffOriginInput" placeholder="putian / guangzhou / shenzhen" style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#e2e8f0;padding:9px 12px;border-radius:9px;font-size:13px;outline:none;box-sizing:border-box;margin-bottom:12px;font-family:inherit">'+
+      '<label style="color:#94a3b8;font-size:12px;display:block;margin-bottom:4px">Destination</label>'+
+      '<select id="ffDestSelect" style="width:100%;background:#060c18;border:1px solid rgba(255,255,255,.1);color:#e2e8f0;padding:9px;border-radius:9px;font-size:13px;margin-bottom:12px;outline:none;font-family:inherit">'+
+        '<option value="USA">USA</option><option value="UK">UK</option><option value="EU">Europe</option><option value="AU">Australia</option><option value="CA">Canada</option>'+
+      '</select>'+
+      '<label style="color:#94a3b8;font-size:12px;display:block;margin-bottom:4px">Cargo Type</label>'+
+      '<select id="ffCargoSelect" style="width:100%;background:#060c18;border:1px solid rgba(255,255,255,.1);color:#e2e8f0;padding:9px;border-radius:9px;font-size:13px;margin-bottom:16px;outline:none;font-family:inherit">'+
+        '<option value="replica">Replica / Sensitive</option><option value="general">General goods</option>'+
+      '</select>'+
+      '<div style="display:flex;gap:8px;margin-bottom:16px;">'+
+        '<button id="ffSearchBtn" style="flex:2;padding:10px;background:linear-gradient(135deg,rgba(34,211,238,.2),rgba(99,102,241,.2));border:1px solid rgba(34,211,238,.35);color:#22d3ee;border-radius:9px;font-size:13px;cursor:pointer;font-weight:700;font-family:inherit">Search Forwarders</button>'+
+        '<button id="ffCloseBtn" style="flex:1;padding:10px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#94a3b8;border-radius:9px;font-size:13px;cursor:pointer;font-family:inherit">Cancel</button>'+
+      '</div>'+
+      '<div id="ffResultsPreview"></div>';
+    modal.appendChild(inner);
+    document.body.appendChild(modal);
+
+    document.getElementById('ffCloseBtn').onclick=function(){modal.style.display='none';};
+    document.getElementById('ffSearchBtn').onclick=async function(){
+      var origin=document.getElementById('ffOriginInput').value;
+      var destination=document.getElementById('ffDestSelect').value;
+      var cargo_type=document.getElementById('ffCargoSelect').value;
+      var preview=document.getElementById('ffResultsPreview');
+      preview.innerHTML='<div style="color:#94a3b8;padding:16px;text-align:center">Searching forwarders...</div>';
+      try{
+        var res=await fetch('/api/freight_search',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({origin:origin,destination:destination,cargo_type:cargo_type})});
+        var data=await res.json();
+        if(data.results&&data.results.length){
+          preview.innerHTML=data.results.map(function(r){
+            var wc=(r.wechats&&r.wechats[0])||'';
+            return '<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:12px;margin-bottom:8px;">'+
+              '<div style="color:#e2e8f0;font-size:13px;font-weight:600;margin-bottom:4px">'+escapeHtml(r.title||'Forwarder')+'</div>'+
+              '<div style="color:#475569;font-size:11px;margin-bottom:6px">'+escapeHtml((r.snippet||'').slice(0,120))+'</div>'+
+              '<div style="display:flex;justify-content:space-between;align-items:center">'+
+                '<span style="color:#22d3ee;font-size:12px;font-weight:700">Score: '+(r.ff_score||0)+'/100</span>'+
+                (wc?'<span style="color:#22d3ee;font-family:monospace;font-size:13px">'+escapeHtml(wc)+'</span>':'<span style="color:#334155;font-size:11px">No WeChat found</span>')+
+              '</div>'+
+              (wc?'<button onclick="navigator.clipboard.writeText(\''+wc.replace(/'/g,"\\'")+'\')" style="margin-top:6px;padding:4px 10px;background:rgba(34,211,238,.1);border:1px solid rgba(34,211,238,.25);color:#22d3ee;border-radius:6px;font-size:11px;cursor:pointer;font-family:inherit">Copy WeChat</button>':'')+
+            '</div>';
+          }).join('');
+        } else {
+          preview.innerHTML='<div style="color:#475569;padding:16px;text-align:center">No forwarders found. Try different settings.</div>';
+        }
+      } catch(e){preview.innerHTML='<div style="color:#ef4444;padding:12px">Error: '+e.message+'</div>';}
+    };
+    modal.onclick=function(e){if(e.target===modal)modal.style.display='none';};
+  }
+  modal.style.display='flex';
+}
+
+setTimeout(initEnhancedSearchUI, 800);
