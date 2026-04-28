@@ -997,3 +997,79 @@ function showFreightModal() {
 // Run initialisation after DOM is ready (your existing init may call this)
 setTimeout(initEnhancedSearchUI, 500);
 // ========== END OF ADDED CODE ==========
+# ========== ADDED: ENHANCED SEARCH & FREIGHT ENDPOINTS ==========
+from searcher import build_brand_aware_query, build_freight_query, score_freight_forwarder
+
+@app.route("/api/brand_aware_search", methods=["POST"])
+@require_auth
+def brand_aware_search():
+    """
+    Search using dynamic brand enrichment.
+    Payload: { "query": "needoh nice cube", "brand": "" (optional) }
+    """
+    data = request.get_json(silent=True) or {}
+    query = data.get("query", "").strip()
+    brand = data.get("brand", "").strip()
+    if not query:
+        return jsonify({"error": "Query required"}), 400
+    
+    enhanced_query = build_brand_aware_query(query, brand)
+    # Now use your existing search_platform (or call it directly)
+    try:
+        results = asyncio.run(search_platform(
+            query=enhanced_query,
+            brand=brand,
+            platform="all",
+            mode="supplier",
+            deep_scan=False,
+            wechat_only=False,
+            page_num=1
+        ))
+        return jsonify({
+            "ok": True,
+            "original_query": query,
+            "enhanced_query": enhanced_query,
+            "results": results[:20],
+            "count": len(results)
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/freight_search", methods=["POST"])
+@require_auth
+def freight_search():
+    """
+    Dedicated freight forwarder search.
+    Payload: { "origin": "Putian", "destination": "USA", "cargo_type": "replica" }
+    """
+    data = request.get_json(silent=True) or {}
+    origin = data.get("origin", "")
+    destination = data.get("destination", "USA")
+    cargo_type = data.get("cargo_type", "replica")
+    
+    query = build_freight_query(origin, destination, cargo_type)
+    try:
+        results = asyncio.run(search_platform(
+            query=query,
+            brand="",
+            platform="baidu",
+            mode="ff",
+            deep_scan=False,
+            wechat_only=False,
+            page_num=1
+        ))
+        # Score each result
+        for r in results:
+            text = f"{r.get('title','')} {r.get('snippet','')}"
+            r["ff_score"] = score_freight_forwarder(text)
+        # Sort by score
+        results.sort(key=lambda x: x.get("ff_score", 0), reverse=True)
+        return jsonify({
+            "ok": True,
+            "query": query,
+            "results": results[:15],
+            "count": len(results)
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+# ========== END OF ADDED CODE ==========
