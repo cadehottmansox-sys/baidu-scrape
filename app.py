@@ -870,3 +870,130 @@ def bump_global_stats():
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5001))
     app.run(host="0.0.0.0", port=port, debug=os.getenv("FLASK_DEBUG","false").lower()=="true")
+// ========== ADDED: BRAND-AWARE SEARCH & FREIGHT MODE UI ==========
+// Add a new tab or a modal for freight search – simple version: add a button that triggers a modal
+function initEnhancedSearchUI() {
+    // Add a new button next to the search button (optional)
+    const actionRow = document.querySelector('.action-row');
+    if (actionRow && !document.getElementById('brandAwareBtn')) {
+        const baBtn = document.createElement('button');
+        baBtn.id = 'brandAwareBtn';
+        baBtn.textContent = '🧠 Smart Search';
+        baBtn.className = 'btn-primary';
+        baBtn.style.marginLeft = '8px';
+        baBtn.onclick = async () => {
+            const brand = document.getElementById('brandInput')?.value || '';
+            const query = document.getElementById('queryInput')?.value;
+            if (!query) { showToast('Enter a product', 'error'); return; }
+            showToast('Smart searching (brand enrichment)...', 'info');
+            try {
+                const res = await fetch('/api/brand_aware_search', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query, brand })
+                });
+                const data = await res.json();
+                if (data.results) {
+                    const resultsDiv = document.getElementById('supplierResults');
+                    if (resultsDiv) {
+                        resultsDiv.innerHTML = '';
+                        data.results.forEach((item, i) => resultsDiv.appendChild(buildCard(item, i)));
+                        showToast(`Found ${data.count} results using enhanced query`, 'success');
+                    }
+                } else {
+                    showToast(data.error || 'No results', 'error');
+                }
+            } catch(e) { showToast('Smart search failed', 'error'); }
+        };
+        actionRow.appendChild(baBtn);
+    }
+
+    // Add freight search modal (triggered from side panel)
+    // Already have a side panel; we can add a new item "_ti" for freight search
+    const sidePanel = document.getElementById('_sfNavPanel');
+    if (sidePanel && !document.getElementById('_sfFreightBtn')) {
+        const freightDiv = document.createElement('div');
+        freightDiv.className = '_ti';
+        freightDiv.id = '_sfFreightBtn';
+        freightDiv.innerHTML = '<span style="font-size:15px">✈️</span><span class="_tl">Freight Search</span>';
+        freightDiv.onclick = () => showFreightModal();
+        // Insert after "Freight" in the side panel? Do a simple append to the buyer tools section
+        const toolsDiv = sidePanel.querySelector('._sl:contains("Buyer Tools")');
+        if (toolsDiv && toolsDiv.parentNode) {
+            toolsDiv.parentNode.insertBefore(freightDiv, toolsDiv.nextSibling);
+        } else {
+            // fallback: append somewhere
+            sidePanel.querySelector('div[style*="padding:6px 0 10px"]')?.appendChild(freightDiv);
+        }
+    }
+}
+
+function showFreightModal() {
+    // Create a modal with origin/destination/cargo inputs
+    let modal = document.getElementById('freightModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'freightModal';
+        modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:10001;display:flex;align-items:center;justify-content:center;';
+        modal.innerHTML = `
+            <div style="background:#0f172a;border-radius:16px;padding:24px;width:90%;max-width:450px;">
+                <h3 style="margin-top:0;">Freight Forwarder Search</h3>
+                <label>Origin (e.g., Putian, Guangzhou)</label>
+                <input id="ffOriginInput" class="_In" placeholder="Putian" />
+                <label>Destination</label>
+                <select id="ffDestSelect" class="_Se">
+                    <option value="USA">USA</option>
+                    <option value="UK">UK</option>
+                    <option value="EU">Europe</option>
+                    <option value="AU">Australia</option>
+                    <option value="CA">Canada</option>
+                </select>
+                <label>Cargo Type</label>
+                <select id="ffCargoSelect" class="_Se">
+                    <option value="replica">Replica / Sensitive</option>
+                    <option value="general">General goods</option>
+                </select>
+                <div style="display:flex;gap:8px;margin-top:16px;">
+                    <button id="ffSearchBtn" class="btn-primary">Search</button>
+                    <button id="ffCloseBtn" class="tool-btn">Cancel</button>
+                </div>
+                <div id="ffResultsPreview" style="margin-top:16px;max-height:300px;overflow:auto;"></div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        document.getElementById('ffCloseBtn').onclick = () => modal.style.display = 'none';
+        document.getElementById('ffSearchBtn').onclick = async () => {
+            const origin = document.getElementById('ffOriginInput').value;
+            const destination = document.getElementById('ffDestSelect').value;
+            const cargo_type = document.getElementById('ffCargoSelect').value;
+            const preview = document.getElementById('ffResultsPreview');
+            preview.innerHTML = '<div class="loader">Searching...</div>';
+            try {
+                const res = await fetch('/api/freight_search', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ origin, destination, cargo_type })
+                });
+                const data = await res.json();
+                if (data.results && data.results.length) {
+                    preview.innerHTML = data.results.map(r => `
+                        <div class="result-card" style="padding:10px;margin-bottom:8px;">
+                            <div><strong>${r.title || 'No title'}</strong></div>
+                            <div class="card-snip">${r.snippet || ''}</div>
+                            <div>FF Score: ${r.ff_score || 0}/100</div>
+                            ${r.wechat_ids ? `<div>WeChat: ${r.wechat_ids.map(w => w.id).join(', ')}</div>` : ''}
+                            <button class="wechat-chip" onclick="copyToClipboard('${r.wechat_ids?.[0]?.id || ''}')">Copy WeChat</button>
+                        </div>
+                    `).join('');
+                } else {
+                    preview.innerHTML = '<div>No forwarders found. Try different keywords.</div>';
+                }
+            } catch(e) { preview.innerHTML = '<div>Error</div>'; }
+        };
+    }
+    modal.style.display = 'flex';
+}
+
+// Run initialisation after DOM is ready (your existing init may call this)
+setTimeout(initEnhancedSearchUI, 500);
+// ========== END OF ADDED CODE ==========
