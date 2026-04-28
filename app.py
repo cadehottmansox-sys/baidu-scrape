@@ -987,3 +987,45 @@ def search_with_social_reviews():
     pass
 # Actually, easier: just use the separate "Review Search" button you already have.
 # I'll instead improve that button to show results in the same card style.
+# ========== SOCIAL REVIEW ENRICHMENT (AUTO-MERGE) ==========
+def fetch_social_review_wechats(search_term: str, platform_sites: list, api_key: str) -> list:
+    """Scrape social platforms for WeChat IDs in reviews and return formatted results."""
+    social_results = []
+    headers = {"User-Agent": "Mozilla/5.0"}
+    for site in platform_sites:
+        try:
+            url = "https://api.scrapingdog.com/baidu/search/"
+            params = {
+                "api_key": api_key,
+                "query": f"{search_term} site:{site} 微信 购买 推荐",
+                "results": 8,
+                "country": "cn"
+            }
+            resp = _req.get(url, params=params, headers=headers, timeout=20)
+            if resp.status_code != 200:
+                continue
+            data = resp.json()
+            organic = data.get("Baidu_data") or data.get("organic_results") or []
+            for item in organic[:4]:
+                title = item.get("title", "")
+                snippet = item.get("snippet", "") or item.get("description", "")
+                link = item.get("link", "")
+                if not link:
+                    continue
+                combined = f"{title} {snippet}"
+                wechats = extract_wechat_from_text(combined)  # reuse your existing extractor
+                if wechats:
+                    social_results.append({
+                        "title": title,
+                        "link": link,
+                        "snippet": snippet[:200],
+                        "wechat_ids": [{"id": w, "quality": 3, "source": "social_review"} for w in wechats],
+                        "platform": site,
+                        "factory_score": 75,
+                        "has_contact": True,
+                        "is_factory_like": False,  # it's a reviewer, not a factory
+                        "deep_scanned": False
+                    })
+        except Exception:
+            continue
+    return social_results
