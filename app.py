@@ -870,3 +870,90 @@ def bump_global_stats():
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5001))
     app.run(host="0.0.0.0", port=port, debug=os.getenv("FLASK_DEBUG","false").lower()=="true")
+# ========== ADDED: SMART BRAND FILTER (BLOCKS OFFICIAL DOMAINS) ==========
+import re
+
+def is_official_brand_domain(url: str, brand: str) -> bool:
+    """
+    Returns True if the URL looks like an official brand website.
+    Checks if the brand name appears as a domain or subdomain.
+    Examples:
+        brand="razer" -> blocks razer.com, razerzone.com, www.razer.com, insider.razer.com
+        brand="nike"  -> blocks nike.com, nike.com.cn, store.nike.com
+    """
+    if not url or not brand:
+        return False
+    brand_lower = brand.lower()
+    # Remove common prefixes and clean up brand
+    brand_clean = re.sub(r'[^a-z0-9]', '', brand_lower)
+    if len(brand_clean) < 3:
+        return False
+    
+    # Patterns that indicate official brand domain
+    # e.g., razer.com, razerzone.com, any subdomain ending with razer.com, or domain containing brand as main part
+    patterns = [
+        rf'(?:^|\.){re.escape(brand_clean)}\.(?:com|cn|net|org|co\.uk|de|fr|jp|au|ca|ru)',
+        rf'{re.escape(brand_clean)}zone\.com',
+        rf'{re.escape(brand_clean)}store\.com',
+        rf'{re.escape(brand_clean)}official\.com',
+        rf'store\.{re.escape(brand_clean)}\.com',
+        rf'www\.{re.escape(brand_clean)}\.com',
+        rf'insider\.{re.escape(brand_clean)}\.com',
+        rf'support\.{re.escape(brand_clean)}\.com',
+        rf'community\.{re.escape(brand_clean)}\.com',
+    ]
+    url_lower = url.lower()
+    for pat in patterns:
+        if re.search(pat, url_lower):
+            return True
+    return False
+
+def filter_official_brand_domains(results, brand):
+    """Remove results where the URL belongs to an official brand domain."""
+    if not brand:
+        return results
+    filtered = []
+    for r in results:
+        link = r.get("link", "")
+        if not is_official_brand_domain(link, brand):
+            filtered.append(r)
+        # else: skip (official brand website)
+    return filtered
+
+@app.route("/api/filtered_brand_search", methods=["POST"])
+@require_auth
+def filtered_brand_search():
+    """
+    Same as /search but automatically removes official brand websites.
+    Works for any brand you provide in the request.
+    """
+    data = request.get_json(silent=True) or {}
+    query = data.get("query", "").strip()
+    brand = data.get("brand", "").strip()
+    platform = data.get("platform", "all")
+    mode = data.get("mode", "supplier")
+    deep_scan = data.get("deep_scan", False)
+    wechat_only = data.get("wechat_only", False)
+    page_num = data.get("page_num", 1)
+    variation = data.get("variation", 0)
+    seen_links = data.get("seen_links", [])
+
+    if not query:
+        return jsonify({"error": "Query required"}), 400
+
+    try:
+        results = asyncio.run(search_platform(
+            query=query, brand=brand, platform=platform, mode=mode,
+            deep_scan=deep_scan, wechat_only=wechat_only,
+            page_num=page_num, variation=variation, seen_links=seen_links,
+        ))
+        # Apply smart brand filter
+        results = filter_official_brand_domains(results, brand)
+        return jsonify({
+            "query": query, "brand": brand, "platform": platform,
+            "mode": mode, "deep_scan": deep_scan, "wechat_only": wechat_only,
+            "page_num": page_num, "variation": variation, "results": results
+        }), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+# ========== END OF ADDED CODE ==========
