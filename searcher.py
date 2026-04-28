@@ -843,6 +843,8 @@ async def search_platform(
             await ctx.close()
             await browser.close()
 
+    _BL=["nike.com","adidas.com","jordan.com","ray-ban.com","rayban.com","louisvuitton.com","gucci.com","balenciaga.com","prada.com","chanel.com","dior.com","burberry.com","supreme.com","bape.com","newbalance.com","asics.com","puma.com","vans.com","converse.com","reebok.com","rolex.com","omega.com","cartier.com","apple.com","samsung.com","amazon.com","amazon.cn","walmart.com","target.com","bestbuy.com","ebay.com","etsy.com","aliexpress.com","dhgate.com","stockx.com","goat.com","farfetch.com","ssense.com","grailed.com","tmall.com","jd.com","pinduoduo.com","suning.com","zhihu.com","weibo.com","jianshu.com","smzdm.com","reddit.com","wikipedia.org","youtube.com","instagram.com","twitter.com","facebook.com","tiktok.com","baike.baidu.com","off---white.com","yeezy.supply","hublot.com","iwc.com","patek.com"]
+    results=[r for r in results if not any(b in r.get("link","").lower() for b in _BL)]
     return results
 
 
