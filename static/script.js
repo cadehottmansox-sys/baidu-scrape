@@ -3767,3 +3767,53 @@ document.addEventListener("click",function(e){
 new MutationObserver(function(){_colorizeScores();}).observe(document.body,{childList:true,subtree:true});
 function showSkeleton(el,n){if(!el)return;el.innerHTML="";for(var i=0;i<(n||4);i++){var d=document.createElement("div");d.style.cssText="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:16px;margin-bottom:10px";d.innerHTML='<div class="skeleton" style="height:14px;width:60%;margin-bottom:10px"></div><div class="skeleton" style="height:10px;width:90%;margin-bottom:6px"></div><div class="skeleton" style="height:10px;width:75%"></div>';el.appendChild(d);}}
 setTimeout(_addChips,900);
+// ========== ADDED: IMAGE SEARCH → AUTO SUPPLIER SEARCH ==========
+// Override the original handleImageSearch to use the new multi‑step search
+const originalHandleImageSearch = window.handleImageSearch;
+window.handleImageSearch = function(input) {
+    const file = input.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = async function(e) {
+        const imageBase64 = e.target.result;
+        // Show a loading indicator in the results area
+        const resultsDiv = document.getElementById('supplierResults');
+        if (resultsDiv) {
+            resultsDiv.innerHTML = '<div class="loader"><div class="loader-dots"><span></span><span></span><span></span></div>Analyzing image & searching suppliers...</div>';
+        }
+        showToast('🔍 Searching for similar products...', 'info');
+        
+        try {
+            const response = await fetch('/api/image_to_supplier_search', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ image: imageBase64 })
+            });
+            const data = await response.json();
+            if (data.ok && data.results && data.results.length) {
+                if (resultsDiv) {
+                    resultsDiv.innerHTML = '';
+                    data.results.forEach((item, idx) => {
+                        resultsDiv.appendChild(buildCard(item, idx));
+                    });
+                    showToast(`🔍 Found ${data.count} suppliers for "${data.detected_query}"`, 'success');
+                }
+            } else {
+                if (resultsDiv) {
+                    resultsDiv.innerHTML = `<div class="empty">No suppliers found. Detected query: "${data.detected_query || 'unknown'}"<br>Try a clearer image.</div>`;
+                }
+                showToast('Could not identify product from image', 'error');
+            }
+        } catch (err) {
+            console.error(err);
+            if (resultsDiv) {
+                resultsDiv.innerHTML = '<div class="empty">Image search failed. Please try again.</div>';
+            }
+            showToast('Image search failed', 'error');
+        }
+    };
+    reader.readAsDataURL(file);
+    input.value = ''; // clear input
+};
+// ========== END ADDED ==========
