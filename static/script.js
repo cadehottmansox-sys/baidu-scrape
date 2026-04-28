@@ -2524,7 +2524,7 @@ async function runImageSearch(b64) {
   if (!stat||!res) return;
   try {
     stat.textContent = 'Searching Baidu...';
-    var resp = await fetch('/api/image-search',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:b64})});
+    var resp = await fetch('/api/image-search',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:b64})});
     var data = await resp.json();
     if (!data.ok) { stat.style.color='#ef4444'; stat.textContent='Error: '+(data.error||'Unknown'); return; }
     stat.style.color='#22c55e'; stat.textContent='Found '+data.count+' results';

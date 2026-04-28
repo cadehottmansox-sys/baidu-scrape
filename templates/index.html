@@ -6,8 +6,54 @@
   <title>SourceFinder</title>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet"/>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css?v=2') }}?v=999"/>
-</head>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css?v=3') }}?v=999"/>
+
+<style id="sf-overrides">
+/* ── SOURCEFINDER CYBER OVERHAUL ── */
+:root{--c:#22d3ee;--p:#818cf8;--g:#22c55e;--a:#f59e0b;}
+body{background:#030712!important;}
+body::before{content:'';position:fixed;inset:0;background:linear-gradient(rgba(34,211,238,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(34,211,238,.04) 1px,transparent 1px);background-size:48px 48px;pointer-events:none;z-index:0;}
+.result-card{background:linear-gradient(135deg,rgba(6,12,28,.9),rgba(4,8,20,.95))!important;border:1px solid rgba(255,255,255,.07)!important;border-radius:16px!important;transition:border-color .2s,box-shadow .2s,transform .15s!important;animation:cardIn .3s ease both!important;position:relative!important;overflow:hidden!important;}
+.result-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(34,211,238,.5),transparent);opacity:0;transition:opacity .3s;}
+.result-card:hover{border-color:rgba(34,211,238,.3)!important;box-shadow:0 0 24px rgba(34,211,238,.08),0 8px 32px rgba(0,0,0,.5)!important;transform:translateY(-2px)!important;}
+.result-card:hover::before{opacity:1;}
+@keyframes cardIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+.result-card:nth-child(1){animation-delay:.00s!important;}.result-card:nth-child(2){animation-delay:.04s!important;}.result-card:nth-child(3){animation-delay:.08s!important;}.result-card:nth-child(4){animation-delay:.12s!important;}.result-card:nth-child(5){animation-delay:.16s!important;}.result-card:nth-child(6){animation-delay:.20s!important;}.result-card:nth-child(7){animation-delay:.24s!important;}.result-card:nth-child(8){animation-delay:.28s!important;}
+/* WeChat glow */
+.wechat-id,.wechat-chip{font-family:'JetBrains Mono',monospace!important;font-size:15px!important;font-weight:700!important;color:#22d3ee!important;text-shadow:0 0 14px rgba(34,211,238,.55)!important;}
+/* Buttons */
+.btn-primary,button.btn-primary{background:linear-gradient(135deg,rgba(34,211,238,.15),rgba(99,102,241,.15))!important;border:1px solid rgba(34,211,238,.35)!important;color:#22d3ee!important;}
+.btn-primary:hover,button.btn-primary:hover{background:linear-gradient(135deg,rgba(34,211,238,.25),rgba(99,102,241,.25))!important;box-shadow:0 0 20px rgba(34,211,238,.2)!important;}
+/* Inputs */
+input,textarea,select{background:rgba(255,255,255,.04)!important;border:1px solid rgba(255,255,255,.09)!important;color:#e2e8f0!important;}
+input:focus,textarea:focus,select:focus{border-color:rgba(34,211,238,.4)!important;box-shadow:0 0 0 3px rgba(34,211,238,.07)!important;outline:none!important;}
+/* Tabs */
+.tab-btn.active,[class*="tab-btn"].active{color:#22d3ee!important;border-bottom:2px solid #22d3ee!important;text-shadow:0 0 10px rgba(34,211,238,.4)!important;}
+/* Nav panel */
+#_sfNavPanel{background:rgba(3,7,18,.97)!important;backdrop-filter:blur(24px)!important;border-left:1px solid rgba(34,211,238,.12)!important;box-shadow:-16px 0 50px rgba(0,0,0,.7)!important;}
+._ti:hover{background:rgba(34,211,238,.07)!important;}
+/* Status dot */
+.status-dot.active{background:#22c55e!important;animation:pulseDot 1.4s ease infinite!important;}
+@keyframes pulseDot{0%,100%{box-shadow:0 0 0 0 rgba(34,197,94,.5);}50%{box-shadow:0 0 0 5px rgba(34,197,94,0);}}
+/* Scrollbar */
+::-webkit-scrollbar{width:3px;height:3px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:rgba(34,211,238,.25);border-radius:2px;}::-webkit-scrollbar-thumb:hover{background:rgba(34,211,238,.5);}
+/* Score badges */
+.score-badge-high{color:#22c55e!important;background:rgba(34,197,94,.12)!important;border:1px solid rgba(34,197,94,.3)!important;text-shadow:0 0 8px rgba(34,197,94,.4)!important;}
+.score-badge-mid{color:#f59e0b!important;background:rgba(245,158,11,.1)!important;border:1px solid rgba(245,158,11,.25)!important;}
+.score-badge-low{color:#334155!important;background:rgba(255,255,255,.03)!important;}
+/* Search chips */
+.search-chip{padding:5px 13px!important;background:rgba(255,255,255,.03)!important;border:1px solid rgba(255,255,255,.07)!important;border-radius:20px!important;color:#475569!important;font-size:12px!important;font-weight:600!important;cursor:pointer!important;transition:all .18s!important;}
+.search-chip:hover{background:rgba(34,211,238,.08)!important;border-color:rgba(34,211,238,.3)!important;color:#22d3ee!important;transform:translateY(-1px)!important;}
+/* Skeleton */
+.skeleton{background:linear-gradient(90deg,rgba(255,255,255,.04) 0%,rgba(255,255,255,.08) 50%,rgba(255,255,255,.04) 100%)!important;background-size:200% 100%!important;animation:shimmer 1.6s ease infinite!important;border-radius:6px!important;}
+@keyframes shimmer{0%{background-position:200% 0;}100%{background-position:-200% 0;}}
+/* Toast */
+#_sfToast,#toast,[id*="toast"]{background:rgba(3,7,18,.96)!important;border:1px solid rgba(34,211,238,.2)!important;border-radius:12px!important;backdrop-filter:blur(20px)!important;}
+/* Smart btn */
+#_smartBtn{background:linear-gradient(135deg,rgba(34,211,238,.12),rgba(99,102,241,.12))!important;border:1px solid rgba(34,211,238,.25)!important;color:#22d3ee!important;}
+/* Image search modal */
+#img-search-modal>div{background:rgba(4,8,20,.97)!important;border:1px solid rgba(34,211,238,.2)!important;border-radius:18px!important;box-shadow:0 0 60px rgba(34,211,238,.08)!important;}
+</style></head>
 <body>
   <canvas id="bg"></canvas>
   <div class="kb-hint" id="kbHint">Press <kbd class="kb">/</kbd> to search &nbsp;·&nbsp; <kbd class="kb">Esc</kbd> to close</div>
