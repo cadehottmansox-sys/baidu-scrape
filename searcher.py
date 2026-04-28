@@ -66,6 +66,13 @@ WECHAT_PATTERNS = [
     re.compile(r"(?:recommended|推荐|contact)[\s:：]+(?:wechat|微信)?[\s:：]*([a-zA-Z0-9][a-zA-Z0-9_]{4,19})", re.I),
     re.compile(r"微信[\s:：]+([a-zA-Z0-9][a-zA-Z0-9_]{4,19})"),
     re.compile(r"(?:微信号|wx号|vx号)[：:\s]{0,3}([a-z]{2,4}\d{3,6})", re.I),
+    # Extra patterns — catch more formats
+    re.compile(r"\bV[\s:：]{0,3}([a-zA-Z0-9][a-zA-Z0-9_]{4,19})\b(?!\.)", re.I),
+    re.compile(r"(?:同款|可以加|联系我|找我|加我)微信[\s:：]{0,3}([a-zA-Z0-9][a-zA-Z0-9_]{4,19})"),
+    re.compile(r"微信[号]?[::：\s]+([a-zA-Z][a-zA-Z0-9_]{4,19})"),
+    re.compile(r"\bwx([a-zA-Z0-9]{5,18})\b", re.I),
+    re.compile(r"(?:联系方式|联系)[::：\s]+([a-zA-Z0-9][a-zA-Z0-9_]{4,19})", re.I),
+    re.compile(r"(?:微|wx|vx|wechat).{0,15}?\b([a-zA-Z][a-zA-Z0-9_]{5,18})\b", re.I),
 ]
 EMAIL_RE = re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b")
 PHONE_RE = re.compile(r"(?:\+?86[-\s]?)?(1[3-9]\d{9}|\d{3,4}[-\s]?\d{7,8})")
