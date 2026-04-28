@@ -3552,3 +3552,91 @@ function _sfLH(i){
 function _sfTH(){ var p = document.getElementById('_sfhp'); if(!p) return; p.style.display = p.style.display === 'none' ? 'block' : 'none'; if(p.style.display !== 'none') _sfRH(); }
 
 // ======================= END OF RESTORED FUNCTIONS =======================
+
+
+// ========== BRAND-AWARE SEARCH & FREIGHT UI ==========
+function escapeHtml(s){if(!s)return'';return s.replace(/[&<>]/g,function(m){return{'&':'&amp;','<':'&lt;','>':'&gt;'}[m];});}
+
+function initEnhancedSearchUI(){
+  var ar=document.querySelector('.action-row');
+  if(ar&&!document.getElementById('brandAwareBtn')){
+    var b=document.createElement('button');
+    b.id='brandAwareBtn';b.textContent='🧠 Smart';b.className='btn-primary';
+    b.style.cssText='margin-left:6px;padding:0 12px;font-size:12px;';
+    b.onclick=async function(){
+      var brand=document.getElementById('brandInput')?.value||'';
+      var query=document.getElementById('queryInput')?.value||'';
+      if(!query){showToast('Enter a product','error');return;}
+      showToast('Smart searching...','info');
+      try{
+        var res=await fetch('/api/brand_aware_search',{method:'POST',credentials:'include',
+          headers:{'Content-Type':'application/json'},body:JSON.stringify({query:query,brand:brand})});
+        var d=await res.json();
+        if(d.results&&d.results.length){
+          var rd=document.getElementById('supplierResults');
+          if(rd){rd.innerHTML='';d.results.forEach(function(item,i){rd.appendChild(buildCard(item,i));});}
+          showToast('Smart: '+d.enhanced_query,'success');
+        }else showToast(d.error||'No results','error');
+      }catch(e){showToast('Smart search failed','error');}
+    };
+    ar.appendChild(b);
+  }
+}
+
+function showFreightModal(){
+  var m=document.getElementById('freightModal');
+  if(!m){
+    m=document.createElement('div');m.id='freightModal';
+    m.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.85);z-index:10001;display:flex;align-items:center;justify-content:center;';
+    var inn=document.createElement('div');
+    inn.style.cssText='background:#0f172a;border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:24px;width:90%;max-width:420px;max-height:90vh;overflow-y:auto;';
+    inn.innerHTML='<h3 style="color:#e2e8f0;margin:0 0 18px;font-size:16px">✈️ Freight Forwarder Search</h3>'+
+      '<label style="color:#94a3b8;font-size:12px;display:block;margin-bottom:4px">Origin</label>'+
+      '<input id="ffOrig" placeholder="putian / guangzhou / shenzhen" style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#e2e8f0;padding:9px 12px;border-radius:9px;font-size:13px;outline:none;box-sizing:border-box;margin-bottom:12px;font-family:inherit">'+
+      '<label style="color:#94a3b8;font-size:12px;display:block;margin-bottom:4px">Destination</label>'+
+      '<select id="ffDest" style="width:100%;background:#060c18;border:1px solid rgba(255,255,255,.1);color:#e2e8f0;padding:9px;border-radius:9px;font-size:13px;margin-bottom:12px;outline:none;font-family:inherit">'+
+        '<option value="USA">USA</option><option value="UK">UK</option><option value="EU">Europe</option><option value="AU">Australia</option><option value="CA">Canada</option>'+
+      '</select>'+
+      '<label style="color:#94a3b8;font-size:12px;display:block;margin-bottom:4px">Cargo Type</label>'+
+      '<select id="ffCargo" style="width:100%;background:#060c18;border:1px solid rgba(255,255,255,.1);color:#e2e8f0;padding:9px;border-radius:9px;font-size:13px;margin-bottom:16px;outline:none;font-family:inherit">'+
+        '<option value="replica">Replica / Sensitive</option><option value="general">General goods</option>'+
+      '</select>'+
+      '<div style="display:flex;gap:8px;margin-bottom:16px">'+
+        '<button id="ffGo" style="flex:2;padding:10px;background:linear-gradient(135deg,rgba(34,211,238,.2),rgba(99,102,241,.2));border:1px solid rgba(34,211,238,.35);color:#22d3ee;border-radius:9px;font-size:13px;cursor:pointer;font-weight:700;font-family:inherit">Search Forwarders</button>'+
+        '<button id="ffX" style="flex:1;padding:10px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#94a3b8;border-radius:9px;font-size:13px;cursor:pointer;font-family:inherit">Cancel</button>'+
+      '</div>'+
+      '<div id="ffOut"></div>';
+    m.appendChild(inn);document.body.appendChild(m);
+    document.getElementById('ffX').onclick=function(){m.style.display='none';};
+    document.getElementById('ffGo').onclick=async function(){
+      var out=document.getElementById('ffOut');
+      out.innerHTML='<div style="color:#94a3b8;padding:16px;text-align:center">Searching...</div>';
+      try{
+        var res=await fetch('/api/freight_search',{method:'POST',credentials:'include',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({origin:document.getElementById('ffOrig').value,
+            destination:document.getElementById('ffDest').value,
+            cargo_type:document.getElementById('ffCargo').value})});
+        var d=await res.json();
+        if(d.results&&d.results.length){
+          out.innerHTML=d.results.map(function(r){
+            var wc=(r.wechats&&r.wechats[0])||'';
+            return '<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:12px;margin-bottom:8px">'+
+              '<div style="color:#e2e8f0;font-size:13px;font-weight:600;margin-bottom:4px">'+escapeHtml(r.title||'Forwarder')+'</div>'+
+              '<div style="color:#475569;font-size:11px;margin-bottom:6px">'+escapeHtml((r.snippet||'').slice(0,120))+'</div>'+
+              '<div style="display:flex;justify-content:space-between;align-items:center">'+
+                '<span style="color:#22d3ee;font-size:12px;font-weight:700">Score: '+(r.ff_score||0)+'/100</span>'+
+                (wc?'<span style="color:#22d3ee;font-family:monospace;font-size:13px">'+escapeHtml(wc)+'</span>':'<span style="color:#334155;font-size:11px">No WeChat</span>')+
+              '</div>'+
+              (wc?'<button onclick="navigator.clipboard.writeText(this.dataset.wc)" data-wc="'+escapeHtml(wc)+'" style="margin-top:6px;padding:4px 10px;background:rgba(34,211,238,.1);border:1px solid rgba(34,211,238,.25);color:#22d3ee;border-radius:6px;font-size:11px;cursor:pointer;font-family:inherit">Copy WeChat</button>':'')+
+            '</div>';
+          }).join('');
+        }else out.innerHTML='<div style="color:#475569;padding:16px;text-align:center">No forwarders found.</div>';
+      }catch(e){out.innerHTML='<div style="color:#ef4444;padding:12px">Error: '+e.message+'</div>';}
+    };
+    m.onclick=function(e){if(e.target===m)m.style.display='none';};
+  }
+  m.style.display='flex';
+}
+
+setTimeout(initEnhancedSearchUI,800);
