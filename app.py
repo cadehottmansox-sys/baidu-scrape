@@ -12,7 +12,7 @@ from flask import Flask, jsonify, redirect, render_template, request, make_respo
 from playwright.async_api import Error as PlaywrightError
 
 import auth
-from searcher import search_platform, scan_single, build_brand_aware_query, build_freight_query, score_freight_result, build_brand_aware_query, build_freight_query, score_freight_result
+from searcher import search_platform, scan_single
 
 load_dotenv()
 
@@ -870,54 +870,3 @@ def bump_global_stats():
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5001))
     app.run(host="0.0.0.0", port=port, debug=os.getenv("FLASK_DEBUG","false").lower()=="true")
-
-
-@app.route("/api/brand_aware_search",methods=["POST"])
-@require_auth
-def brand_aware_search():
-    data=request.get_json(silent=True) or {}
-    query=(data.get("query") or "").strip()
-    brand=(data.get("brand") or "").strip()
-    if not query: return jsonify({"error":"Query required"}),400
-    enhanced=build_brand_aware_query(query,brand)
-    try:
-        results=asyncio.run(search_platform(query=enhanced,brand=brand,platform="all",mode="supplier",deep_scan=False,wechat_only=False,page_num=1))
-        return jsonify({"ok":True,"original_query":query,"enhanced_query":enhanced,"results":results[:20],"count":len(results)})
-    except Exception as exc: return jsonify({"error":str(exc)}),500
-
-@app.route("/api/freight_search",methods=["POST"])
-@require_auth
-def freight_search():
-    data=request.get_json(silent=True) or {}
-    origin=(data.get("origin") or ""); destination=(data.get("destination") or "USA"); cargo_type=(data.get("cargo_type") or "replica")
-    query=build_freight_query(origin,destination,cargo_type)
-    try:
-        results=asyncio.run(search_platform(query=query,brand="",platform="baidu",mode="supplier",deep_scan=False,wechat_only=False,page_num=1))
-        for r in results: r["ff_score"]=score_freight_result((r.get("title") or "")+" "+(r.get("snippet") or ""))
-        results.sort(key=lambda x:x.get("ff_score",0),reverse=True)
-        return jsonify({"ok":True,"query":query,"results":results[:15],"count":len(results)})
-    except Exception as exc: return jsonify({"error":str(exc)}),500
-
-@app.route("/api/brand_aware_search",methods=["POST"])
-@require_auth
-def brand_aware_search():
-    data=request.get_json(silent=True) or {}
-    query=(data.get("query") or "").strip(); brand=(data.get("brand") or "").strip()
-    if not query: return jsonify({"error":"Query required"}),400
-    enhanced=build_brand_aware_query(query,brand)
-    try:
-        results=asyncio.run(search_platform(query=enhanced,brand=brand,platform="all",mode="supplier",deep_scan=False,wechat_only=False,page_num=1))
-        return jsonify({"ok":True,"original_query":query,"enhanced_query":enhanced,"results":results[:20],"count":len(results)})
-    except Exception as exc: return jsonify({"error":str(exc)}),500
-@app.route("/api/freight_search",methods=["POST"])
-@require_auth
-def freight_search():
-    data=request.get_json(silent=True) or {}
-    origin=(data.get("origin") or ""); destination=(data.get("destination") or "USA"); cargo_type=(data.get("cargo_type") or "replica")
-    query=build_freight_query(origin,destination,cargo_type)
-    try:
-        results=asyncio.run(search_platform(query=query,brand="",platform="baidu",mode="supplier",deep_scan=False,wechat_only=False,page_num=1))
-        for r in results: r["ff_score"]=score_freight_result((r.get("title") or "")+" "+(r.get("snippet") or ""))
-        results.sort(key=lambda x:x.get("ff_score",0),reverse=True)
-        return jsonify({"ok":True,"query":query,"results":results[:15],"count":len(results)})
-    except Exception as exc: return jsonify({"error":str(exc)}),500
