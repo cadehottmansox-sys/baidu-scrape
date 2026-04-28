@@ -3629,6 +3629,11 @@ function showFreightModal() {
     xb.onclick = function(){ m.style.display="none"; };
     br.appendChild(gb); br.appendChild(xb); inn.appendChild(br);
     var ffOut = _el("div",""); ffOut.id="_ffOut"; inn.appendChild(ffOut);
+    var safeOnlyWrap=document.createElement("div");safeOnlyWrap.style.cssText="display:flex;align-items:center;gap:8px;margin-bottom:12px";
+    var safeChk=document.createElement("input");safeChk.type="checkbox";safeChk.id="_ffSafeOnly";safeChk.style.cssText="accent-color:#22d3ee;width:14px;height:14px;cursor:pointer";
+    var safeLbl=document.createElement("label");safeLbl.htmlFor="_ffSafeOnly";safeLbl.style.cssText="color:#94a3b8;font-size:12px;cursor:pointer";safeLbl.textContent="🔒 Safe lines only (score ≥ 70) — filters out public couriers";
+    safeOnlyWrap.appendChild(safeChk);safeOnlyWrap.appendChild(safeLbl);
+    inn.insertBefore(safeOnlyWrap,br);
     gb.onclick = async function() {
       var out = document.getElementById("_ffOut");
       out.innerHTML = "<div style=\"color:#94a3b8;padding:20px;text-align:center\">🔍 Searching forwarders...</div>";
@@ -3637,8 +3642,8 @@ function showFreightModal() {
       var cargo = document.getElementById("_ffCargo").value;
       var routes = {USA:["美国专线","中美专线"],UK:["英国专线"],EU:["欧洲专线"],AU:["澳洲专线"],CA:["加拿大专线"]};
       var hubs = {putian:["莆田货运","莆田货代"],guangzhou:["广州货代"],shenzhen:["深圳货代"],yiwu:["义乌货代"]};
-      var parts = ["货代","货运代理"].concat(routes[dest]||routes.USA);
-      if (cargo==="replica") parts=parts.concat(["敏感货","仿牌","双清包税","DDP"]);
+      var parts = ["私人货代","货运代理"].concat(routes[dest]||routes.USA);
+      if (cargo==="replica") parts=parts.concat(["敏感货","仿牌","双清包税","DDP","不查验","专线","包清关"]);
       if (hubs[origin]) parts=parts.concat(hubs[origin]);
       parts.push("微信");
       var seen={}; var q=parts.filter(function(p){return seen[p]?false:(seen[p]=true);}).join(" ");
@@ -3658,9 +3663,11 @@ function showFreightModal() {
           if(/fedex|dhl|ups/.test(t)) sc+=5;
           if(/不接仿牌|只接普货|只做普货/.test(t)) sc+=30;
           if(/海运/.test(t)&&!/空运|快递/.test(t)) sc-=15;
-          res._ffScore = Math.max(0,Math.min(100,sc));
+          var _ff=_scoreFF(rs); rs._ffScore=_ff.score; rs._ffSignals=_ff.signals;
         });
         results.sort(function(a,b){return b._ffScore-a._ffScore;});
+        var safeOnly=document.getElementById("_ffSafeOnly")?.checked;
+        if(safeOnly) results=results.filter(function(r){return(r._ffScore||0)>=70;});
         if (!results.length) { out.innerHTML="<div style=\"color:#475569;padding:20px;text-align:center\">No forwarders found. Try different settings.</div>"; return; }
         out.innerHTML="<div style=\"color:#475569;font-size:11px;margin-bottom:10px\">Found "+results.length+" forwarders · sorted by rep-friendliness</div>";
         results.slice(0,12).forEach(function(res) {
@@ -3672,12 +3679,17 @@ function showFreightModal() {
           var sc_el = document.createElement("span"); sc_el.style.cssText="color:"+badge_color+";font-size:11px;font-weight:700;white-space:nowrap;background:rgba(0,0,0,.3);padding:2px 6px;border-radius:4px"; sc_el.textContent=res._ffScore+"/100"; hdr.appendChild(sc_el);
           card.appendChild(hdr);
           var sn = document.createElement("div"); sn.style.cssText="color:#475569;font-size:11px;margin-bottom:8px;line-height:1.5"; sn.textContent=(res.snippet||"").slice(0,150); card.appendChild(sn);
-          var t2=((res.title||"")+" "+(res.snippet||"")).toLowerCase();
+          var t2=((rs.title||"")+" "+(rs.snippet||"")).toLowerCase();
           var badges=document.createElement("div"); badges.style.cssText="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px";
-          if(/敏感货|仿牌/.test(t2)){var b=document.createElement("span");b.style.cssText="background:rgba(34,211,238,.15);border:1px solid rgba(34,211,238,.3);color:#22d3ee;font-size:10px;padding:2px 6px;border-radius:4px";b.textContent="✓ Sensitive goods";badges.appendChild(b);}
-          if(/双清包税|ddp/.test(t2)){var b2=document.createElement("span");b2.style.cssText="background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.3);color:#22c55e;font-size:10px;padding:2px 6px;border-radius:4px";b2.textContent="✓ DDP";badges.appendChild(b2);}
-          if(/莆田|putian/.test(t2)){var b3=document.createElement("span");b3.style.cssText="background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.3);color:#818cf8;font-size:10px;padding:2px 6px;border-radius:4px";b3.textContent="📍 Putian";badges.appendChild(b3);}
-          if(/不接仿牌/.test(t2)){var b4=document.createElement("span");b4.style.cssText="background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.3);color:#f59e0b;font-size:10px;padding:2px 6px;border-radius:4px";b4.textContent="⭐ Honest";badges.appendChild(b4);}
+          (rs._ffSignals||[]).forEach(function(sig){
+            var bEl=document.createElement("span");
+            var isGood=sig.startsWith("✅")||sig.startsWith("📍")||sig.startsWith("🔄")||sig.startsWith("⭐");
+            var isWarn=sig.startsWith("⚠️");
+            bEl.style.cssText="font-size:10px;padding:2px 7px;border-radius:4px;border:1px solid "+(isWarn?"rgba(239,68,68,.3)":isGood?"rgba(34,211,238,.25)":"rgba(255,255,255,.1)")+";background:"+(isWarn?"rgba(239,68,68,.08)":isGood?"rgba(34,211,238,.08)":"rgba(255,255,255,.04)")+";color:"+(isWarn?"#f87171":isGood?"#22d3ee":"#64748b");
+            bEl.textContent=sig; badges.appendChild(bEl);
+          });
+          // Safe line badge
+          if((rs._ffScore||0)>=70){var safeBadge=document.createElement("span");safeBadge.style.cssText="font-size:10px;padding:2px 7px;border-radius:4px;border:1px solid rgba(34,197,94,.4);background:rgba(34,197,94,.12);color:#22c55e;font-weight:700";safeBadge.textContent="🔒 Safe Line";badges.appendChild(safeBadge);}
           if(badges.children.length) card.appendChild(badges);
           var wcs = res.wechats || [];
           if (wcs.length) {
