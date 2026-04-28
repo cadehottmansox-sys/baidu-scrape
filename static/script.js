@@ -1191,8 +1191,8 @@ async function validateFactory(){
             <div class="validate-item-lbl">Has Contact</div>
           </div>
           <div class="validate-item">
-            <div class="validate-item-val" style="color:var(--c)">${d.factory_score||0}/12</div>
-            <div class="validate-item-lbl">Factory Score</div>
+            <div class="validate-item-val" style="color:var(--c)">${d.has_wechat?'Direct':'Reseller'}</div>
+            <div class="validate-item-lbl">Type</div>
           </div>
           <div class="validate-item">
             <div class="validate-item-val" style="color:${d.is_factory_like?'var(--g)':'var(--r)'}">${d.is_factory_like?'YES':'NO'}</div>
@@ -3727,46 +3727,6 @@ function showFreightModal() {
   ar.appendChild(b);
 })();
 // ═══════════ UI ENHANCEMENTS ═══════════
-(function _addChips(){
-  var ar=document.querySelector(".action-row");
-  if(!ar||document.getElementById("_chipRow")) return;
-  var row=document.createElement("div");row.id="_chipRow";
-  row.style.cssText="display:flex;flex-wrap:wrap;gap:4px;margin-top:8px";
-  [["👟 Jordan 4","Jordan","Jordan 4 bred"],["🧥 Tech Fleece","Nike","Nike Tech Fleece"],["🟡 Yeezy 350","Adidas","Yeezy 350 V2"],["🧸 Needoh","","Needoh nice cube"],["👜 LV Bag","LV","Louis Vuitton bag"],["✈️ Freight","","freight forwarder USA replica"],["🕷️ Sp5der","Sp5der","Sp5der hoodie"],["⭐ Hellstar","Hellstar","Hellstar hoodie"]].forEach(function(c){
-    var chip=document.createElement("button");chip.className="search-chip";chip.textContent=c[0];
-    chip.onclick=function(){
-      var qi=document.getElementById("queryInput")||document.getElementById("query-input");
-      var bi=document.getElementById("brandInput")||document.getElementById("brand-input");
-      if(qi)qi.value=c[2]; if(bi)bi.value=c[1];
-      if(typeof doSearch==="function")doSearch(); else if(typeof runSearch==="function")runSearch();
-    };
-    row.appendChild(chip);
-  });
-  if(ar.nextSibling) ar.parentNode.insertBefore(row,ar.nextSibling); else ar.parentNode.appendChild(row);
-})();
-
-function _colorizeScores(){
-  document.querySelectorAll("[class*=score],[class*=Score]").forEach(function(el){
-    var m=(el.textContent||"").match(/(\d+)/); if(!m) return;
-    var n=parseInt(m[1]);
-    el.classList.remove("score-badge-high","score-badge-mid","score-badge-low");
-    if(n>=70) el.classList.add("score-badge-high");
-    else if(n>=40) el.classList.add("score-badge-mid");
-    else el.classList.add("score-badge-low");
-  });
-}
-document.addEventListener("click",function(e){
-  var btn=e.target.closest("button"); if(!btn) return;
-  var txt=(btn.textContent||"").trim().toLowerCase();
-  if(txt==="copy"||txt==="copy wechat"){
-    btn.textContent="✓ Copied!";
-    btn.style.background="rgba(34,197,94,.2)"; btn.style.color="#22c55e";
-    setTimeout(function(){btn.textContent="Copy";btn.style.background="";btn.style.color="";},2000);
-  }
-});
-new MutationObserver(function(){_colorizeScores();}).observe(document.body,{childList:true,subtree:true});
-function showSkeleton(el,n){if(!el)return;el.innerHTML="";for(var i=0;i<(n||4);i++){var d=document.createElement("div");d.style.cssText="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:16px;margin-bottom:10px";d.innerHTML='<div class="skeleton" style="height:14px;width:60%;margin-bottom:10px"></div><div class="skeleton" style="height:10px;width:90%;margin-bottom:6px"></div><div class="skeleton" style="height:10px;width:75%"></div>';el.appendChild(d);}}
-setTimeout(_addChips,900);
 // ========== IMAGE SEARCH → AUTO SUPPLIER SEARCH ==========
 const originalHandleImageSearch = window.handleImageSearch;
 window.handleImageSearch = function(input) {
