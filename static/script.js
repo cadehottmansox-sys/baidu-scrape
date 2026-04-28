@@ -3730,25 +3730,7 @@ function showFreightModal() {
   b.onclick=runSmartSearch;
   ar.appendChild(b);
 })();
-// ═══════════ UI ENHANCEMENTS ═══════════
-(function _addChips(){
-  var ar=document.querySelector(".action-row");
-  if(!ar||document.getElementById("_chipRow")) return;
-  var row=document.createElement("div");row.id="_chipRow";
-  row.style.cssText="display:flex;flex-wrap:wrap;gap:4px;margin-top:8px";
-  [["👟 Jordan 4","Jordan","Jordan 4 bred"],["🧥 Tech Fleece","Nike","Nike Tech Fleece"],["🟡 Yeezy 350","Adidas","Yeezy 350 V2"],["🧸 Needoh","","Needoh nice cube"],["👜 LV Bag","LV","Louis Vuitton bag"],["✈️ Freight","","freight forwarder USA replica"],["🕷️ Sp5der","Sp5der","Sp5der hoodie"],["⭐ Hellstar","Hellstar","Hellstar hoodie"]].forEach(function(c){
-    var chip=document.createElement("button");chip.className="search-chip";chip.textContent=c[0];
-    chip.onclick=function(){
-      var qi=document.getElementById("queryInput")||document.getElementById("query-input");
-      var bi=document.getElementById("brandInput")||document.getElementById("brand-input");
-      if(qi)qi.value=c[2]; if(bi)bi.value=c[1];
-      if(typeof doSearch==="function")doSearch(); else if(typeof runSearch==="function")runSearch();
-    };
-    row.appendChild(chip);
-  });
-  if(ar.nextSibling) ar.parentNode.insertBefore(row,ar.nextSibling); else ar.parentNode.appendChild(row);
-})();
-
+// ── Utility additions ──────────────────────────────────────────────────────
 function _colorizeScores(){
   document.querySelectorAll("[class*=score],[class*=Score]").forEach(function(el){
     var m=(el.textContent||"").match(/(\d+)/); if(!m) return;
@@ -3769,88 +3751,12 @@ document.addEventListener("click",function(e){
   }
 });
 new MutationObserver(function(){_colorizeScores();}).observe(document.body,{childList:true,subtree:true});
-function showSkeleton(el,n){if(!el)return;el.innerHTML="";for(var i=0;i<(n||4);i++){var d=document.createElement("div");d.style.cssText="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:16px;margin-bottom:10px";d.innerHTML='<div class="skeleton" style="height:14px;width:60%;margin-bottom:10px"></div><div class="skeleton" style="height:10px;width:90%;margin-bottom:6px"></div><div class="skeleton" style="height:10px;width:75%"></div>';el.appendChild(d);}}
-setTimeout(_addChips,900);
-// ========== IMAGE SEARCH → AUTO SUPPLIER SEARCH ==========
-const originalHandleImageSearch = window.handleImageSearch;
-window.handleImageSearch = function(input) {
-    const file = input.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = async function(e) {
-        const imageBase64 = e.target.result;
-        const resultsDiv = document.getElementById('supplierResults');
-        if (resultsDiv) {
-            resultsDiv.innerHTML = '<div class="loader"><div class="loader-dots"><span></span><span></span><span></span></div>Analyzing image & searching suppliers...</div>';
-        }
-        try {
-            const response = await fetch('/api/image_to_supplier_search', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ image: imageBase64 })
-            });
-            const data = await response.json();
-            if (data.ok && data.results && data.results.length) {
-                if (resultsDiv) {
-                    resultsDiv.innerHTML = '';
-                    data.results.forEach((item, idx) => {
-                        resultsDiv.appendChild(buildCard(item, idx));
-                    });
-                }
-            } else {
-                if (resultsDiv) {
-                    resultsDiv.innerHTML = `<div class="empty">No suppliers found. Detected query: "${data.detected_query || 'unknown'}"<br>Try a clearer image.</div>`;
-                }
-            }
-        } catch (err) {
-            console.error(err);
-            if (resultsDiv) {
-                resultsDiv.innerHTML = '<div class="empty">Image search failed.</div>';
-            }
-        }
-    };
-    reader.readAsDataURL(file);
-    input.value = '';
-};
-// ========== END ==========
-// ========== REMOVE PRESET UI ELEMENTS ==========
-function removePresets() {
-    // Remove "Popular searches" pills under search bar
-    const suggestionWrap = document.querySelector('.suggestion-wrap');
-    if (suggestionWrap) suggestionWrap.remove();
-
-    // Remove "Quick Search Templates" section (Douyin tab)
-    const quickTemplates = document.getElementById('dy-quick-btns');
-    if (quickTemplates && quickTemplates.parentElement) {
-        const container = quickTemplates.closest('div');
-        if (container && container.previousElementSibling?.innerText?.includes('Quick Search Templates')) {
-            container.previousElementSibling.remove(); // remove the heading
-            container.remove();
-        }
-    }
-
-    // Remove "Platform" chips (if you also want to remove the platform selector – optional)
-    // const platformRow = document.querySelector('.platform-row');
-    // if (platformRow) platformRow.style.display = 'none';
+function showSkeleton(el,n){
+  if(!el) return; el.innerHTML="";
+  for(var i=0;i<(n||4);i++){
+    var d=document.createElement("div");
+    d.style.cssText="border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:16px;margin-bottom:10px";
+    d.innerHTML='<div class="skeleton" style="height:14px;width:60%;margin-bottom:10px"></div><div class="skeleton" style="height:10px;width:90%;margin-bottom:6px"></div><div class="skeleton" style="height:10px;width:75%"></div>';
+    el.appendChild(d);
+  }
 }
-
-// Run after DOM is ready
-setTimeout(removePresets, 100);
-// ========== END REMOVE PRESETS ==========
-// ========== REMOVE SUGGESTION PILLS (Hellstar, Sp5der, Tech Fleece, etc.) ==========
-function removeSuggestionPills() {
-    // Remove the entire suggestion wrap div
-    const suggestionWrap = document.querySelector('.suggestion-wrap');
-    if (suggestionWrap) suggestionWrap.remove();
-
-    // Also remove any leftover pills that might be outside that wrapper
-    document.querySelectorAll('.suggestion-pill').forEach(pill => pill.remove());
-}
-
-// Run after DOM is ready
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', removeSuggestionPills);
-} else {
-    removeSuggestionPills();
-}
-// ========== END REMOVAL ==========
