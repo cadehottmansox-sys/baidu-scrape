@@ -1191,8 +1191,12 @@ async function validateFactory(){
             <div class="validate-item-lbl">Has Contact</div>
           </div>
           <div class="validate-item">
-            <div class="validate-item-val" style="color:var(--c)">${d.factory_score||0}/12</div>
-            <div class="validate-item-lbl">Factory Score</div>
+            <div class="validate-item-val" style="color:var(--c)">${d.has_wechat?"Direct":"Middleman"}</div>
+            <div class="validate-item-lbl">Type</div>
+          </div>
+          <div class="validate-item">
+            <div class="validate-item-val" style="color:var(--r);font-size:9px;font-weight:800;letter-spacing:.5px">NOT GUARANTEED</div>
+            <div class="validate-item-lbl">&nbsp;</div>
           </div>
           <div class="validate-item">
             <div class="validate-item-val" style="color:${d.is_factory_like?'var(--g)':'var(--r)'}">${d.is_factory_like?'YES':'NO'}</div>
