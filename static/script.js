@@ -3809,3 +3809,27 @@ window.handleImageSearch = function(input) {
     input.value = '';
 };
 // ========== END ==========
+// ========== REMOVE PRESET UI ELEMENTS ==========
+function removePresets() {
+    // Remove "Popular searches" pills under search bar
+    const suggestionWrap = document.querySelector('.suggestion-wrap');
+    if (suggestionWrap) suggestionWrap.remove();
+
+    // Remove "Quick Search Templates" section (Douyin tab)
+    const quickTemplates = document.getElementById('dy-quick-btns');
+    if (quickTemplates && quickTemplates.parentElement) {
+        const container = quickTemplates.closest('div');
+        if (container && container.previousElementSibling?.innerText?.includes('Quick Search Templates')) {
+            container.previousElementSibling.remove(); // remove the heading
+            container.remove();
+        }
+    }
+
+    // Remove "Platform" chips (if you also want to remove the platform selector – optional)
+    // const platformRow = document.querySelector('.platform-row');
+    // if (platformRow) platformRow.style.display = 'none';
+}
+
+// Run after DOM is ready
+setTimeout(removePresets, 100);
+// ========== END REMOVE PRESETS ==========
