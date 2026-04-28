@@ -480,7 +480,7 @@ def create_app() -> Flask:
             results = [r for r in results if not any(dom in r.get('link', '') for dom in official_domains)]
             return jsonify({"query": query, "brand": brand, "platform": platform,
                 "mode": mode, "deep_scan": deep_scan, "wechat_only": wechat_only,
-                "page_num": page_num, "variation": variation, "results": results}), 200
+                "page_num": page_num, "variation": variation, "results": [r for r in results if r.get("link","") not in session.get("blocked_links",[]) and not any(d in r.get("link","") for d in ["nike.com","adidas.com","stockx.com","goat.com","amazon.com","ebay.com","farfetch.com","ssense.com"])]}), 200
         except PlaywrightError as exc:
             msg = str(exc)
             if "Executable doesn't exist" in msg:
@@ -848,6 +848,27 @@ def create_app() -> Flask:
 
 
 app = create_app()
+
+
+
+@app.route("/api/block", methods=["POST"])
+def block_link():
+    user = get_user()
+    if not user: return jsonify({"error": "Unauthorized"}), 401
+    data = request.get_json(silent=True) or {}
+    url = (data.get("url") or "").strip()
+    if url:
+        blocked = session.get("blocked_links", [])
+        if url not in blocked:
+            blocked.append(url)
+        session["blocked_links"] = blocked
+    return jsonify({"ok": True, "count": len(session.get("blocked_links", []))})
+
+@app.route("/api/unblock_all", methods=["POST"])
+def unblock_all():
+    get_user()
+    session["blocked_links"] = []
+    return jsonify({"ok": True})
 
 
 @app.route("/api/global-stats")

@@ -2013,8 +2013,7 @@ async function runBatchIntel(brand, query){
 }
 
 // Patch passing form handler to use mode-specific logic
-document.getElementById('passingForm')?.addEventListener('submit', async e=>{
-  e.preventDefault();
+async function runPassingSearch(){
   const brand = document.getElementById('passingBrand')?.value.trim()||'';
   const query = document.getElementById('passingQuery')?.value.trim()||'';
   const deepScan = document.getElementById('passingDeepScan')?.checked||false;
@@ -2064,32 +2063,8 @@ document.getElementById('passingForm')?.addEventListener('submit', async e=>{
   } finally {
     if(btn){ btn.disabled=false; btn.innerHTML=btn._orig||'Search'; }
   }
-});
-
-// ── FINDS TAB ────────────────────────────────────────────────────
-function openFindModal(){
-  document.getElementById('findTitle').value='';
-  document.getElementById('findProduct').value='';
-  document.getElementById('findWechat').value='';
-  document.getElementById('findPrice').value='';
-  document.getElementById('findDesc').value='';
-  document.getElementById('findMsg').textContent='';
-  document.getElementById('findModal').style.display='flex';
 }
-function closeFindModal(){ document.getElementById('findModal').style.display='none'; }
 
-async function submitFind(){
-  const title   = document.getElementById('findTitle')?.value.trim();
-  const product = document.getElementById('findProduct')?.value.trim();
-  const wechat  = document.getElementById('findWechat')?.value.trim();
-  const price   = document.getElementById('findPrice')?.value.trim();
-  const desc    = document.getElementById('findDesc')?.value.trim();
-  const msg     = document.getElementById('findMsg');
-  if(!title){ msg.className='msg error'; msg.textContent='Title required'; return; }
-  msg.className='msg'; msg.textContent='Posting…';
-  try{
-    const r = await fetch('/finds',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({title,product,wechat,price,desc})});
     const d = await r.json();
     if(d.id !== undefined || d.title){ msg.className='msg success'; msg.textContent='✓ Posted!'; setTimeout(()=>{closeFindModal();loadFinds();},800); }
     else if(d.error){ msg.className='msg error'; msg.textContent=d.error; }
