@@ -972,21 +972,6 @@ def image_to_supplier_search():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 # ========== END ADDED ==========
-# ========== OVERRIDE SEARCH TO INCLUDE SOCIAL REVIEWS ==========
-_original_search_route = search  # save original
-
-@app.route("/search", methods=["POST"])
-@require_auth
-def search_with_social_reviews():
-    # Call the original search logic first (it's inside create_app, so we need to reference the inner function)
-    # Because `search` is defined inside create_app, we can't directly replace it.
-    # Instead, we'll duplicate the necessary call. Simpler: we'll just call the existing search function if accessible.
-    # To keep it truly additive, we'll use a different approach: after the original search returns, we'll add social results.
-    # But since we cannot modify the original route inside create_app without replacing code, I'll give you a standalone endpoint.
-    # For now, use the separate button as before. To merge, you need to edit the original route.
-    pass
-# Actually, easier: just use the separate "Review Search" button you already have.
-# I'll instead improve that button to show results in the same card style.
 # ========== SOCIAL REVIEW ENRICHMENT (AUTO-MERGE) ==========
 def fetch_social_review_wechats(search_term: str, platform_sites: list, api_key: str) -> list:
     """Scrape social platforms for WeChat IDs in reviews and return formatted results."""
