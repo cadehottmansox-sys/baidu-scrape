@@ -907,3 +907,44 @@ async def _scrape_yupoo(query, brand, page, timeout=25000, max_results=6):
     except Exception as e:
         logger.warning("Yupoo scrape error: %s", e)
     return results
+
+
+BRAND_CACHE={"needoh":{"cn":"斯基林","cat":"toy"},"nice cube":{"cn":"斯基林","cat":"toy"},"squishy cube":{"cn":"斯基林","cat":"toy"},"jordan":{"cn":"乔丹","cat":"sneaker"},"yeezy":{"cn":"椰子","cat":"sneaker"},"dunk":{"cn":"耐克","cat":"sneaker"},"air force":{"cn":"耐克","cat":"sneaker"},"tech fleece":{"cn":"耐克","cat":"clothing"},"hellstar":{"cn":"地狱星","cat":"clothing"},"sp5der":{"cn":"蜘蛛","cat":"clothing"},"lego":{"cn":"乐高","cat":"lego"},"lepin":{"cn":"乐拼","cat":"lego"}}
+
+def get_brand_info(query):
+    ql=query.lower()
+    for k,v in BRAND_CACHE.items():
+        if k in ql: return v.copy()
+    return {"cn":"","cat":"general"}
+
+def build_brand_aware_query(query,brand=""):
+    info=get_brand_info(query); cn=info["cn"] or brand; cat=info["cat"]
+    if cat=="toy": return "{} {} 玩具厂 硅胶 工厂 微信 一手货源".format(query,cn).strip()
+    if cat=="sneaker": return "{} {} 鞋厂 莆田 运动鞋 过验 微信".format(query,cn).strip()
+    if cat=="clothing": return "{} {} 服装厂 纯原 过验 微信 一手货源".format(query,cn).strip()
+    if cat=="lego": return "{} {} 积木厂 兼容 工厂 批发 微信".format(query,cn).strip()
+    if cn: return "{} {} 厂家 微信 一手货源".format(query,cn).strip()
+    return "{} 厂家 微信 一手货源".format(query)
+
+_FF_ROUTES={"USA":["美国专线","中美专线"],"UK":["英国专线","中英专线"],"EU":["欧洲专线"],"AU":["澳洲专线"],"CA":["加拿大专线"]}
+_FF_HUBS={"putian":["莆田货运","莆田货代"],"guangzhou":["广州货代"],"shenzhen":["深圳货代"],"yiwu":["义乌货代"]}
+
+def build_freight_query(origin="",destination="USA",cargo_type="replica"):
+    parts=["货代","货运代理"]; parts.extend(_FF_ROUTES.get(destination.upper(),[]))
+    if cargo_type in("replica","sensitive"): parts.extend(["敏感货","仿牌","双清包税","DDP"])
+    parts.extend(_FF_HUBS.get((origin or "").lower(),[])); parts.append("微信")
+    seen=set(); out=[]
+    for p in parts:
+        if p not in seen: seen.add(p); out.append(p)
+    return " ".join(out)
+
+def score_freight_result(text):
+    t=text.lower(); score=0
+    if any(k in t for k in("敏感货","仿牌")): score+=25
+    if any(k in t for k in("双清包税","包清关","ddp")): score+=20
+    if any(k in t for k in("美国专线","中美专线")): score+=15
+    if any(k in t for k in("莆田","广州","义乌","深圳")): score+=10
+    if any(k in t for k in("fedex","dhl","ups")): score+=5
+    if any(k in t for k in("不接仿牌","只接普货","只做普货")): score+=30
+    if "海运" in t and "空运" not in t and "快递" not in t: score-=15
+    return max(0,min(100,score))
