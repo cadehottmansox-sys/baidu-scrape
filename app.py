@@ -870,50 +870,49 @@ def bump_global_stats():
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5001))
     app.run(host="0.0.0.0", port=port, debug=os.getenv("FLASK_DEBUG","false").lower()=="true")
-# ========== ADDED: IMAGE → KEYWORDS → SUPPLIER SEARCH ==========
+# ========== FIXED: IMAGE TO SUPPLIER SEARCH (NO require_auth) ==========
 import re
+import base64
+import tempfile
+import os
+import asyncio
+import requests as _req
 
-def extract_keywords_from_image_search(image_search_results):
-    """
-    image_search_results: list of dicts with 'title' and 'link' from Baidu image search.
-    Returns a clean search query string (e.g., "Nike Tech Fleece Hoodie").
-    """
-    titles = [r.get('title', '') for r in image_search_results if r.get('title')]
+def extract_keywords_from_image_search(image_results):
+    titles = [r.get('title', '') for r in image_results if r.get('title')]
     if not titles:
         return None
-    
-    # Combine all titles
     combined = ' '.join(titles[:5])
-    
-    # Remove common noise words
     combined = re.sub(r'\b(product|image|photo|picture|buy|shop|price|online|store|sale|cheap|high quality)\b', '', combined, flags=re.I)
-    
-    # Take the first 5-10 meaningful words
     words = combined.split()
     clean_words = [w for w in words if len(w) > 2 and not w.isdigit()]
     query = ' '.join(clean_words[:8])
-    
-    # If still empty, fallback to "product image"
     if len(query) < 3:
         query = "product image"
     return query.strip()
 
+def _get_user_from_cookie():
+    token = request.cookies.get("sf_token")
+    if not token:
+        return None
+    from auth import validate_token
+    ip = request.headers.get("X-Forwarded-For", request.remote_addr or "unknown").split(",")[0].strip()
+    result = validate_token(token, ip)
+    return result if result.get("valid") else None
+
 @app.route("/api/image_to_supplier_search", methods=["POST"])
-@require_auth
 def image_to_supplier_search():
-    """Step 1: Upload image -> Baidu image search -> extract keywords -> Step 2: run supplier search."""
+    # manual auth
+    user = _get_user_from_cookie()
+    if not user:
+        return jsonify({"error": "Unauthorized"}), 401
+
     data = request.get_json(silent=True) or {}
     image_b64 = data.get("image", "")
     if not image_b64:
         return jsonify({"error": "No image provided"}), 400
-    
+
     try:
-        # First, call the existing image search endpoint logic (reuse)
-        # To avoid code duplication, we'll temporarily use the image_search function.
-        # But since it's a route, we can call it internally. Simpler: replicate the call.
-        import base64, tempfile, os
-        import requests as _req
-        
         if ',' in image_b64:
             image_b64 = image_b64.split(',')[1]
         img_bytes = base64.b64decode(image_b64)
@@ -939,13 +938,11 @@ def image_to_supplier_search():
                 os.unlink(tmp)
             except:
                 pass
-        
-        # Extract search keywords from image results
+
         search_query = extract_keywords_from_image_search(image_results)
         if not search_query:
             return jsonify({"error": "Could not extract keywords from image", "image_results": image_results[:5]}), 400
-        
-        # Now run a normal supplier search using those keywords
+
         from searcher import search_platform
         results = asyncio.run(search_platform(
             query=search_query,
@@ -956,22 +953,22 @@ def image_to_supplier_search():
             wechat_only=False,
             page_num=1
         ))
-        
-        # Filter out official brand domains and retailers (use existing GLOBAL_BLOCKLIST if defined)
+
+        # optional: filter out known official/retailer domains if GLOBAL_BLOCKLIST exists
         try:
             from app import GLOBAL_BLOCKLIST
             results = [r for r in results if not any(domain in r.get('link', '') for domain in GLOBAL_BLOCKLIST)]
         except:
             pass
-        
+
         return jsonify({
             "ok": True,
             "detected_query": search_query,
             "results": results[:20],
             "count": len(results),
-            "image_results_preview": image_results[:3]  # optional, for debugging
+            "image_results_preview": image_results[:3]
         }), 200
-        
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 # ========== END ADDED ==========
