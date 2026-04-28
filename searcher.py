@@ -907,3 +907,111 @@ async def _scrape_yupoo(query, brand, page, timeout=25000, max_results=6):
     except Exception as e:
         logger.warning("Yupoo scrape error: %s", e)
     return results
+
+
+# ── Brand cache & enrichment ──────────────────────────────────────────────────
+
+_BRAND_CACHE = {
+    "needoh": {"cn": "斯基林", "cat": "toy"},
+    "nice cube": {"cn": "斯基林", "cat": "toy"},
+    "squishy cube": {"cn": "斯基林", "cat": "toy"},
+    "stress ball": {"cn": "", "cat": "toy"},
+    "fidget": {"cn": "", "cat": "toy"},
+    "jordan": {"cn": "乔丹", "cat": "sneaker"},
+    "yeezy": {"cn": "椰子", "cat": "sneaker"},
+    "dunk": {"cn": "耐克", "cat": "sneaker"},
+    "air force": {"cn": "耐克", "cat": "sneaker"},
+    "samba": {"cn": "阿迪达斯", "cat": "sneaker"},
+    "new balance": {"cn": "新百伦", "cat": "sneaker"},
+    "asics": {"cn": "亚瑟士", "cat": "sneaker"},
+    "tech fleece": {"cn": "耐克", "cat": "clothing"},
+    "hellstar": {"cn": "地狱星", "cat": "clothing"},
+    "sp5der": {"cn": "蜘蛛", "cat": "clothing"},
+    "lv": {"cn": "路易威登", "cat": "bag"},
+    "louis vuitton": {"cn": "路易威登", "cat": "bag"},
+    "gucci": {"cn": "古驰", "cat": "bag"},
+    "lego": {"cn": "乐高", "cat": "lego"},
+    "lepin": {"cn": "乐拼", "cat": "lego"},
+    "rolex": {"cn": "劳力士", "cat": "watch"},
+    "omega": {"cn": "欧米茄", "cat": "watch"},
+    "airpods": {"cn": "", "cat": "electronics"},
+    "freight": {"cn": "", "cat": "freight"},
+    "forwarder": {"cn": "", "cat": "freight"},
+    "shipping": {"cn": "", "cat": "freight"},
+}
+
+_CAT_INJECT = {
+    "toy": "玩具厂 硅胶制品 减压球 工厂 微信 一手货源",
+    "sneaker": "鞋厂 莆田 运动鞋 过验 纯原 微信 一手货源",
+    "clothing": "服装厂 纯原 过验 卫衣 微信 一手货源",
+    "bag": "包包工厂 皮具厂 原单 真皮 微信 一手货源",
+    "watch": "手表厂 钟表 纯原 同机芯 微信 一手货源",
+    "electronics": "数码配件厂 工厂直营 批发 微信 一手货源",
+    "lego": "积木厂 兼容乐高 小颗粒积木 工厂 批发 微信",
+    "freight": "货代 美国专线 双清包税 敏感货专线 微信 DDP",
+}
+
+def get_brand_info(query):
+    ql = query.lower()
+    for key, info in _BRAND_CACHE.items():
+        if key in ql:
+            return info.copy()
+    return {"cn": "", "cat": "general"}
+
+def build_brand_aware_query(query, brand=""):
+    info = get_brand_info(query)
+    cn = info["cn"] or brand or ""
+    cat = info["cat"]
+    inject = _CAT_INJECT.get(cat, "厂家直销 一手货源 工厂 微信")
+    parts = [p for p in [cn, query, inject] if p]
+    return " ".join(parts)
+
+_FF_ROUTES = {
+    "USA": ["美国专线", "中美专线", "美线"],
+    "UK": ["英国专线", "中英专线"],
+    "EU": ["欧洲专线", "中欧专线"],
+    "AU": ["澳洲专线"],
+    "CA": ["加拿大专线"],
+}
+
+_FF_HUBS = {
+    "putian": ["莆田货运", "莆田货代"],
+    "guangzhou": ["广州货代", "广州物流"],
+    "shenzhen": ["深圳货代"],
+    "yiwu": ["义乌货代"],
+}
+
+def build_freight_query(origin="", destination="USA", cargo_type="replica"):
+    parts = ["货代", "货运代理"]
+    parts.extend(_FF_ROUTES.get(destination.upper(), _FF_ROUTES["USA"]))
+    if cargo_type in ("replica", "sensitive"):
+        parts.extend(["敏感货", "仿牌", "双清包税", "DDP", "包税"])
+    hub = (origin or "").lower().strip()
+    parts.extend(_FF_HUBS.get(hub, []))
+    parts.append("微信")
+    seen = set()
+    out = []
+    for p in parts:
+        if p not in seen:
+            seen.add(p)
+            out.append(p)
+    return " ".join(out)
+
+def score_freight_result(title, snippet):
+    text = (title + " " + snippet).lower()
+    score = 0
+    if any(k in text for k in ("敏感货", "仿牌", "仿品")):
+        score += 25
+    if any(k in text for k in ("双清包税", "包清关", "ddp", "包税")):
+        score += 20
+    if any(k in text for k in ("美国专线", "中美专线", "美线")):
+        score += 15
+    if any(k in text for k in ("莆田", "广州", "义乌", "深圳", "福建")):
+        score += 10
+    if any(k in text for k in ("fedex", "dhl", "ups")):
+        score += 5
+    if any(k in text for k in ("不接仿牌", "只接普货", "只做普货")):
+        score += 30
+    if "海运" in text and "空运" not in text and "快递" not in text:
+        score -= 15
+    return max(0, min(100, score))

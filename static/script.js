@@ -3552,3 +3552,165 @@ function _sfLH(i){
 function _sfTH(){ var p = document.getElementById('_sfhp'); if(!p) return; p.style.display = p.style.display === 'none' ? 'block' : 'none'; if(p.style.display !== 'none') _sfRH(); }
 
 // ======================= END OF RESTORED FUNCTIONS =======================
+
+// ═══════════════════════════════════════════════════════════════════
+// BRAND ENRICHMENT + FREIGHT SEARCH + UI ENHANCEMENTS
+// ═══════════════════════════════════════════════════════════════════
+
+async function runSmartSearch() {
+  var brand = document.getElementById("brandInput")?.value || "";
+  var query = document.getElementById("queryInput")?.value || "";
+  if (!query) { if (typeof showToast !== "undefined") showToast("Enter a product first", "error"); return; }
+  var info = _getBrandInfo(query);
+  var cn = info.cn || brand;
+  var inject = _CAT_INJECT_JS[info.cat] || "厂家直销 一手货源 工厂 微信";
+  var enhanced = [cn, query, inject].filter(Boolean).join(" ");
+  if (typeof showToast !== "undefined") showToast("Smart: " + enhanced, "info");
+  var qInput = document.getElementById("queryInput");
+  if (qInput) { qInput.value = enhanced; qInput.dispatchEvent(new Event("input")); }
+  if (typeof doSearch === "function") doSearch();
+  else if (typeof runSearch === "function") runSearch();
+}
+
+var _BRAND_CACHE_JS = {
+  "needoh": {cn:"斯基林",cat:"toy"}, "nice cube": {cn:"斯基林",cat:"toy"},
+  "squishy cube": {cn:"斯基林",cat:"toy"}, "stress ball": {cn:"",cat:"toy"},
+  "fidget": {cn:"",cat:"toy"}, "jordan": {cn:"乔丹",cat:"sneaker"},
+  "yeezy": {cn:"椰子",cat:"sneaker"}, "dunk": {cn:"耐克",cat:"sneaker"},
+  "air force": {cn:"耐克",cat:"sneaker"}, "samba": {cn:"阿迪达斯",cat:"sneaker"},
+  "tech fleece": {cn:"耐克",cat:"clothing"}, "hellstar": {cn:"地狱星",cat:"clothing"},
+  "sp5der": {cn:"蜘蛛",cat:"clothing"}, "lv": {cn:"路易威登",cat:"bag"},
+  "gucci": {cn:"古驰",cat:"bag"}, "lego": {cn:"乐高",cat:"lego"},
+  "rolex": {cn:"劳力士",cat:"watch"}, "omega": {cn:"欧米茄",cat:"watch"},
+  "airpods": {cn:"",cat:"electronics"}, "freight": {cn:"",cat:"freight"},
+};
+var _CAT_INJECT_JS = {
+  toy: "玩具厂 硅胶制品 减压球 工厂 微信 一手货源",
+  sneaker: "鞋厂 莆田 运动鞋 过验 纯原 微信 一手货源",
+  clothing: "服装厂 纯原 过验 卫衣 微信 一手货源",
+  bag: "包包工厂 皮具厂 原单 真皮 微信 一手货源",
+  watch: "手表厂 钟表 纯原 同机芯 微信 一手货源",
+  electronics: "数码配件厂 工厂直营 批发 微信 一手货源",
+  lego: "积木厂 兼容乐高 小颗粒积木 工厂 批发 微信",
+  freight: "货代 美国专线 双清包税 敏感货专线 微信 DDP",
+};
+function _getBrandInfo(query) {
+  var ql = query.toLowerCase();
+  for (var k in _BRAND_CACHE_JS) { if (ql.indexOf(k) >= 0) return _BRAND_CACHE_JS[k]; }
+  return {cn:"", cat:"general"};
+}
+
+function showFreightModal() {
+  var m = document.getElementById("_ffModal");
+  if (!m) {
+    m = document.createElement("div"); m.id = "_ffModal";
+    m.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.88);z-index:10001;display:flex;align-items:center;justify-content:center";
+    var inn = document.createElement("div");
+    inn.style.cssText = "background:#0a0f1e;border:1px solid rgba(34,211,238,.25);border-radius:16px;padding:24px;width:90%;max-width:440px;max-height:90vh;overflow-y:auto;box-shadow:0 0 40px rgba(34,211,238,.1)";
+    m.appendChild(inn); document.body.appendChild(m);
+    function _el(tag, css, txt) { var e = document.createElement(tag); if (css) e.style.cssText = css; if (txt !== undefined) e.textContent = txt; return e; }
+    inn.appendChild(_el("h3","color:#22d3ee;margin:0 0 18px;font-size:16px;font-weight:700","✈️ Freight Forwarder Search"));
+    inn.appendChild(_el("label","color:#94a3b8;font-size:11px;text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:5px","Origin Hub"));
+    var oi = _el("input","width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#e2e8f0;padding:9px 12px;border-radius:9px;font-size:13px;outline:none;box-sizing:border-box;margin-bottom:12px;font-family:inherit");
+    oi.id="_ffOrig"; oi.placeholder="putian / guangzhou / shenzhen"; inn.appendChild(oi);
+    inn.appendChild(_el("label","color:#94a3b8;font-size:11px;text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:5px","Destination"));
+    var ds = _el("select","width:100%;background:#060c18;border:1px solid rgba(255,255,255,.1);color:#e2e8f0;padding:9px;border-radius:9px;font-size:13px;margin-bottom:12px;outline:none;font-family:inherit");
+    ds.id="_ffDest";
+    ["USA","UK","EU","AU","CA"].forEach(function(v){var o=document.createElement("option");o.value=v;o.textContent=v;ds.appendChild(o);});
+    inn.appendChild(ds);
+    inn.appendChild(_el("label","color:#94a3b8;font-size:11px;text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:5px","Cargo Type"));
+    var cs = _el("select","width:100%;background:#060c18;border:1px solid rgba(255,255,255,.1);color:#e2e8f0;padding:9px;border-radius:9px;font-size:13px;margin-bottom:16px;outline:none;font-family:inherit");
+    cs.id="_ffCargo";
+    [["replica","🔴 Replica / Sensitive"],["general","⚪ General goods"]].forEach(function(p){var o=document.createElement("option");o.value=p[0];o.textContent=p[1];cs.appendChild(o);});
+    inn.appendChild(cs);
+    var br = _el("div","display:flex;gap:8px;margin-bottom:16px");
+    var gb = _el("button","flex:2;padding:11px;background:linear-gradient(135deg,rgba(34,211,238,.2),rgba(99,102,241,.2));border:1px solid rgba(34,211,238,.4);color:#22d3ee;border-radius:9px;font-size:13px;cursor:pointer;font-weight:700;font-family:inherit","Search Forwarders");
+    var xb = _el("button","flex:1;padding:11px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#94a3b8;border-radius:9px;font-size:13px;cursor:pointer;font-family:inherit","Cancel");
+    xb.onclick = function(){ m.style.display="none"; };
+    br.appendChild(gb); br.appendChild(xb); inn.appendChild(br);
+    var ffOut = _el("div",""); ffOut.id="_ffOut"; inn.appendChild(ffOut);
+    gb.onclick = async function() {
+      var out = document.getElementById("_ffOut");
+      out.innerHTML = "<div style=\"color:#94a3b8;padding:20px;text-align:center\">🔍 Searching forwarders...</div>";
+      var origin = document.getElementById("_ffOrig").value.toLowerCase().trim();
+      var dest = document.getElementById("_ffDest").value;
+      var cargo = document.getElementById("_ffCargo").value;
+      var routes = {USA:["美国专线","中美专线"],UK:["英国专线"],EU:["欧洲专线"],AU:["澳洲专线"],CA:["加拿大专线"]};
+      var hubs = {putian:["莆田货运","莆田货代"],guangzhou:["广州货代"],shenzhen:["深圳货代"],yiwu:["义乌货代"]};
+      var parts = ["货代","货运代理"].concat(routes[dest]||routes.USA);
+      if (cargo==="replica") parts=parts.concat(["敏感货","仿牌","双清包税","DDP"]);
+      if (hubs[origin]) parts=parts.concat(hubs[origin]);
+      parts.push("微信");
+      var seen={}; var q=parts.filter(function(p){return seen[p]?false:(seen[p]=true);}).join(" ");
+      try {
+        var r = await fetch("/search", {method:"POST",credentials:"include",
+          headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({query:q,brand:"",platform:"baidu",mode:"supplier",deep_scan:false,wechat_only:false,page_num:1,variation:0,seen_links:[]})});
+        var d = await r.json();
+        var results = d.results || [];
+        results.forEach(function(res) {
+          var t = ((res.title||"")+" "+(res.snippet||"")).toLowerCase();
+          var sc = 0;
+          if(/敏感货|仿牌|仿品/.test(t)) sc+=25;
+          if(/双清包税|包清关|ddp|包税/.test(t)) sc+=20;
+          if(/美国专线|中美专线|美线/.test(t)) sc+=15;
+          if(/莆田|广州|义乌|深圳|福建/.test(t)) sc+=10;
+          if(/fedex|dhl|ups/.test(t)) sc+=5;
+          if(/不接仿牌|只接普货|只做普货/.test(t)) sc+=30;
+          if(/海运/.test(t)&&!/空运|快递/.test(t)) sc-=15;
+          res._ffScore = Math.max(0,Math.min(100,sc));
+        });
+        results.sort(function(a,b){return b._ffScore-a._ffScore;});
+        if (!results.length) { out.innerHTML="<div style=\"color:#475569;padding:20px;text-align:center\">No forwarders found. Try different settings.</div>"; return; }
+        out.innerHTML="<div style=\"color:#475569;font-size:11px;margin-bottom:10px\">Found "+results.length+" forwarders · sorted by rep-friendliness</div>";
+        results.slice(0,12).forEach(function(res) {
+          var card = document.createElement("div");
+          card.style.cssText = "background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:13px;margin-bottom:8px";
+          var badge_color = res._ffScore>=70?"#22c55e":res._ffScore>=40?"#f59e0b":"#64748b";
+          var hdr = document.createElement("div"); hdr.style.cssText="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px";
+          var tl = document.createElement("div"); tl.style.cssText="color:#e2e8f0;font-size:13px;font-weight:600;flex:1;margin-right:8px"; tl.textContent=res.title||"Forwarder"; hdr.appendChild(tl);
+          var sc_el = document.createElement("span"); sc_el.style.cssText="color:"+badge_color+";font-size:11px;font-weight:700;white-space:nowrap;background:rgba(0,0,0,.3);padding:2px 6px;border-radius:4px"; sc_el.textContent=res._ffScore+"/100"; hdr.appendChild(sc_el);
+          card.appendChild(hdr);
+          var sn = document.createElement("div"); sn.style.cssText="color:#475569;font-size:11px;margin-bottom:8px;line-height:1.5"; sn.textContent=(res.snippet||"").slice(0,150); card.appendChild(sn);
+          var t2=((res.title||"")+" "+(res.snippet||"")).toLowerCase();
+          var badges=document.createElement("div"); badges.style.cssText="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px";
+          if(/敏感货|仿牌/.test(t2)){var b=document.createElement("span");b.style.cssText="background:rgba(34,211,238,.15);border:1px solid rgba(34,211,238,.3);color:#22d3ee;font-size:10px;padding:2px 6px;border-radius:4px";b.textContent="✓ Sensitive goods";badges.appendChild(b);}
+          if(/双清包税|ddp/.test(t2)){var b2=document.createElement("span");b2.style.cssText="background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.3);color:#22c55e;font-size:10px;padding:2px 6px;border-radius:4px";b2.textContent="✓ DDP";badges.appendChild(b2);}
+          if(/莆田|putian/.test(t2)){var b3=document.createElement("span");b3.style.cssText="background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.3);color:#818cf8;font-size:10px;padding:2px 6px;border-radius:4px";b3.textContent="📍 Putian";badges.appendChild(b3);}
+          if(/不接仿牌/.test(t2)){var b4=document.createElement("span");b4.style.cssText="background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.3);color:#f59e0b;font-size:10px;padding:2px 6px;border-radius:4px";b4.textContent="⭐ Honest";badges.appendChild(b4);}
+          if(badges.children.length) card.appendChild(badges);
+          var wcs = res.wechats || [];
+          if (wcs.length) {
+            wcs.forEach(function(wc) {
+              var row = document.createElement("div"); row.style.cssText="display:flex;justify-content:space-between;align-items:center;background:rgba(34,211,238,.06);border:1px solid rgba(34,211,238,.15);border-radius:7px;padding:7px 10px;margin-bottom:5px";
+              var ws = document.createElement("span"); ws.style.cssText="color:#22d3ee;font-family:monospace;font-size:14px;font-weight:700"; ws.textContent=wc; row.appendChild(ws);
+              var cb = document.createElement("button"); cb.textContent="Copy"; cb.style.cssText="padding:4px 10px;background:rgba(34,211,238,.15);border:1px solid rgba(34,211,238,.3);color:#22d3ee;border-radius:6px;font-size:11px;cursor:pointer;font-family:inherit;font-weight:600";
+              cb.onclick=(function(w,btn){return function(){navigator.clipboard.writeText(w);btn.textContent="✓";setTimeout(function(){btn.textContent="Copy";},2000);};})(wc,cb);
+              row.appendChild(cb); card.appendChild(row);
+            });
+          }
+          if (res.link) {
+            var lnk = document.createElement("a"); lnk.href=res.link; lnk.target="_blank";
+            lnk.style.cssText="color:#334155;font-size:10px;text-decoration:none;display:block;margin-top:4px"; lnk.textContent=res.link.slice(0,60)+"…"; card.appendChild(lnk);
+          }
+          out.appendChild(card);
+        });
+      } catch(err) { out.innerHTML="<div style=\"color:#ef4444;padding:12px\">Error: "+err.message+"</div>"; }
+    };
+    m.onclick = function(ev){if(ev.target===m)m.style.display="none";};
+  }
+  m.style.display="flex";
+}
+
+(function _initSmartBtn(){
+  var ar = document.querySelector(".action-row");
+  if (!ar) { setTimeout(_initSmartBtn, 700); return; }
+  if (document.getElementById("_smartBtn")) return;
+  var b = document.createElement("button"); b.id="_smartBtn";
+  b.textContent="🧠 Smart"; b.title="Auto-enrich query with brand & category terms";
+  b.style.cssText="margin-left:6px;padding:0 12px;height:36px;background:linear-gradient(135deg,rgba(34,211,238,.15),rgba(99,102,241,.15));border:1px solid rgba(34,211,238,.3);color:#22d3ee;border-radius:9px;font-size:12px;cursor:pointer;font-family:inherit;font-weight:600;transition:all .2s";
+  b.onmouseover=function(){this.style.background="linear-gradient(135deg,rgba(34,211,238,.25),rgba(99,102,241,.25))";};
+  b.onmouseout=function(){this.style.background="linear-gradient(135deg,rgba(34,211,238,.15),rgba(99,102,241,.15))";};
+  b.onclick=runSmartSearch;
+  ar.appendChild(b);
+})();
