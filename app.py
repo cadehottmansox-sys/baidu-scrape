@@ -1,23 +1,10 @@
-import asyncio
-import json
-import logging
-import os
-import time
-from functools import wraps
-from pathlib import Path
-from typing import Any
-
-from dotenv import load_dotenv
-from flask import Flask, jsonify, redirect, render_template, request, make_response, session
-from playwright.async_api import Error as PlaywrightError
-
 import auth
 from searcher import search_platform, scan_single
 
 load_dotenv()
 
 ADMIN_SECRET = os.getenv("ADMIN_SECRET", "changeme-set-in-env")
-FINDS_FILE = Path(__file__).parent / "data" / "finds.json"
+FINDS_FILE   = Path(__file__).parent / "data" / "finds.json"
 
 
 def _load_finds():
