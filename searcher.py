@@ -58,12 +58,7 @@ WECHAT_GARBAGE = re.compile(
     r"com|net|org|www|http|html|shop|store|tmall|taobao|jd|alibaba|"
     r"photo|image|video|thumb|click|search|token|order|price|color|size)", re.I)
 WECHAT_PATTERNS = [
-    re.compile(r"(?:wechat\s*id|微信号?|weixin|wx\s*id)[\s:：#\-「」【,
-    re.compile(r"[Vv][Xx][::：\s]{0,3}([a-zA-Z0-9][a-zA-Z0-9_]{4,19})", re.I),
-    re.compile(r"(?:找我|加我|联系我|私我|找她|加她)[::：\s]{0,5}([a-zA-Z0-9][a-zA-Z0-9_]{4,19})"),
-    re.compile(r"W[Ee][Cc][Hh][Aa][Tt][::：\s]{0,3}([a-zA-Z0-9][a-zA-Z0-9_]{4,19})", re.I),
-    re.compile(r"(?:号码|账号|帐号)[::：\s]{0,3}([a-zA-Z][a-zA-Z0-9_]{4,19})"),
-    re.compile(r"\b([a-zA-Z][a-zA-Z0-9_]{5,15}\d{2,6})\b(?=.*(?:微信|wx|vx|wechat))", re.I)】]{0,4}([a-zA-Z0-9][a-zA-Z0-9_]{4,19})", re.I),
+    re.compile(r"(?:wechat\s*id|微信号?|weixin|wx\s*id)[\s:：#\-「」【】]{0,4}([a-zA-Z0-9][a-zA-Z0-9_]{4,19})", re.I),
     re.compile(r"加[Vv微][\s:：「」【】]{0,3}([a-zA-Z0-9][a-zA-Z0-9_]{4,19})"),
     re.compile(r"(?:vx|wx)[号:：\s]{1,4}([a-zA-Z0-9][a-zA-Z0-9_]{4,19})(?!\.)"),
     re.compile(r"(?:加微信|微信联系|微信咨询|扫码加)[\s:：]{0,3}([a-zA-Z0-9][a-zA-Z0-9_]{4,19})"),
@@ -144,48 +139,28 @@ def detect_product_intent(query):
     """Return (category, chinese_inject, passing_inject)."""
     q = query.lower()
     category = "general"
-    chinese_inject = "工厂 微信 一手货源 厂家直销 -淘宝 -天猫"
-    passing_inject = "过验 纯原 同厂 微信 一手货源"
+    chinese_inject = "工厂 微信 一手货源"
+    passing_inject = "过验 纯原 同厂 微信"
 
-    if any(w in q for w in ["needoh","cube","squishy","stress ball","slow rise","fidget","pop it","slime"]):
+    if any(w in q for w in ["needoh", "cube", "squishy", "stress", "slow rise", "fidget"]):
         category = "toy"
-        chinese_inject = "玩具厂 硅胶制品 慢回弹 减压球 工厂 微信 一手货源"
-        passing_inject = "过验 纯原 硅胶 捏捏乐 微信"
-    elif any(w in q for w in ["lego","building blocks","bricks","compatible lego","积木"]):
-        category = "lego"
-        chinese_inject = "积木厂 小颗粒 兼容乐高 工厂 批发 微信"
-        passing_inject = "过验 纯原 积木 兼容 微信"
-    elif any(w in q for w in ["tech fleece","fleece","hoodie","sweatshirt","crewneck","tracksuit","jogger","windbreaker","coach jacket","puffer"]):
-        category = "clothing"
-        chinese_inject = "服装厂 卫衣 纯原 过验 工厂直营 微信 一手货源 -淘宝 -天猫"
-        passing_inject = "过验 纯原 同材质 服装厂 卫衣 微信"
-    elif any(w in q for w in ["t-shirt","tee","shirt","polo","shorts","pants","jeans","jacket","coat","sweater"]):
-        category = "clothing"
-        chinese_inject = "服装厂 纯原 过验 工厂 微信 一手货源 -淘宝 -天猫"
-        passing_inject = "过验 纯原 同厂 服装厂 微信"
-    elif any(w in q for w in ["jordan","yeezy","dunk","air force","samba","trainer","runner","sneaker","shoe","boot","klekt"]):
+        chinese_inject = "玩具厂 硅胶 慢回弹 捏捏乐 微信"
+        passing_inject = "过验 纯原 硅胶 捏捏 微信"
+    elif any(w in q for w in ["lego", "building blocks", "bricks", "compatible"]):
+        category = "toy"
+        chinese_inject = "积木 小颗粒 兼容乐高 工厂 微信"
+        passing_inject = "过验 纯原 积木 高砖 微信"
+    elif any(w in q for w in ["jordan", "nike", "yeezy", "dunk", "sneaker", "shoe"]):
         category = "shoe"
-        chinese_inject = "鞋厂 莆田 运动鞋 纯原 微信 一手货源 -淘宝 -天猫"
-        passing_inject = "过验 纯原 莆田 同鞋厂 微信 1:1"
-    elif any(w in q for w in ["bag","handbag","wallet","purse","backpack","tote","clutch","crossbody","duffel","belt"]):
-        category = "bag"
-        chinese_inject = "包包工厂 皮具厂 原单 真皮 微信 一手货源 -淘宝 -天猫"
-        passing_inject = "过验 纯原 原单 皮具厂 微信"
-    elif any(w in q for w in ["watch","rolex","omega","patek","cartier","hublot","richard mille","ap ","audemars"]):
-        category = "watch"
-        chinese_inject = "手表厂 钟表 纯原 同机芯 微信 一手货源 -淘宝"
-        passing_inject = "过验 纯原 同机芯 手表厂 微信"
-    elif any(w in q for w in ["freight","forwarder","shipping","cargo","logistics","3pl","express"]):
-        category = "freight"
-        chinese_inject = "货代 美国专线 双清包税 敏感货专线 DDP 微信"
-        passing_inject = "货代 美国专线 双清包税 敏感货 微信"
-    elif any(w in q for w in ["airpods","earbuds","headphones","phone case","charger","cable","speaker","keyboard","mouse","iphone"]):
-        category = "electronics"
-        chinese_inject = "数码配件厂 工厂直营 批发 微信 一手货源 -淘宝 -天猫"
-        passing_inject = "过验 纯原 数码 工厂 微信"
+        chinese_inject = "鞋厂 莆田 运动鞋 微信 一手货源"
+        passing_inject = "过验 纯原 莆田 PK版 OG版 LJR版 微信"
+    elif any(w in q for w in ["hoodie", "tech fleece", "sweatshirt", "jacket"]):
+        category = "cloth"
+        chinese_inject = "服装厂 卫衣 批发 微信"
+        passing_inject = "过验 纯原 公司级 真标 微信"
 
     return category, chinese_inject, passing_inject
-
+# ===========================================================================
 
 def _translate_to_zh(query):
     q = query
@@ -837,11 +812,7 @@ async def search_platform(
     ua = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
     results = []
 
-    _b=brand.strip(); _q=query.strip()
-    if _b and _q.lower().startswith(_b.lower()):
-        base_raw = _q
-    else:
-        base_raw = f"{_b} {_q}".strip() if _b else _q
+    base_raw = f"{brand.strip()} {query.strip()}".strip() if brand.strip() else query.strip()
     base = _translate_to_zh(base_raw)
     if base != base_raw:
         logger.info("Auto-translated: %s -> %s", base_raw[:60], base[:60])
