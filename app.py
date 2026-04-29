@@ -99,6 +99,125 @@ def create_app() -> Flask:
             return "Not authorized", 403
         return decorated
 
+    @app.post("/api/douyin-factory-search")
+    @require_auth
+    def douyin_factory_search():
+        user = get_user()
+        if not user:
+            return jsonify({"error": "Unauthorized"}), 401
+
+        import re
+
+        data = request.get_json(silent=True) or {}
+        brand = (data.get("brand") or "").strip()
+        item = (data.get("item") or data.get("query") or "").strip()
+        max_results = max(3, min(int(data.get("max_results", 12)), 30))
+
+        if not item:
+            return jsonify({"error": "Missing query"}), 400
+
+        bad_phrases = [
+            "business account", "how to open", "how to create", "how to register",
+            "account setup", "enterprise account", "how to sell", "how to start",
+            "dropshipping", "affiliate", "教程", "教学", "企业号", "开通",
+            "注册", "起号", "养号", "运营教程", "电商教程"
+        ]
+
+        def norm_text(*parts):
+            return " ".join(str(p or "") for p in parts).strip()
+
+        def contains_product_signal(txt):
+            txt = txt.lower()
+            signals = [brand.lower()] if brand else []
+            signals += [item.lower()]
+            tokens = [t for t in re.split(r"\s+", item.lower()) if len(t) >= 3]
+            signals += tokens[:6]
+            return any(s and s in txt for s in signals)
+
+        def looks_irrelevant(r):
+            txt = norm_text(
+                r.get("title"), r.get("desc"), r.get("snippet"),
+                r.get("author"), r.get("author_sig"), r.get("nickname")
+            ).lower()
+            if any(bp in txt for bp in bad_phrases):
+                return True
+            if not contains_product_signal(txt) and any(k in txt for k in ["account", "business", "register", "教程", "开通"]):
+                return True
+            return False
+
+        def extract_wechats(r):
+            out = []
+            for key in ("wechat_ids", "wechats"):
+                vals = r.get(key) or []
+                if isinstance(vals, list):
+                    for v in vals:
+                        if isinstance(v, str):
+                            vv = v.strip()
+                        elif isinstance(v, dict):
+                            vv = str(v.get("id") or v.get("wechat") or v.get("value") or "").strip()
+                        else:
+                            vv = ""
+                        if vv and vv not in out:
+                            out.append(vv)
+            for key in ("wechat", "weixin", "wx"):
+                vv = str(r.get(key) or "").strip()
+                if vv and vv not in out:
+                    out.append(vv)
+            return out[:8]
+
+        def normalize_result(r):
+            title = r.get("title") or r.get("desc") or r.get("author") or "Douyin result"
+            desc = r.get("desc") or r.get("snippet") or r.get("author_sig") or ""
+            url = r.get("url") or r.get("link") or r.get("share_url") or r.get("video_url") or ""
+            video_url = r.get("video_url") or r.get("play_url") or r.get("download_url") or ""
+            video_b64 = r.get("video_b64") or ""
+            return {
+                "title": title,
+                "desc": desc,
+                "author": r.get("author") or r.get("nickname") or r.get("douyin") or "",
+                "url": url,
+                "video_url": video_url,
+                "video_b64": video_b64,
+                "has_video": bool(video_b64 or video_url),
+                "play_count": r.get("play_count") or r.get("views") or 0,
+                "digg_count": r.get("digg_count") or r.get("likes") or 0,
+                "comment_count": r.get("comment_count") or r.get("comments") or 0,
+                "wechat_ids": extract_wechats(r),
+                "platform": "Apify",
+            }
+
+        try:
+            from searcher import douyin_search_apify
+            raw_results = asyncio.run(
+                douyin_search_apify(brand, item, max_results=max_results * 2, mode="supplier")
+            ) or []
+
+            cleaned = []
+            seen = set()
+            for r in raw_results:
+                nr = normalize_result(r)
+                sig = (nr.get("url") or "") + "|" + (nr.get("title") or "")
+                if not sig.strip("|") or sig in seen:
+                    continue
+                seen.add(sig)
+                if looks_irrelevant(nr):
+                    continue
+                cleaned.append(nr)
+                if len(cleaned) >= max_results:
+                    break
+
+            return jsonify({
+                "ok": True,
+                "results": cleaned,
+                "count": len(cleaned),
+                "query": item,
+                "brand": brand,
+                "source": "apify"
+            }), 200
+        except Exception as exc:
+            app.logger.exception("Douyin factory search failed: %s", exc)
+            return jsonify({"error": "Douyin search failed"}), 500
+
     @app.get("/")
     def root():
         token = request.cookies.get("sf_token")
@@ -847,127 +966,3 @@ def create_app() -> Flask:
     return app
 
 app = create_app()
-# ======================= DOUYIN OVERRIDE PATCH =======================
-# Paste this INSIDE create_app(), near the bottom, but still ABOVE: return app
-# It overrides the previous endpoint by re-registering the same URL rule.
-
-    @app.post("/api/douyin-factory-search")
-    @require_auth
-    def douyin_factory_search_override():
-        user = get_user()
-        if not user:
-            return jsonify({"error": "Unauthorized"}), 401
-
-        import re
-
-        data = request.get_json(silent=True) or {}
-        brand = (data.get("brand") or "").strip()
-        item = (data.get("item") or data.get("query") or "").strip()
-        max_results = max(3, min(int(data.get("max_results", 12)), 30))
-
-        if not item:
-            return jsonify({"error": "Missing query"}), 400
-
-        bad_phrases = [
-            "business account", "how to open", "how to create", "how to register",
-            "account setup", "enterprise account", "how to sell", "how to start",
-            "dropshipping", "affiliate", "教程", "教学", "企业号", "开通",
-            "注册", "起号", "养号", "运营教程", "电商教程"
-        ]
-
-        def norm_text(*parts):
-            return " ".join(str(p or "") for p in parts).strip()
-
-        def contains_product_signal(txt):
-            txt = txt.lower()
-            signals = [brand.lower()] if brand else []
-            signals += [item.lower()]
-            tokens = [t for t in re.split(r"\s+", item.lower()) if len(t) >= 3]
-            signals += tokens[:6]
-            return any(s and s in txt for s in signals)
-
-        def looks_irrelevant(r):
-            txt = norm_text(
-                r.get("title"), r.get("desc"), r.get("snippet"),
-                r.get("author"), r.get("author_sig"), r.get("nickname")
-            ).lower()
-            if any(bp in txt for bp in bad_phrases):
-                return True
-            if not contains_product_signal(txt) and any(k in txt for k in ["account", "business", "register", "教程", "开通"]):
-                return True
-            return False
-
-        def extract_wechats(r):
-            out = []
-            for key in ("wechat_ids", "wechats"):
-                vals = r.get(key) or []
-                if isinstance(vals, list):
-                    for v in vals:
-                        if isinstance(v, str):
-                            vv = v.strip()
-                        elif isinstance(v, dict):
-                            vv = str(v.get("id") or v.get("wechat") or v.get("value") or "").strip()
-                        else:
-                            vv = ""
-                        if vv and vv not in out:
-                            out.append(vv)
-            for key in ("wechat", "weixin", "wx"):
-                vv = str(r.get(key) or "").strip()
-                if vv and vv not in out:
-                    out.append(vv)
-            return out[:8]
-
-        def normalize_result(r):
-            title = r.get("title") or r.get("desc") or r.get("author") or "Douyin result"
-            desc = r.get("desc") or r.get("snippet") or r.get("author_sig") or ""
-            url = r.get("url") or r.get("link") or r.get("share_url") or r.get("video_url") or ""
-            video_url = r.get("video_url") or r.get("play_url") or r.get("download_url") or ""
-            video_b64 = r.get("video_b64") or ""
-            return {
-                "title": title,
-                "desc": desc,
-                "author": r.get("author") or r.get("nickname") or r.get("douyin") or "",
-                "url": url,
-                "video_url": video_url,
-                "video_b64": video_b64,
-                "has_video": bool(video_b64 or video_url),
-                "play_count": r.get("play_count") or r.get("views") or 0,
-                "digg_count": r.get("digg_count") or r.get("likes") or 0,
-                "comment_count": r.get("comment_count") or r.get("comments") or 0,
-                "wechat_ids": extract_wechats(r),
-                "platform": "Apify",
-                "raw": r,
-            }
-
-        try:
-            from searcher import douyin_search_apify
-            raw_results = asyncio.run(
-                douyin_search_apify(brand, item, max_results=max_results * 2, mode="supplier")
-            ) or []
-
-            cleaned = []
-            seen = set()
-            for r in raw_results:
-                nr = normalize_result(r)
-                sig = (nr.get("url") or "") + "|" + (nr.get("title") or "")
-                if not sig.strip("|") or sig in seen:
-                    continue
-                seen.add(sig)
-                if looks_irrelevant(nr):
-                    continue
-                cleaned.append(nr)
-                if len(cleaned) >= max_results:
-                    break
-
-            return jsonify({
-                "ok": True,
-                "results": cleaned,
-                "count": len(cleaned),
-                "query": item,
-                "brand": brand,
-                "source": "apify"
-            }), 200
-        except Exception as exc:
-            app.logger.exception("Douyin factory search override failed: %s", exc)
-            return jsonify({"error": "Douyin search failed"}), 500
-# ===================== END DOUYIN OVERRIDE PATCH =====================
