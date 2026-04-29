@@ -1194,3 +1194,133 @@ async def simple_video_search(item_name: str, max_results: int = 6, mode: str = 
     # Sort: contacts first, then by score
     results.sort(key=lambda r: (len(r["wechat_ids"]), r["factory_score"]), reverse=True)
     return results
+# ═══════════════════════════════════════════════════════════════════
+# DOUYIN FACTORY SEARCH VIA APIFY
+# Uses Apify Douyin scraper to find videos, then extracts WeChat/contact
+# info using the existing _contacts() + _score() logic.
+# Requires env var: APIFY_TOKEN
+# ═══════════════════════════════════════════════════════════════════
+
+import requests as _req
+
+APIFY_TOKEN = os.getenv("APIFY_TOKEN", "")
+
+
+def _build_replica_query(brand: str, item: str) -> str:
+    """
+    Build a very rep-focused Chinese query that should turn up seller videos.
+    Example: 'Nike Tech Fleece 卫衣 纯原 过验 工厂 微信'
+    """
+    parts = []
+    if brand:
+        parts.append(brand.strip())
+    if item:
+        parts.append(item.strip())
+    # Strong rep signals
+    parts.extend(["纯原", "过验", "工厂", "微信"])
+    return " ".join(p for p in parts if p)
+
+
+def _contacts_from_text(text: str):
+    """Use existing contact extractor on simple text."""
+    return _contacts(text or "")
+
+
+async def douyin_search_apify(brand: str, item: str, max_results: int = 20, mode: str = "supplier"):
+    """
+    Search Douyin via Apify actor and return results shaped like normal cards.
+
+    This focuses on replica-style factory sellers:
+      query ≈ 'Brand Item 纯原 过验 工厂 微信'
+    """
+    if not APIFY_TOKEN:
+        logger.warning("APIFY_TOKEN not set; douyin_search_apify disabled")
+        return []
+
+    keyword = _build_replica_query(brand, item)
+    if not keyword:
+        return []
+
+    logger.info("Douyin Apify search keyword: %s", keyword)
+
+    # 1) Start Apify actor run
+    act_id = "automation-lab~douyin-analytics-scraper"
+    run_url = f"https://api.apify.com/v2/acts/{act_id}/runs"
+    params = {"token": APIFY_TOKEN}
+    payload = {
+        "mode": "search",
+        "keywords": [keyword],
+        "searchType": "video",
+        "maxResults": max_results,
+    }
+
+    try:
+        run_resp = _req.post(run_url, params=params, json=payload, timeout=60)
+        run_resp.raise_for_status()
+        run_data = run_resp.json()
+        dataset_id = run_data.get("defaultDatasetId")
+        if not dataset_id:
+            logger.warning("Apify Douyin run missing datasetId: %s", run_data)
+            return []
+    except Exception as e:
+        logger.warning("Apify Douyin start error: %s", e)
+        return []
+
+    # 2) Fetch dataset items
+    data_url = f"https://api.apify.com/v2/datasets/{dataset_id}/items"
+    try:
+        items = _req.get(data_url, params={"token": APIFY_TOKEN}, timeout=60).json()
+    except Exception as e:
+        logger.warning("Apify Douyin dataset fetch error: %s", e)
+        return []
+
+    if not isinstance(items, list):
+        logger.warning("Apify Douyin items not a list: %s", type(items))
+        return []
+
+    results = []
+    for it in items[:max_results]:
+        # Actor schema: videoUrl / url, desc, author, stats, etc.
+        url = it.get("videoUrl") or it.get("url") or ""
+        if not url:
+            continue
+
+        title = (it.get("title") or "").strip()
+        desc = (it.get("desc") or it.get("description") or "").strip()
+        author = (it.get("authorNickname") or it.get("author") or "").strip()
+        sig = (it.get("authorSignature") or "").strip()
+
+        text_blob = " ".join(t for t in [title, desc, author, sig] if t)
+        contacts = _contacts_from_text(text_blob)
+
+        snippet = f"{author} | {desc[:260]}" if desc else (title or author or "Douyin seller")
+        score = _score(title or snippet, snippet, url, mode)
+        if contacts["wechat_ids"]:
+            score += 20  # strong boost for videos with visible WeChat
+
+        best_wq = max((w["quality"] for w in contacts["wechat_ids"]), default=0)
+
+        results.append({
+            "title": (title or snippet)[:120],
+            "link": url,
+            "snippet": snippet[:400],
+            "wechat_ids": contacts["wechat_ids"],
+            "emails": contacts["emails"],
+            "phones": contacts["phones"],
+            "factory_score": score,
+            "wechat_quality": best_wq,
+            "has_contact": bool(contacts["wechat_ids"] or contacts["emails"] or contacts["phones"]),
+            "has_verified_wechat": best_wq >= 3,
+            "is_factory_like": score >= 3,
+            "platform": "Douyin",
+            "baidu_query": keyword,
+            "mode": mode,
+            "deep_scanned": True,
+            "page_num": 1,
+            "variation": 0,
+        })
+
+    # Prefer videos with WeChat + higher score
+    results.sort(key=lambda r: (len(r["wechat_ids"]), r["factory_score"]), reverse=True)
+    logger.info("Douyin Apify returned %d results for %s", len(results), keyword)
+    return results
