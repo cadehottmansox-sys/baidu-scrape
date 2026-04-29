@@ -938,7 +938,7 @@ async def search_platform(
             except Exception as ve:
                 logger.warning("Video search error: %s", ve)
 
-results.sort(key=lambda r: r["factory_score"]*2 + r["wechat_quality"], reverse=True)
+            results.sort(key=lambda r: r["factory_score"]*2 + r["wechat_quality"], reverse=True)
 
             if deep_scan:
                 TOTAL_TO = int(os.getenv("DEEP_SCAN_TOTAL_TIMEOUT","60"))
