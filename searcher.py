@@ -171,13 +171,48 @@ def _translate_to_zh(query):
 
 def build_inject(base_query):
     q = base_query.lower()
+
+    # Rep/luxury brands first
     is_rep = any(kw in q for kw in REP_KEYWORDS)
     if is_rep:
         q1 = f"{FACTORY_INJECT} {REP_INJECT} 微信号"
         q2 = f"yupoo 1688 weidian 厂家直销 微信 {REP_INJECT} 莆田"
-    else:
-        q1 = f"{FACTORY_INJECT} 微信号 联系方式 QQ 厂家直营"
-        q2 = f"1688 weidian 厂家直销 批发商 微信 联系方式 源头厂家"
+        return q1, q2
+
+    # Category-specific routing
+    if any(k in q for k in ["tech fleece","fleece","hoodie","sweatshirt","crewneck","jacket","coat","shirt","tee","jogger","tracksuit","shorts","pants"]):
+        q1 = f"{FACTORY_INJECT} 服装厂 卫衣 纯原 过验 微信 一手货源 -淘宝 -天猫"
+        q2 = f"1688 服装批发 卫衣厂家 工厂直营 微信 联系方式"
+        return q1, q2
+
+    if any(k in q for k in ["shoe","sneaker","dunk","jordan","yeezy","air force","samba","trainer","runner","boot"]):
+        q1 = f"{FACTORY_INJECT} 鞋厂 莆田 运动鞋 纯原 过验 微信 一手货源"
+        q2 = f"yupoo weidian 莆田鞋厂 厂家直销 微信 联系方式"
+        return q1, q2
+
+    if any(k in q for k in ["bag","handbag","wallet","purse","backpack","tote","clutch","crossbody"]):
+        q1 = f"{FACTORY_INJECT} 包包工厂 皮具厂 原单 微信 一手货源 -淘宝"
+        q2 = f"1688 包包批发 皮具工厂 厂家直营 微信 联系方式"
+        return q1, q2
+
+    if any(k in q for k in ["watch","rolex","omega","patek","cartier","hublot","richard mille","timepiece"]):
+        q1 = f"{FACTORY_INJECT} 手表厂 钟表 纯原 同机芯 微信 一手货源"
+        q2 = f"1688 手表批发 钟表厂家 工厂直营 微信 联系方式"
+        return q1, q2
+
+    if any(k in q for k in ["needoh","squishy","fidget","stress","cube","slime","pop it","toy","lego","brick"]):
+        q1 = f"{FACTORY_INJECT} 玩具厂 硅胶制品 工厂 微信 一手货源 -淘宝"
+        q2 = f"1688 玩具批发 硅胶玩具厂 工厂直销 微信 联系方式"
+        return q1, q2
+
+    if any(k in q for k in ["freight","forwarder","shipping","cargo","logistics","dhl","fedex","3pl"]):
+        q1 = "货代 美国专线 双清包税 敏感货专线 微信 DDP 一票到底"
+        q2 = "私人货代 美线 欧线 包税清关 微信 联系方式 报价"
+        return q1, q2
+
+    # Generic fallback
+    q1 = f"{FACTORY_INJECT} 微信号 联系方式 厂家直营 一手货源 -淘宝 -天猫"
+    q2 = f"1688 weidian 厂家直销 批发商 微信 联系方式 源头厂家"
     return q1, q2
 
 def build_zhihu_inject(base_query):
@@ -843,7 +878,7 @@ async def search_platform(
             await ctx.close()
             await browser.close()
 
-    _BL=["nike.com","adidas.com","jordan.com","ray-ban.com","rayban.com","louisvuitton.com","gucci.com","balenciaga.com","prada.com","chanel.com","dior.com","burberry.com","supreme.com","bape.com","newbalance.com","asics.com","puma.com","vans.com","converse.com","reebok.com","rolex.com","omega.com","cartier.com","apple.com","samsung.com","amazon.com","amazon.cn","walmart.com","target.com","bestbuy.com","ebay.com","etsy.com","aliexpress.com","dhgate.com","stockx.com","goat.com","farfetch.com","ssense.com","grailed.com","tmall.com","jd.com","pinduoduo.com","suning.com","zhihu.com","weibo.com","jianshu.com","smzdm.com","reddit.com","wikipedia.org","youtube.com","instagram.com","twitter.com","facebook.com","tiktok.com","baike.baidu.com","off---white.com","yeezy.supply","hublot.com","iwc.com","patek.com"]
+    _BL=["nike.com","adidas.com","jordan.com","ray-ban.com","rayban.com","louisvuitton.com","lv.com","gucci.com","balenciaga.com","prada.com","chanel.com","dior.com","burberry.com","newbalance.com","asics.com","puma.com","vans.com","converse.com","reebok.com","rolex.com","omega.com","cartier.com","hublot.com","apple.com","samsung.com","amazon.com","amazon.cn","walmart.com","target.com","bestbuy.com","ebay.com","aliexpress.com","dhgate.com","stockx.com","goat.com","farfetch.com","ssense.com","grailed.com","wikipedia.org","youtube.com","instagram.com","twitter.com","facebook.com","tiktok.com","baike.baidu.com"]
     results=[r for r in results if not any(b in r.get("link","").lower() for b in _BL)]
     return results
 
@@ -972,8 +1007,10 @@ def build_brand_aware_query(query, brand=""):
     cn = info["cn"] or brand or ""
     cat = info["cat"]
     inject = _CAT_INJECT.get(cat, "厂家直销 一手货源 工厂 微信")
-    parts = [p for p in [cn, query, inject] if p]
-    return " ".join(parts)
+    # Use CN brand name + Chinese category inject only (skip English query - confuses Baidu)
+    if cn:
+        return f"{cn} {inject}"
+    return f"{query} {inject}"
 
 _FF_ROUTES = {
     "USA": ["美国专线", "中美专线", "美线"],
