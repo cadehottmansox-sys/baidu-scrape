@@ -1035,3 +1035,162 @@ async def _scrape_yupoo(query, brand, page, timeout=25000, max_results=6):
     except Exception as e:
         logger.warning("Yupoo scrape error: %s", e)
     return results
+# ═══════════════════════════════════════════════════════════════════
+# SIMPLE VIDEO SEARCH — DOUYIN + XHS VIA SCRAPINGDOG + YT‑DLP
+# Standalone helper so Cade can call it without touching core search.
+# Usage example from app.py:
+#   from searcher import simple_video_search
+#   results = asyncio.run(simple_video_search("Nike Tech Fleece"))
+# ═══════════════════════════════════════════════════════════════════
+
+import subprocess
+
+_DOUYIN_DOMAINS = ("douyin.com", "v.douyin.com")
+_XHS_DOMAINS    = ("xiaohongshu.com", "xhslink.com")
+
+
+def _is_video_like_url(url: str) -> bool:
+    if not url:
+        return False
+    u = url.lower()
+    # Very loose: accept any Douyin / XHS URL, we let yt‑dlp decide later
+    return any(d in u for d in (*_DOUYIN_DOMAINS, *_XHS_DOMAINS))
+
+
+def _ytdlp_dump(url: str, timeout: int = 25):
+    """Run yt‑dlp --dump-json on a single URL. Returns parsed dict or None."""
+    try:
+        proc = subprocess.run(
+            [
+                "yt-dlp",
+                "--dump-json",
+                "--no-download",
+                "--no-warnings",
+                "--quiet",
+                "--socket-timeout", "15",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+        )
+        if proc.returncode != 0 or not proc.stdout.strip():
+            logger.warning("yt-dlp failed (%s): %s", url[:60], proc.stderr[:200])
+            return None
+        # First JSON line is enough for single-video URLs
+        line = proc.stdout.strip().split("\n")[0]
+        import json as _json
+        return _json.loads(line)
+    except Exception as e:
+        logger.warning("yt-dlp exception for %s: %s", url[:60], e)
+        return None
+
+
+def _contacts_from_meta(meta: dict):
+    """Reuse existing contact extraction on concatenated metadata fields."""
+    if not meta:
+        return {"wechat_ids": [], "emails": [], "phones": []}
+
+    parts = [
+        meta.get("title", ""),
+        meta.get("description", ""),
+        meta.get("uploader", ""),
+        meta.get("channel", ""),
+        meta.get("uploader_url", ""),
+        meta.get("artist", ""),
+        meta.get("creator", ""),
+    ]
+    tags = meta.get("tags") or []
+    if isinstance(tags, list):
+        parts.extend(tags)
+
+    combined = " ".join(str(p) for p in parts if p)
+    return _contacts(combined)
+
+
+async def simple_video_search(item_name: str, max_results: int = 6, mode: str = "supplier"):
+    """
+    Very simple helper: search Baidu for Douyin + XHS videos using Scrapingdog
+    with a loose query of the form 'replica (ITEM NAME) factory', then run
+    yt‑dlp on any matching video URLs to extract WeChat/contact info.
+
+    Returns a list of result dicts shaped like the normal search results.
+    """
+    if not item_name:
+        return []
+
+    # 1) Build loose, English‑style queries
+    base = item_name.strip()
+    q1 = f"replica {base} factory douyin 微信"
+    q2 = f"replica {base} factory xiaohongshu 微信"
+    q3 = f"{base} 微信 工厂 视频"
+
+    queries = [q1, q2, q3]
+    logger.info("simple_video_search queries: %s", queries)
+
+    # 2) Hit Scrapingdog in series (simple + safe)
+    video_urls = []
+    seen = set()
+    for q in queries:
+        refs = _do_scrapingdog(q, max_results=10) or []
+        for ref in refs:
+            url = (ref.get("url") or "").strip()
+            if url and _is_video_like_url(url) and url not in seen:
+                seen.add(url)
+                video_urls.append(url)
+        if len(video_urls) >= max_results:
+            break
+
+    logger.info("simple_video_search found %d candidate video URLs for %s", len(video_urls), base)
+
+    if not video_urls:
+        return []
+
+    # 3) Run yt‑dlp on each candidate (in parallel)
+    loop = asyncio.get_event_loop()
+    tasks = [loop.run_in_executor(None, _ytdlp_dump, u) for u in video_urls[:max_results]]
+    metas = await asyncio.gather(*tasks)
+
+    results = []
+    for url, meta in zip(video_urls, metas):
+        if not meta:
+            continue
+
+        contacts = _contacts_from_meta(meta)
+        title = meta.get("title") or meta.get("uploader") or url
+        desc  = meta.get("description") or ""
+        uploader = meta.get("uploader") or ""
+
+        snippet = f"{uploader} | {desc[:280]}" if desc else uploader
+        plat = "Douyin" if any(d in url.lower() for d in _DOUYIN_DOMAINS) else (
+            "Xiaohongshu" if any(d in url.lower() for d in _XHS_DOMAINS) else "Video"
+        )
+
+        score = _score(title, snippet, url, mode)
+        if contacts["wechat_ids"]:
+            score += 15  # boost videos that actually have WeChat IDs
+
+        best_wq = max((w["quality"] for w in contacts["wechat_ids"]), default=0)
+
+        results.append({
+            "title": title[:120],
+            "link": url,
+            "snippet": snippet[:400] or "Video result",
+            "wechat_ids": contacts["wechat_ids"],
+            "emails": contacts["emails"],
+            "phones": contacts["phones"],
+            "factory_score": score,
+            "wechat_quality": best_wq,
+            "has_contact": bool(contacts["wechat_ids"] or contacts["emails"] or contacts["phones"]),
+            "has_verified_wechat": best_wq >= 3,
+            "is_factory_like": score >= 3,
+            "platform": plat,
+            "baidu_query": f"replica {base} factory",
+            "mode": mode,
+            "deep_scanned": True,
+            "page_num": 1,
+            "variation": 0,
+        })
+
+    # Sort: contacts first, then by score
+    results.sort(key=lambda r: (len(r["wechat_ids"]), r["factory_score"]), reverse=True)
+    return results
