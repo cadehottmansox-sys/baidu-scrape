@@ -12,7 +12,7 @@ def _do_scrapingdog(query, max_results=10):
     if not api_key: return None
     try:
         r = _req.get("https://api.scrapingdog.com/baidu/search/",
-            params={"api_key": api_key, "query": query, "results": min(max_results*2,20), "country":"cn"},
+            params={"api_key": api_key, "query": query, "results": min(max_results*3,30), "country":"cn"},
             timeout=15)
         if r.status_code != 200: return None
         data = r.json()
@@ -453,11 +453,41 @@ async def _baidu_search(page, full_q, max_r, timeout, delay, seen_links, platfor
     pn = (page_num - 1) * 10
     url = f"https://www.baidu.com/s?wd={quote_plus(full_q)}&pn={pn}&rn=20"
 
-    # ── Scrapingdog first (always, no Baidu AI) ──────────────────────
-    sd_refs = await asyncio.get_event_loop().run_in_executor(None, _do_scrapingdog, full_q, max_r)
+    # ── Scrapingdog first: run 3 query variations in parallel ────────
+    def _zh_variant(q):
+        """Add Chinese supplier injection to the query."""
+        return q + " 微信 工厂 联系方式"
+
+    def _en_variant(q):
+        """Add English rep/supplier signals."""
+        return q + " wechat supplier factory replica"
+
+    def _platform_variant(q):
+        """Platform-specific injection."""
+        return q + " yupoo weidian 1688 微信号"
+
+    loop = asyncio.get_event_loop()
+    sd_tasks = [
+        loop.run_in_executor(None, _do_scrapingdog, full_q, max_r),
+        loop.run_in_executor(None, _do_scrapingdog, _zh_variant(full_q), max_r),
+        loop.run_in_executor(None, _do_scrapingdog, _en_variant(full_q), max_r),
+    ]
+    sd_all = await asyncio.gather(*sd_tasks)
+    # Merge deduplicated results across all 3 variants
+    sd_merged = []
+    sd_seen = set()
+    for batch in sd_all:
+        if not batch:
+            continue
+        for ref in batch:
+            href = ref.get("url", "")
+            if href and href not in sd_seen:
+                sd_seen.add(href)
+                sd_merged.append(ref)
+    sd_refs = sd_merged[:max_r * 3]
     if sd_refs:
-        for ref in sd_refs[:max_r]:
-            if len(results) >= max_r: break
+        for ref in sd_refs[:max_r * 3]:
+            if len(results) >= max_r * 3: break
             title   = ref.get("title", "")
             href    = ref.get("url", "")
             snippet = ref.get("snippet", "")
@@ -503,7 +533,7 @@ async def _baidu_search(page, full_q, max_r, timeout, delay, seen_links, platfor
             return results
 
         for i in range(total):
-            if len(results) >= max_r: break
+            if len(results) >= max_r * 3: break
             block = blocks.nth(i)
             title = ""
             href = ""
