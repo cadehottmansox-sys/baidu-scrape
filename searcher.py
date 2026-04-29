@@ -7,47 +7,125 @@ We save raw HTML to debug and parse properly.
 import asyncio
 
 def _do_scrapingdog(query, max_results=10):
-    import os as _os, requests as _req
-    api_key = _os.getenv("SCRAPINGDOG_API_KEY","69e6b959ba3950604d5080d7")
+    import os, requests as _req
+    api_key = os.getenv("SCRAPINGDOG_API_KEY", "")
+    if not api_key: return None
     try:
-        # Try structured Baidu search endpoint first
-        r = _req.get("https://api.scrapingdog.com/baidu",
-            params={"api_key":api_key,"query":query,"results":min(max_results*2,20),"country":"cn"},
-            timeout=20)
-        if r.status_code == 200:
-            try:
-                data = r.json()
-                organic = (data.get("organic_results") or data.get("Baidu_data") or
-                           data.get("organic_data") or data.get("results") or [])
-                if organic:
-                    out = []
-                    for item in organic[:max_results]:
-                        t = item.get("title","")
-                        l = item.get("link","") or item.get("url","")
-                        sn = item.get("snippet","") or item.get("description","")
-                        if t: out.append({"title":t,"url":l,"snippet":sn})
-                    if out: return out
-            except Exception: pass
-        # Fallback: scrape Baidu HTML directly via ScrapingDog proxy
-        baidu_url = f"https://www.baidu.com/s?wd={query}&rn=20&ie=utf-8"
-        r2 = _req.get("https://api.scrapingdog.com/scrape",
-            params={"api_key":api_key,"url":baidu_url,"dynamic":"false"},
-            timeout=25)
-        if r2.status_code == 200:
-            html = r2.text
-            import re as _re
-            titles = _re.findall(r'<h3[^>]*>.*?<a[^>]+href="([^"]+)"[^>]*>(.*?)</a>', html, _re.S)
-            snippets = _re.findall(r'class="[^"]*content-right[^"]*"[^>]*>(.*?)</div>', html, _re.S)
-            tag_re = _re.compile(r'<[^>]+>')
-            out = []
-            for i,(href,title) in enumerate(titles[:max_results]):
-                t = tag_re.sub('',title).strip()
-                sn = tag_re.sub('',snippets[i]).strip() if i < len(snippets) else ""
-                if t and href.startswith('http'): out.append({"title":t,"url":href,"snippet":sn})
-            if out: return out
-    except Exception as _e:
-        pass
-    return None
+        r = _req.get("https://api.scrapingdog.com/baidu/search/",
+            params={"api_key": api_key, "query": query, "results": min(max_results*2,20), "country":"cn"},
+            timeout=15)
+        if r.status_code != 200: return None
+        data = r.json()
+        organic = data.get("Baidu_data") or data.get("organic_data") or data.get("organic_results") or []
+        out = []
+        for item in organic[:max_results]:
+            t = item.get("title",""); l = item.get("link","") or item.get("url",""); s = item.get("snippet","") or item.get("description","")
+            if t: out.append({"title":t,"url":l,"snippet":s})
+        return out if out else None
+    except Exception as e:
+        return None
+
+import io
+import json
+import logging
+import os
+import re
+import time
+from pathlib import Path
+from urllib.parse import quote_plus, unquote
+
+from playwright.async_api import async_playwright
+
+logger = logging.getLogger(__name__)
+
+try:
+    from PIL import Image
+    from pyzbar.pyzbar import decode as qr_decode
+    QR_AVAILABLE = True
+except ImportError:
+    QR_AVAILABLE = False
+
+try:
+    import pytesseract
+    OCR_AVAILABLE = True
+except ImportError:
+    OCR_AVAILABLE = False
+
+# ── WeChat patterns ───────────────────────────────────────────────
+WECHAT_VALID   = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_]{4,19}$")
+WECHAT_GARBAGE = re.compile(
+    r"(1234567|test|demo|fake|xxxx|0000|abcd|admin|null|none|"
+    r"com|net|org|www|http|html|shop|store|tmall|taobao|jd|alibaba|"
+    r"photo|image|video|thumb|click|search|token|order|price|color|size)", re.I)
+WECHAT_PATTERNS = [
+    re.compile(r"(?:wechat\s*id|微信号?|weixin|wx\s*id)[\s:：#\-「」【】]{0,4}([a-zA-Z0-9][a-zA-Z0-9_]{4,19})", re.I),
+    re.compile(r"加[Vv微][\s:：「」【】]{0,3}([a-zA-Z0-9][a-zA-Z0-9_]{4,19})"),
+    re.compile(r"(?:vx|wx)[号:：\s]{1,4}([a-zA-Z0-9][a-zA-Z0-9_]{4,19})(?!\.)"),
+    re.compile(r"(?:加微信|微信联系|微信咨询|扫码加)[\s:：]{0,3}([a-zA-Z0-9][a-zA-Z0-9_]{4,19})"),
+    re.compile(r"[【(（]\s*(?:wechat\s*id|微信|wx)?\s*([a-zA-Z0-9][a-zA-Z0-9_]{4,19})\s*[】)）]", re.I),
+    re.compile(r"(?:recommended|推荐|contact)[\s:：]+(?:wechat|微信)?[\s:：]*([a-zA-Z0-9][a-zA-Z0-9_]{4,19})", re.I),
+    re.compile(r"微信[\s:：]+([a-zA-Z0-9][a-zA-Z0-9_]{4,19})"),
+    re.compile(r"(?:微信号|wx号|vx号)[：:\s]{0,3}([a-z]{2,4}\d{3,6})", re.I),
+    # Extra patterns — catch more formats
+    re.compile(r"\bV[\s:：]{0,3}([a-zA-Z0-9][a-zA-Z0-9_]{4,19})\b(?!\.)", re.I),
+    re.compile(r"(?:同款|可以加|联系我|找我|加我)微信[\s:：]{0,3}([a-zA-Z0-9][a-zA-Z0-9_]{4,19})"),
+    re.compile(r"微信[号]?[::：\s]+([a-zA-Z][a-zA-Z0-9_]{4,19})"),
+    re.compile(r"\bwx([a-zA-Z0-9]{5,18})\b", re.I),
+    re.compile(r"(?:联系方式|联系)[::：\s]+([a-zA-Z0-9][a-zA-Z0-9_]{4,19})", re.I),
+    re.compile(r"(?:微|wx|vx|wechat).{0,15}?\b([a-zA-Z][a-zA-Z0-9_]{5,18})\b", re.I),
+]
+EMAIL_RE = re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b")
+PHONE_RE = re.compile(r"(?:\+?86[-\s]?)?(1[3-9]\d{9}|\d{3,4}[-\s]?\d{7,8})")
+
+SUPPLIER_TERMS = ["factory","manufacturer","oem","odm","supplier","wholesale","工厂","厂家","制造商","供应商","批发","定制","一件代发","源头","直销","货源","复刻","高仿","1:1","余单","原单","rep","replica","莆田","代工"]
+CONTACT_TERMS  = ["wechat","weixin","vx","微信","whatsapp","phone","tel","email","邮箱","加v","加微","联系方式","微信号"]
+FF_TERMS       = ["freight","forwarder","logistics","shipping","customs","货代","物流","运输","清关","报关","fob","cif","dhl","fedex"]
+
+FF_REP_INJECT  = (
+    "私人货代 私人代理 private agent 货代 微信 转运 "
+    "敏感货 仿牌 特货 莆田 私包 隐藏包装 包税 包清关 "
+    "不查验 专线 特货专线 美国专线 欧洲专线 "
+    "莆田发货 私人转运 低调包装 联系方式"
+)
+FF_SAFE_INJECT = "货代 物流 微信 转运 清关 国际快递 包税 联系方式 跨境"
+
+PASSING_TERMS  = ["passing","nfc","芯片","过货","验货","防伪","莆田","1:1","高仿","复刻","原单","外贸","出口","同厂","纯原","过机场","专柜验","真标"]
+
+REP_INJECT = "复刻 高仿 1:1 莆田 代工 原单 余单 工厂货 rep replica fashionreps"
+FACTORY_INJECT = "厂家直销 源头工厂 一手货源 微信号 联系方式 批发 代理 工厂"
+ALL_Q2_INJECT_BASE = "yupoo 1688 微店 weidian 抖音 厂家直销 微信 源头工厂 联系方式"
+REP_KEYWORDS = {
+    "jordan","nike","aj","yeezy","dunk","air force","travis","off white","sacai",
+    "new balance","nb","asics","samba","adidas","puma","reebok","vans","converse",
+    "supreme","bape","palace","kith","fear of god","fog","essentials",
+    "stone island","cp company","gallery dept","rhude","amiri","chrome hearts",
+    "louis vuitton","lv","gucci","prada","dior","balenciaga","burberry","versace",
+    "moncler","canada goose","rep","replica","1:1","passing","nfc","putian","莆田",
+    "sneaker","shoe","kicks","hoodie","tee","jacket","coat","down","puffer",
+}
+
+EN_ZH_MAP = {
+    "soccer cleats":"足球鞋","soccer shoes":"足球鞋","football boots":"足球鞋",
+    "slides":"拖鞋","sandals":"凉鞋","loafers":"乐福鞋","mules":"穆勒鞋",
+    "belt":"皮带","belts":"皮带","wallet":"钱包","bag":"包包","bags":"包包",
+    "hoodie":"卫衣","sweatshirt":"卫衣","tee":"T恤","t-shirt":"T恤","shirt":"衬衫",
+    "pants":"裤子","jeans":"牛仔裤","shorts":"短裤","jacket":"外套","coat":"大衣",
+    "puffer":"羽绒服","down jacket":"羽绒服","vest":"背心",
+    "socks":"袜子","hat":"帽子","cap":"帽子","beanie":"毛线帽",
+    "sunglasses":"墨镜","glasses":"眼镜","watch":"手表","bracelet":"手链",
+    "necklace":"项链","ring":"戒指","earrings":"耳环","jewelry":"饰品",
+    "keychain":"钥匙扣","card holder":"卡夹","phone case":"手机壳",
+    "backpack":"双肩包","tote":"托特包","clutch":"手拿包","crossbody":"斜挎包",
+    "sneakers":"运动鞋","shoes":"鞋子","boots":"靴子","sandals":"凉鞋",
+    "hoodie":"卫衣","t-shirt":"T恤","jacket":"夹克","coat":"大衣",
+    "pants":"裤子","leggings":"打底裤","shorts":"短裤","dress":"连衣裙",
+    "bag":"包包","backpack":"背包","wallet":"钱包","belt":"皮带",
+    "watch":"手表","sunglasses":"太阳镜","hat":"帽子","cap":"帽子",
+    "yoga pants":"瑜伽裤","yoga leggings":"瑜伽裤","sports bra":"运动内衣",
+    "tracksuit":"运动套装","sweatpants":"运动裤","polo":"polo衫",
+    "down jacket":"羽绒服","puffer":"羽绒服","windbreaker":"风衣",
+    "tech fleece":"科技抓绒","air max":"气垫","air force":"空军一号",
+}
 
 def _translate_to_zh(query):
     q = query
