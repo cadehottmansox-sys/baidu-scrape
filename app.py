@@ -1014,3 +1014,7 @@ def fetch_social_review_wechats(search_term: str, platform_sites: list, api_key:
         except Exception:
             continue
     return social_results
+# ========== FORCE USE SCRAPINGDOG (SKIP BAIDU AI) ==========
+import os
+os.environ["BAIDU_API_KEY"] = ""   # disable Baidu AI Search
+# ========== END ==========
