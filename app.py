@@ -1,16 +1,3 @@
-import asyncio
-import json
-import logging
-import os
-import time
-from functools import wraps
-from pathlib import Path
-from typing import Any
-
-from dotenv import load_dotenv
-from flask import Flask, jsonify, redirect, render_template, request, make_response, session
-from playwright.async_api import Error as PlaywrightError
-
 import auth
 from searcher import search_platform, scan_single
 
@@ -98,6 +85,28 @@ def create_app() -> Flask:
                 return jsonify({"error": "Not authorized"}), 403
             return "Not authorized", 403
         return decorated
+
+    @app.post("/api/douyin-factory-search")
+    @require_auth
+    def douyin_factory_search():
+        user = get_user()
+        if not user:
+            return jsonify({"error": "Unauthorized"}), 401
+
+        data = request.get_json(silent=True) or {}
+        brand = (data.get("brand") or "").strip()
+        item = (data.get("item") or data.get("query") or "").strip()
+        max_results = max(3, min(int(data.get("max_results", 12)), 30))
+
+        try:
+            from searcher import douyin_search_apify
+            results = asyncio.run(
+                douyin_search_apify(brand, item, max_results=max_results, mode="supplier")
+            )
+            return jsonify({"ok": True, "results": results, "count": len(results)}), 200
+        except Exception as exc:
+            app.logger.exception("Douyin factory search failed: %s", exc)
+            return jsonify({"error": "Douyin search failed"}), 500
 
     @app.get("/")
     def root():
