@@ -383,6 +383,164 @@ def _score(title, snippet, link, mode, brand="", product=""):
     total = s + contact_bonus + factory_bonus - retail_penalty - generic_penalty + location_bonus + rep_platform_bonus
     return int(total)
 
+# ═══════════════════════════════════════════════════════════════════
+# yt-dlp EXTRACTOR — Douyin & Xiaohongshu video WeChat mining
+# ═══════════════════════════════════════════════════════════════════
+
+DOUYIN_RE  = re.compile(r'(?:douyin\.com/video/|douyin\.com/@[^/]+/video/|v\.douyin\.com/)([0-9A-Za-z]+)', re.I)
+XHS_RE     = re.compile(r'xiaohongshu\.com/(?:explore|discovery/item)/([a-f0-9]{24})', re.I)
+XHSALT_RE  = re.compile(r'xhslink\.com/|xiaohongshu\.com/', re.I)
+
+def _is_video_url(url):
+    if not url: return False
+    u = url.lower()
+    return any(d in u for d in ['douyin.com', 'v.douyin.com', 'xiaohongshu.com/explore',
+                                  'xiaohongshu.com/discovery', 'xhslink.com'])
+
+def _ytdlp_extract(url, timeout=25):
+    """Run yt-dlp --dump-json on a video URL, return parsed metadata dict or None."""
+    import subprocess, json as _json
+    try:
+        result = subprocess.run(
+            [
+                'yt-dlp',
+                '--dump-json',
+                '--no-download',
+                '--no-warnings',
+                '--quiet',
+                '--socket-timeout', '15',
+                '--extractor-args', 'douyin:api_hostname=www.iesdouyin.com',
+                url
+            ],
+            capture_output=True, text=True, timeout=timeout
+        )
+        if result.returncode != 0 or not result.stdout.strip():
+            logger.warning("yt-dlp failed for %s: %s", url[:60], result.stderr[:200])
+            return None
+        # yt-dlp may output multiple JSON lines for playlists; take the first
+        first_line = result.stdout.strip().split('\n')[0]
+        return _json.loads(first_line)
+    except Exception as e:
+        logger.warning("yt-dlp exception for %s: %s", url[:60], e)
+        return None
+
+def _extract_wechat_from_video_meta(meta):
+    """Extract WeChat IDs from yt-dlp metadata (description, title, uploader bio)."""
+    if not meta:
+        return {"wechat_ids": [], "emails": [], "phones": []}
+
+    parts = [
+        meta.get("title", ""),
+        meta.get("description", ""),
+        meta.get("uploader", ""),
+        meta.get("channel", ""),
+        meta.get("uploader_url", ""),
+        # Xiaohongshu stores bio here
+        meta.get("artist", ""),
+        meta.get("creator", ""),
+    ]
+    # Also dig into thumbnail URLs and tags for any embedded contact
+    tags = meta.get("tags") or []
+    if isinstance(tags, list):
+        parts.extend(tags)
+
+    combined = " ".join(str(p) for p in parts if p)
+    return _contacts(combined)
+
+async def _scan_video_url(url, mode="supplier"):
+    """Run yt-dlp on a single video URL, return a result dict or None."""
+    loop = asyncio.get_event_loop()
+    meta = await loop.run_in_executor(None, _ytdlp_extract, url)
+    if not meta:
+        return None
+
+    c = _extract_wechat_from_video_meta(meta)
+    title    = meta.get("title") or meta.get("uploader") or url
+    desc     = meta.get("description") or ""
+    uploader = meta.get("uploader") or ""
+    snippet  = f"{uploader} | {desc[:300]}" if desc else uploader
+
+    # Determine platform label
+    if "douyin" in url.lower():
+        plat = "Douyin"
+    elif "xiaohongshu" in url.lower() or "xhslink" in url.lower():
+        plat = "Xiaohongshu"
+    else:
+        plat = "Video"
+
+    sc = _score(title, snippet, url, mode)
+    # Boost: video descriptions with WeChat = very likely real supplier
+    if c["wechat_ids"]:
+        sc += 15
+    best_wq = max((w["quality"] for w in c["wechat_ids"]), default=0)
+
+    return {
+        "title": title[:120],
+        "link": url,
+        "snippet": snippet[:400],
+        "wechat_ids": c["wechat_ids"],
+        "emails": c["emails"],
+        "phones": c["phones"],
+        "factory_score": sc,
+        "wechat_quality": best_wq,
+        "has_contact": bool(c["wechat_ids"] or c["emails"] or c["phones"]),
+        "has_verified_wechat": best_wq >= 3,
+        "is_factory_like": sc >= 3,
+        "platform": plat,
+        "baidu_query": url,
+        "mode": mode,
+        "deep_scanned": True,  # video extraction counts as deep scan
+        "page_num": 1,
+        "variation": 0,
+    }
+
+async def search_videos(query, brand="", mode="supplier", max_r=8):
+    """
+    Search Scrapingdog for Douyin/XHS links matching the query,
+    then run yt-dlp on each to extract WeChats from video descriptions/bios.
+    Returns list of result dicts.
+    """
+    base = f"{brand} {query}".strip() if brand else query
+    zh   = _translate_to_zh(base)
+
+    # Build video-specific search queries
+    queries = [
+        f"{zh} 微信 douyin.com",
+        f"{base} wechat douyin supplier factory",
+        f"{zh} 工厂 xiaohongshu.com 微信",
+    ]
+
+    loop = asyncio.get_event_loop()
+    # Fire all Scrapingdog queries in parallel
+    tasks = [loop.run_in_executor(None, _do_scrapingdog, q, max_r * 2) for q in queries]
+    batches = await asyncio.gather(*tasks)
+
+    # Collect unique video URLs
+    seen_video_urls = set()
+    video_urls = []
+    for batch in batches:
+        if not batch:
+            continue
+        for ref in batch:
+            url = ref.get("url", "")
+            if url and _is_video_url(url) and url not in seen_video_urls:
+                seen_video_urls.add(url)
+                video_urls.append(url)
+
+    logger.info("Video search found %d unique video URLs for query: %s", len(video_urls), base[:60])
+
+    if not video_urls:
+        return []
+
+    # Extract WeChat from each video in parallel (cap at max_r videos to avoid timeout)
+    scan_tasks = [_scan_video_url(u, mode) for u in video_urls[:max_r]]
+    raw_results = await asyncio.gather(*scan_tasks)
+
+    results = [r for r in raw_results if r is not None]
+    # Sort: results with WeChat IDs first, then by score
+    results.sort(key=lambda r: (len(r["wechat_ids"]), r["factory_score"]), reverse=True)
+    return results
+
 def _find_chromium():
     cache=Path.home()/"Library"/"Caches"/"ms-playwright"
     for pat in ["chromium-*/chrome-mac-arm64/Chromium.app/Contents/MacOS/Chromium",
@@ -766,7 +924,21 @@ async def search_platform(
                     full_q = f"{base} {inject}"
                 results = await _baidu_search(page, full_q, max_r, timeout, delay, seen_links, "Baidu", mode, page_num)
 
-            results.sort(key=lambda r: r["factory_score"]*2 + r["wechat_quality"], reverse=True)
+            
+            # ── yt-dlp video extraction (Douyin / Xiaohongshu) ─────────────
+            try:
+                video_results = await search_videos(query, brand=brand, mode=mode, max_r=5)
+                if video_results:
+                    seen_video = {r["link"] for r in results}
+                    for vr in video_results:
+                        if vr["link"] not in seen_video:
+                            results.append(vr)
+                            seen_video.add(vr["link"])
+                    logger.info("Video extraction added %d results", len(video_results))
+            except Exception as ve:
+                logger.warning("Video search error: %s", ve)
+
+results.sort(key=lambda r: r["factory_score"]*2 + r["wechat_quality"], reverse=True)
 
             if deep_scan:
                 TOTAL_TO = int(os.getenv("DEEP_SCAN_TOTAL_TIMEOUT","60"))
