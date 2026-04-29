@@ -1195,49 +1195,47 @@ async def simple_video_search(item_name: str, max_results: int = 6, mode: str = 
     results.sort(key=lambda r: (len(r["wechat_ids"]), r["factory_score"]), reverse=True)
     return results
 # ═══════════════════════════════════════════════════════════════════
-# DOUYIN FACTORY SEARCH VIA APIFY
-# Uses Apify Douyin scraper to find videos, then extracts WeChat/contact
-# info using the existing _contacts() + _score() logic.
+# DOUYIN FACTORY SEARCH VIA APIFY (APPEND-ONLY BLOCK)
 # Requires env var: APIFY_TOKEN
 # ═══════════════════════════════════════════════════════════════════
 
-import requests as _req
+import requests as _req  # safe: _req name unlikely to collide
 
 APIFY_TOKEN = os.getenv("APIFY_TOKEN", "")
 
 
-def _build_replica_query(brand: str, item: str) -> str:
+def _sf_build_replica_query(brand: str, item: str) -> str:
     """
-    Build a very rep-focused Chinese query that should turn up seller videos.
-    Example: 'Nike Tech Fleece 卫衣 纯原 过验 工厂 微信'
+    Build a rep-focused Chinese query likely to hit factory sellers.
+    Example: 'Nike Jordan 4 纯原 过验 工厂 微信'
     """
     parts = []
     if brand:
         parts.append(brand.strip())
     if item:
         parts.append(item.strip())
-    # Strong rep signals
     parts.extend(["纯原", "过验", "工厂", "微信"])
     return " ".join(p for p in parts if p)
 
 
-def _contacts_from_text(text: str):
-    """Use existing contact extractor on simple text."""
+def _sf_contacts_from_text(text: str):
+    """Use existing contact extractor on text blob."""
     return _contacts(text or "")
 
 
 async def douyin_search_apify(brand: str, item: str, max_results: int = 20, mode: str = "supplier"):
     """
-    Search Douyin via Apify actor and return results shaped like normal cards.
+    Search Douyin via Apify Douyin scraper and return results shaped like
+    the normal SourceFinder cards.
 
-    This focuses on replica-style factory sellers:
-      query ≈ 'Brand Item 纯原 过验 工厂 微信'
+    This is *append-only* — nothing else in searcher.py needs to call it
+    yet. You can hit it from app.py or the Douyin tab.
     """
     if not APIFY_TOKEN:
         logger.warning("APIFY_TOKEN not set; douyin_search_apify disabled")
         return []
 
-    keyword = _build_replica_query(brand, item)
+    keyword = _sf_build_replica_query(brand, item)
     if not keyword:
         return []
 
@@ -1280,8 +1278,7 @@ async def douyin_search_apify(brand: str, item: str, max_results: int = 20, mode
 
     results = []
     for it in items[:max_results]:
-        # Actor schema: videoUrl / url, desc, author, stats, etc.
-        url = it.get("videoUrl") or it.get("url") or ""
+        url = (it.get("videoUrl") or it.get("url") or "").strip()
         if not url:
             continue
 
@@ -1291,12 +1288,12 @@ async def douyin_search_apify(brand: str, item: str, max_results: int = 20, mode
         sig = (it.get("authorSignature") or "").strip()
 
         text_blob = " ".join(t for t in [title, desc, author, sig] if t)
-        contacts = _contacts_from_text(text_blob)
+        contacts = _sf_contacts_from_text(text_blob)
 
         snippet = f"{author} | {desc[:260]}" if desc else (title or author or "Douyin seller")
         score = _score(title or snippet, snippet, url, mode)
         if contacts["wechat_ids"]:
-            score += 20  # strong boost for videos with visible WeChat
+            score += 20  # boost videos that actually expose WeChat
 
         best_wq = max((w["quality"] for w in contacts["wechat_ids"]), default=0)
 
@@ -1320,7 +1317,6 @@ async def douyin_search_apify(brand: str, item: str, max_results: int = 20, mode
             "variation": 0,
         })
 
-    # Prefer videos with WeChat + higher score
     results.sort(key=lambda r: (len(r["wechat_ids"]), r["factory_score"]), reverse=True)
     logger.info("Douyin Apify returned %d results for %s", len(results), keyword)
     return results
