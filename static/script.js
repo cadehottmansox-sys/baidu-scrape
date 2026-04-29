@@ -3973,3 +3973,218 @@ function showSkeleton(el,n){
   });
 })();
 // ===================== END DOUYIN APIFY PATCH =====================
+// ======================= DOUYIN UI OVERRIDE PATCH =======================
+// Paste this at the END of script.js
+
+(function(){
+  function escapeHtml(str){
+    return String(str || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function getEls(){
+    return {
+      queryInput: document.getElementById('douyinInput') || document.getElementById('trendInput') || document.getElementById('queryInput'),
+      brandInput: document.getElementById('brandInput') || document.getElementById('brand'),
+      resultEl: document.getElementById('douyinResult') || document.getElementById('trendResult') || document.getElementById('researchResults') || document.getElementById('results'),
+      button: document.getElementById('douyinSearchBtn') || document.querySelector('[data-action="douyin-search"]')
+    };
+  }
+
+  function copyText(text, btn){
+    navigator.clipboard.writeText(text).then(function(){
+      if (!btn) return;
+      const old = btn.textContent;
+      btn.textContent = 'Copied!';
+      setTimeout(function(){ btn.textContent = old; }, 1200);
+    }).catch(function(){});
+  }
+
+  function downloadBase64Video(base64Data, filename) {
+    try {
+      const clean = String(base64Data || '').split(',').pop();
+      const byteChars = atob(clean);
+      const byteNumbers = new Array(byteChars.length);
+      for (let i = 0; i < byteChars.length; i++) byteNumbers[i] = byteChars.charCodeAt(i);
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: 'video/mp4' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename || 'douyin-video.mp4';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1500);
+    } catch (err) {
+      console.error(err);
+      if (typeof showToast === 'function') showToast('Video download failed');
+    }
+  }
+
+  async function downloadRemoteVideo(url, filename) {
+    try {
+      const res = await fetch(url, { credentials: 'omit' });
+      if (!res.ok) throw new Error('Could not fetch video');
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = filename || 'douyin-video.mp4';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 1500);
+    } catch (err) {
+      window.open(url, '_blank', 'noopener,noreferrer');
+      if (typeof showToast === 'function') showToast('Opened video in new tab — direct download was blocked');
+    }
+  }
+
+  function normalizeWechatList(item){
+    if(Array.isArray(item.wechat_ids)) {
+      return item.wechat_ids.map(function(w){
+        return typeof w === 'string' ? w : (w && (w.id || w.wechat || w.value)) || '';
+      }).filter(Boolean);
+    }
+    if(Array.isArray(item.wechats)) return item.wechats.filter(Boolean);
+    if(item.wechat) return [item.wechat];
+    return [];
+  }
+
+  function buildCard(item, idx){
+    const wrap = document.createElement('div');
+    const title = item.title || item.author || 'Douyin supplier result';
+    const url = item.url || item.link || item.video_url || '#';
+    const desc = item.desc || item.snippet || item.author_sig || '';
+    const author = item.author || item.nickname || item.douyin || '';
+    const wechats = normalizeWechatList(item);
+    const hasBase64 = !!item.video_b64;
+    const hasVideoUrl = !!item.video_url;
+
+    wrap.style.cssText = 'background:rgba(255,255,255,.04);border:1px solid rgba(34,211,238,.12);border-radius:16px;padding:16px;margin-bottom:12px';
+    wrap.innerHTML = `
+      <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:10px;">
+        <div style="flex:1;min-width:0;">
+          <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px;">
+            <span style="display:inline-block;background:rgba(34,211,238,.1);border:1px solid rgba(34,211,238,.3);color:#22d3ee;font-size:10px;font-weight:800;padding:4px 8px;border-radius:999px;letter-spacing:.1em;">DOUYIN APIFY</span>
+            ${author ? `<span style="color:#94a3b8;font-size:12px;">@${escapeHtml(author)}</span>` : ''}
+          </div>
+          <a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" style="display:block;color:#e2e8f0;font-size:14px;font-weight:700;text-decoration:none;margin-bottom:6px;">${escapeHtml(title)}</a>
+          ${desc ? `<div style="color:#94a3b8;font-size:12px;line-height:1.55;margin-bottom:10px;">${escapeHtml(desc).slice(0,260)}</div>` : ''}
+        </div>
+        <a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#cbd5e1;padding:8px 10px;border-radius:10px;font-size:12px;text-decoration:none;white-space:nowrap;">Open</a>
+      </div>
+
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
+        <span style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);color:#cbd5e1;padding:5px 10px;border-radius:999px;font-size:11px;">Source: Apify</span>
+        ${item.play_count ? `<span style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);color:#cbd5e1;padding:5px 10px;border-radius:999px;font-size:11px;">Views: ${Number(item.play_count).toLocaleString()}</span>` : ''}
+        ${item.digg_count ? `<span style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);color:#cbd5e1;padding:5px 10px;border-radius:999px;font-size:11px;">Likes: ${Number(item.digg_count).toLocaleString()}</span>` : ''}
+      </div>
+
+      <div style="display:flex;flex-wrap:wrap;gap:8px;">
+        ${wechats.map(function(wx){ return `<button type="button" data-copy-wx="${escapeHtml(wx)}" style="background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.3);color:#4ade80;padding:6px 12px;border-radius:999px;font-size:12px;font-weight:700;cursor:pointer;">wx: ${escapeHtml(wx)}</button>`; }).join('')}
+        ${hasBase64 ? `<button type="button" data-video-b64="${escapeHtml(item.video_b64)}" data-filename="douyin-${idx+1}.mp4" style="background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.35);color:#93c5fd;padding:6px 12px;border-radius:999px;font-size:12px;font-weight:700;cursor:pointer;">Download video</button>` : ''}
+        ${!hasBase64 && hasVideoUrl ? `<button type="button" data-video-url="${escapeHtml(item.video_url)}" data-filename="douyin-${idx+1}.mp4" style="background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.35);color:#93c5fd;padding:6px 12px;border-radius:999px;font-size:12px;font-weight:700;cursor:pointer;">Download video</button>` : ''}
+        ${!wechats.length && !hasBase64 && !hasVideoUrl ? `<span style="color:#64748b;font-size:12px;">No contact or video found.</span>` : ''}
+      </div>
+    `;
+
+    wrap.querySelectorAll('[data-copy-wx]').forEach(function(btn){
+      btn.addEventListener('click', function(){ copyText(btn.getAttribute('data-copy-wx'), btn); });
+    });
+    wrap.querySelectorAll('[data-video-b64]').forEach(function(btn){
+      btn.addEventListener('click', function(){ downloadBase64Video(btn.getAttribute('data-video-b64'), btn.getAttribute('data-filename')); });
+    });
+    wrap.querySelectorAll('[data-video-url]').forEach(function(btn){
+      btn.addEventListener('click', function(){ downloadRemoteVideo(btn.getAttribute('data-video-url'), btn.getAttribute('data-filename')); });
+    });
+
+    return wrap;
+  }
+
+  function renderResults(payload, resultEl){
+    if(!resultEl) return;
+    const results = Array.isArray(payload && payload.results) ? payload.results : [];
+    resultEl.innerHTML = '';
+
+    const head = document.createElement('div');
+    head.style.cssText = 'margin-bottom:14px;padding:12px 14px;border:1px solid rgba(34,211,238,.14);background:rgba(34,211,238,.05);border-radius:14px;color:#cbd5e1;font-size:13px;';
+    head.innerHTML = '<strong style="color:#22d3ee;">Douyin via Apify</strong> · ' + results.length + ' result' + (results.length === 1 ? '' : 's');
+    resultEl.appendChild(head);
+
+    if(!results.length){
+      const empty = document.createElement('div');
+      empty.style.cssText = 'padding:16px;border-radius:14px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);color:#94a3b8;font-size:13px;line-height:1.6;';
+      empty.textContent = 'No supplier-style Douyin results found. Try a more specific product phrase.';
+      resultEl.appendChild(empty);
+      return;
+    }
+
+    results.forEach(function(item, idx){
+      resultEl.appendChild(buildCard(item, idx));
+    });
+  }
+
+  async function searchDouyinApifyOverride(){
+    const els = getEls();
+    const q = els.queryInput && els.queryInput.value ? els.queryInput.value.trim() : '';
+    const brand = els.brandInput && els.brandInput.value ? els.brandInput.value.trim() : '';
+    const resultEl = els.resultEl;
+    const btn = els.button;
+
+    if(!q){
+      if(typeof showToast === 'function') showToast('Enter a product or supplier keyword first');
+      return;
+    }
+
+    if(resultEl){
+      resultEl.innerHTML = '<div style="padding:14px;border-radius:14px;border:1px solid rgba(34,211,238,.14);background:rgba(34,211,238,.05);color:#cbd5e1;font-size:13px;">Searching Douyin suppliers with Apify…</div>';
+    }
+
+    if(btn){
+      btn.disabled = true;
+      btn.dataset.prevText = btn.textContent;
+      btn.textContent = 'Searching...';
+    }
+
+    try {
+      const res = await fetch('/api/douyin-factory-search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ query: q, item: q, brand: brand, max_results: 12 })
+      });
+      const data = await res.json().catch(function(){ return {}; });
+      if(!res.ok) throw new Error(data.error || 'Douyin search failed');
+      renderResults(data, resultEl);
+    } catch (err) {
+      if(resultEl){
+        resultEl.innerHTML = '<div style="padding:14px;border-radius:14px;border:1px solid rgba(248,113,113,.18);background:rgba(127,29,29,.18);color:#fecaca;font-size:13px;">' + escapeHtml(err.message || 'Search failed') + '</div>';
+      }
+      if(typeof showToast === 'function') showToast(err.message || 'Douyin search failed');
+    } finally {
+      if(btn){
+        btn.disabled = false;
+        btn.textContent = btn.dataset.prevText || 'Search Douyin';
+      }
+    }
+  }
+
+  window.searchDouyinApify = searchDouyinApifyOverride;
+
+  document.addEventListener('DOMContentLoaded', function(){
+    const els = getEls();
+    if(els.button){
+      els.button.addEventListener('click', function(e){
+        e.preventDefault();
+        searchDouyinApifyOverride();
+      });
+    }
+  });
+})();
+// ===================== END DOUYIN UI OVERRIDE PATCH =====================
