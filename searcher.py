@@ -7,40 +7,118 @@ We save raw HTML to debug and parse properly.
 import asyncio
 
 def _do_scrapingdog(query, max_results=10):
-    import os as _os, requests as _req
-    api_key = _os.getenv("SCRAPINGDOG_API_KEY","69e6b959ba3950604d5080d7")
+    import os, requests as _req
+    api_key = os.getenv("SCRAPINGDOG_API_KEY", "")
+    if not api_key: return None
     try:
-        r = _req.get("https://api.scrapingdog.com/baidu",
-            params={"api_key":api_key,"query":query,"results":min(max_results*2,20),"country":"cn"},
-            timeout=20)
-        if r.status_code == 200:
-            try:
-                data = r.json()
-                organic = (data.get("organic_results") or data.get("Baidu_data") or
-                           data.get("organic_data") or data.get("results") or [])
-                if organic:
-                    out=[]
-                    for item in organic[:max_results]:
-                        t=item.get("title",""); l=item.get("link","") or item.get("url",""); sn=item.get("snippet","") or item.get("description","")
-                        if t: out.append({"title":t,"url":l,"snippet":sn})
-                    if out: return out
-            except Exception: pass
-        # Fallback: proxy scrape Baidu HTML
-        baidu_url="https://www.baidu.com/s?wd="+_req.utils.quote(query)+"&rn=20&ie=utf-8"
-        r2=_req.get("https://api.scrapingdog.com/scrape",
-            params={"api_key":api_key,"url":baidu_url,"dynamic":"false"},timeout=25)
-        if r2.status_code==200 and r2.text and "<html" in r2.text.lower():
-            import re as _re
-            tag_re=_re.compile(r"<[^>]+>")
-            titles=_re.findall(r'<h3[^>]*>.*?href="([^"]+)"[^>]*>(.*?)</h3>',r2.text,_re.S)
-            out=[]
-            for href,title in titles[:max_results]:
-                t=tag_re.sub("",title).strip()
-                if t and href.startswith("http"): out.append({"title":t,"url":href,"snippet":""})
-            if out: return out
-    except Exception: pass
-    return None
+        r = _req.get("https://api.scrapingdog.com/baidu/search/",
+            params={"api_key": api_key, "query": query, "results": min(max_results*2,20), "country":"cn"},
+            timeout=15)
+        if r.status_code != 200: return None
+        data = r.json()
+        organic = data.get("Baidu_data") or data.get("organic_data") or data.get("organic_results") or []
+        out = []
+        for item in organic[:max_results]:
+            t = item.get("title",""); l = item.get("link","") or item.get("url",""); s = item.get("snippet","") or item.get("description","")
+            if t: out.append({"title":t,"url":l,"snippet":s})
+        return out if out else None
+    except Exception as e:
+        return None
 
+import io
+import json
+import logging
+import os
+import re
+import time
+from pathlib import Path
+from urllib.parse import quote_plus, unquote
+
+from playwright.async_api import async_playwright
+
+logger = logging.getLogger(__name__)
+
+try:
+    from PIL import Image
+    from pyzbar.pyzbar import decode as qr_decode
+    QR_AVAILABLE = True
+except ImportError:
+    QR_AVAILABLE = False
+
+try:
+    import pytesseract
+    OCR_AVAILABLE = True
+except ImportError:
+    OCR_AVAILABLE = False
+
+# ── WeChat patterns ───────────────────────────────────────────────
+WECHAT_VALID   = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_]{4,19}$")
+WECHAT_GARBAGE = re.compile(
+    r"(1234567|test|demo|fake|xxxx|0000|abcd|admin|null|none|"
+    r"com|net|org|www|http|html|shop|store|tmall|taobao|jd|alibaba|"
+    r"photo|image|video|thumb|click|search|token|order|price|color|size)", re.I)
+WECHAT_PATTERNS = [
+    re.compile(r"(?:wechat\s*id|微信号?|weixin|wx\s*id)[\s:：#\-「」【】]{0,4}([a-zA-Z0-9][a-zA-Z0-9_]{4,19})", re.I),
+    re.compile(r"加[Vv微][\s:：「」【】]{0,3}([a-zA-Z0-9][a-zA-Z0-9_]{4,19})"),
+    re.compile(r"(?:vx|wx)[号:：\s]{1,4}([a-zA-Z0-9][a-zA-Z0-9_]{4,19})(?!\.)"),
+    re.compile(r"(?:加微信|微信联系|微信咨询|扫码加)[\s:：]{0,3}([a-zA-Z0-9][a-zA-Z0-9_]{4,19})"),
+    re.compile(r"[【(（]\s*(?:wechat\s*id|微信|wx)?\s*([a-zA-Z0-9][a-zA-Z0-9_]{4,19})\s*[】)）]", re.I),
+    re.compile(r"(?:recommended|推荐|contact)[\s:：]+(?:wechat|微信)?[\s:：]*([a-zA-Z0-9][a-zA-Z0-9_]{4,19})", re.I),
+    re.compile(r"微信[\s:：]+([a-zA-Z0-9][a-zA-Z0-9_]{4,19})"),
+    re.compile(r"(?:微信号|wx号|vx号)[：:\s]{0,3}([a-z]{2,4}\d{3,6})", re.I),
+]
+EMAIL_RE = re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b")
+PHONE_RE = re.compile(r"(?:\+?86[-\s]?)?(1[3-9]\d{9}|\d{3,4}[-\s]?\d{7,8})")
+
+SUPPLIER_TERMS = ["factory","manufacturer","oem","odm","supplier","wholesale","工厂","厂家","制造商","供应商","批发","定制","一件代发","源头","直销","货源","复刻","高仿","1:1","余单","原单","rep","replica","莆田","代工"]
+CONTACT_TERMS  = ["wechat","weixin","vx","微信","whatsapp","phone","tel","email","邮箱","加v","加微","联系方式","微信号"]
+FF_TERMS       = ["freight","forwarder","logistics","shipping","customs","货代","物流","运输","清关","报关","fob","cif","dhl","fedex"]
+
+FF_REP_INJECT  = (
+    "私人货代 私人代理 private agent 货代 微信 转运 "
+    "敏感货 仿牌 特货 莆田 私包 隐藏包装 包税 包清关 "
+    "不查验 专线 特货专线 美国专线 欧洲专线 "
+    "莆田发货 私人转运 低调包装 联系方式"
+)
+FF_SAFE_INJECT = "货代 物流 微信 转运 清关 国际快递 包税 联系方式 跨境"
+
+PASSING_TERMS  = ["passing","nfc","芯片","过货","验货","防伪","莆田","1:1","高仿","复刻","原单","外贸","出口","同厂","纯原","过机场","专柜验","真标"]
+
+REP_INJECT = "复刻 高仿 1:1 莆田 代工 原单 余单 工厂货 rep replica fashionreps"
+FACTORY_INJECT = "厂家直销 源头工厂 一手货源 微信号 联系方式 批发 代理 工厂"
+ALL_Q2_INJECT_BASE = "yupoo 1688 微店 weidian 抖音 厂家直销 微信 源头工厂 联系方式"
+REP_KEYWORDS = {
+    "jordan","nike","aj","yeezy","dunk","air force","travis","off white","sacai",
+    "new balance","nb","asics","samba","adidas","puma","reebok","vans","converse",
+    "supreme","bape","palace","kith","fear of god","fog","essentials",
+    "stone island","cp company","gallery dept","rhude","amiri","chrome hearts",
+    "louis vuitton","lv","gucci","prada","dior","balenciaga","burberry","versace",
+    "moncler","canada goose","rep","replica","1:1","passing","nfc","putian","莆田",
+    "sneaker","shoe","kicks","hoodie","tee","jacket","coat","down","puffer",
+}
+
+EN_ZH_MAP = {
+    "soccer cleats":"足球鞋","soccer shoes":"足球鞋","football boots":"足球鞋",
+    "slides":"拖鞋","sandals":"凉鞋","loafers":"乐福鞋","mules":"穆勒鞋",
+    "belt":"皮带","belts":"皮带","wallet":"钱包","bag":"包包","bags":"包包",
+    "hoodie":"卫衣","sweatshirt":"卫衣","tee":"T恤","t-shirt":"T恤","shirt":"衬衫",
+    "pants":"裤子","jeans":"牛仔裤","shorts":"短裤","jacket":"外套","coat":"大衣",
+    "puffer":"羽绒服","down jacket":"羽绒服","vest":"背心",
+    "socks":"袜子","hat":"帽子","cap":"帽子","beanie":"毛线帽",
+    "sunglasses":"墨镜","glasses":"眼镜","watch":"手表","bracelet":"手链",
+    "necklace":"项链","ring":"戒指","earrings":"耳环","jewelry":"饰品",
+    "keychain":"钥匙扣","card holder":"卡夹","phone case":"手机壳",
+    "backpack":"双肩包","tote":"托特包","clutch":"手拿包","crossbody":"斜挎包",
+    "sneakers":"运动鞋","shoes":"鞋子","boots":"靴子","sandals":"凉鞋",
+    "hoodie":"卫衣","t-shirt":"T恤","jacket":"夹克","coat":"大衣",
+    "pants":"裤子","leggings":"打底裤","shorts":"短裤","dress":"连衣裙",
+    "bag":"包包","backpack":"背包","wallet":"钱包","belt":"皮带",
+    "watch":"手表","sunglasses":"太阳镜","hat":"帽子","cap":"帽子",
+    "yoga pants":"瑜伽裤","yoga leggings":"瑜伽裤","sports bra":"运动内衣",
+    "tracksuit":"运动套装","sweatpants":"运动裤","polo":"polo衫",
+    "down jacket":"羽绒服","puffer":"羽绒服","windbreaker":"风衣",
+    "tech fleece":"科技抓绒","air max":"气垫","air force":"空军一号",
+}
 
 def _translate_to_zh(query):
     q = query
@@ -51,27 +129,32 @@ def _translate_to_zh(query):
 
 # ========================= ADDED: INTENT DETECTION =========================
 def detect_product_intent(query):
-    q=query.lower()
-    cat="general";inj="工厂 微信 一手货源 厂家直销 -淘宝 -天猫";p_inj="过验 纯原 同厂 微信"
-    if any(w in q for w in ["needoh","cube","squishy","stress ball","slow rise","fidget","pop it","slime"]):
-        cat="toy";inj="玩具厂 硅胶制品 慢回弹 减压球 工厂 微信 一手货源";p_inj="过验 纯原 硅胶 捏捏乐 微信"
-    elif any(w in q for w in ["lego","building blocks","bricks","compatible lego"]):
-        cat="lego";inj="积木厂 小颗粒 兼容乐高 工厂 批发 微信";p_inj="过验 纯原 积木 兼容 微信"
-    elif any(w in q for w in ["tech fleece","fleece","hoodie","sweatshirt","crewneck","tracksuit","jogger","windbreaker","puffer"]):
-        cat="clothing";inj="服装厂 卫衣 纯原 过验 工厂直营 微信 一手货源 -淘宝 -天猫";p_inj="过验 纯原 同材质 服装厂 卫衣 微信"
-    elif any(w in q for w in ["t-shirt","tee ","shirt","polo","shorts","pants","jeans","jacket","coat","sweater"]):
-        cat="clothing";inj="服装厂 纯原 过验 工厂 微信 一手货源 -淘宝 -天猫";p_inj="过验 纯原 同厂 服装厂 微信"
-    elif any(w in q for w in ["jordan","yeezy","dunk","air force","samba","trainer","runner","sneaker","shoe","boot"]):
-        cat="shoe";inj="鞋厂 莆田 运动鞋 纯原 微信 一手货源 -淘宝 -天猫";p_inj="过验 纯原 莆田 同鞋厂 微信 1:1"
-    elif any(w in q for w in ["bag","handbag","wallet","purse","backpack","tote","clutch","crossbody","duffel"]):
-        cat="bag";inj="包包工厂 皮具厂 原单 真皮 微信 一手货源 -淘宝 -天猫";p_inj="过验 纯原 原单 皮具厂 微信"
-    elif any(w in q for w in ["watch","rolex","omega","patek","cartier","hublot","richard mille","audemars"]):
-        cat="watch";inj="手表厂 钟表 纯原 同机芯 微信 一手货源 -淘宝";p_inj="过验 纯原 同机芯 手表厂 微信"
-    elif any(w in q for w in ["freight","forwarder","shipping","cargo","logistics","3pl"]):
-        cat="freight";inj="货代 美国专线 双清包税 敏感货专线 DDP 微信";p_inj="货代 美国专线 双清包税 敏感货 微信"
-    elif any(w in q for w in ["airpods","earbuds","headphones","phone case","charger","cable","speaker"]):
-        cat="electronics";inj="数码配件厂 工厂直营 批发 微信 一手货源 -淘宝 -天猫";p_inj="过验 纯原 数码 工厂 微信"
-    return cat,inj,p_inj
+    """Return (category, chinese_inject, passing_inject)."""
+    q = query.lower()
+    category = "general"
+    chinese_inject = "工厂 微信 一手货源"
+    passing_inject = "过验 纯原 同厂 微信"
+
+    if any(w in q for w in ["needoh", "cube", "squishy", "stress", "slow rise", "fidget"]):
+        category = "toy"
+        chinese_inject = "玩具厂 硅胶 慢回弹 捏捏乐 微信"
+        passing_inject = "过验 纯原 硅胶 捏捏 微信"
+    elif any(w in q for w in ["lego", "building blocks", "bricks", "compatible"]):
+        category = "toy"
+        chinese_inject = "积木 小颗粒 兼容乐高 工厂 微信"
+        passing_inject = "过验 纯原 积木 高砖 微信"
+    elif any(w in q for w in ["jordan", "nike", "yeezy", "dunk", "sneaker", "shoe"]):
+        category = "shoe"
+        chinese_inject = "鞋厂 莆田 运动鞋 微信 一手货源"
+        passing_inject = "过验 纯原 莆田 PK版 OG版 LJR版 微信"
+    elif any(w in q for w in ["hoodie", "tech fleece", "sweatshirt", "jacket"]):
+        category = "cloth"
+        chinese_inject = "服装厂 卫衣 批发 微信"
+        passing_inject = "过验 纯原 公司级 真标 微信"
+
+    return category, chinese_inject, passing_inject
+# ===========================================================================
+
 def _translate_to_zh(query):
     q = query
     for en, zh in EN_ZH_MAP.items():
@@ -81,48 +164,13 @@ def _translate_to_zh(query):
 
 def build_inject(base_query):
     q = base_query.lower()
-
-    # Rep/luxury brands first
     is_rep = any(kw in q for kw in REP_KEYWORDS)
     if is_rep:
         q1 = f"{FACTORY_INJECT} {REP_INJECT} 微信号"
         q2 = f"yupoo 1688 weidian 厂家直销 微信 {REP_INJECT} 莆田"
-        return q1, q2
-
-    # Category-specific routing
-    if any(k in q for k in ["tech fleece","fleece","hoodie","sweatshirt","crewneck","jacket","coat","shirt","tee","jogger","tracksuit","shorts","pants"]):
-        q1 = f"{FACTORY_INJECT} 服装厂 卫衣 纯原 过验 微信 一手货源 -淘宝 -天猫"
-        q2 = f"1688 服装批发 卫衣厂家 工厂直营 微信 联系方式"
-        return q1, q2
-
-    if any(k in q for k in ["shoe","sneaker","dunk","jordan","yeezy","air force","samba","trainer","runner","boot"]):
-        q1 = f"{FACTORY_INJECT} 鞋厂 莆田 运动鞋 纯原 过验 微信 一手货源"
-        q2 = f"yupoo weidian 莆田鞋厂 厂家直销 微信 联系方式"
-        return q1, q2
-
-    if any(k in q for k in ["bag","handbag","wallet","purse","backpack","tote","clutch","crossbody"]):
-        q1 = f"{FACTORY_INJECT} 包包工厂 皮具厂 原单 微信 一手货源 -淘宝"
-        q2 = f"1688 包包批发 皮具工厂 厂家直营 微信 联系方式"
-        return q1, q2
-
-    if any(k in q for k in ["watch","rolex","omega","patek","cartier","hublot","richard mille","timepiece"]):
-        q1 = f"{FACTORY_INJECT} 手表厂 钟表 纯原 同机芯 微信 一手货源"
-        q2 = f"1688 手表批发 钟表厂家 工厂直营 微信 联系方式"
-        return q1, q2
-
-    if any(k in q for k in ["needoh","squishy","fidget","stress","cube","slime","pop it","toy","lego","brick"]):
-        q1 = f"{FACTORY_INJECT} 玩具厂 硅胶制品 工厂 微信 一手货源 -淘宝"
-        q2 = f"1688 玩具批发 硅胶玩具厂 工厂直销 微信 联系方式"
-        return q1, q2
-
-    if any(k in q for k in ["freight","forwarder","shipping","cargo","logistics","dhl","fedex","3pl"]):
-        q1 = "货代 美国专线 双清包税 敏感货专线 微信 DDP 一票到底"
-        q2 = "私人货代 美线 欧线 包税清关 微信 联系方式 报价"
-        return q1, q2
-
-    # Generic fallback
-    q1 = f"{FACTORY_INJECT} 微信号 联系方式 厂家直营 一手货源 -淘宝 -天猫"
-    q2 = f"1688 weidian 厂家直销 批发商 微信 联系方式 源头厂家"
+    else:
+        q1 = f"{FACTORY_INJECT} 微信号 联系方式 QQ 厂家直营"
+        q2 = f"1688 weidian 厂家直销 批发商 微信 联系方式 源头厂家"
     return q1, q2
 
 def build_zhihu_inject(base_query):
@@ -722,8 +770,7 @@ async def search_platform(
     ua = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
     results = []
 
-    _b=brand.strip();_q=query.strip()
-    base_raw=_q if (_b and _q.lower().startswith(_b.lower())) else (f"{_b} {_q}".strip() if _b else _q)
+    base_raw = f"{brand.strip()} {query.strip()}".strip() if brand.strip() else query.strip()
     base = _translate_to_zh(base_raw)
     if base != base_raw:
         logger.info("Auto-translated: %s -> %s", base_raw[:60], base[:60])
@@ -789,8 +836,6 @@ async def search_platform(
             await ctx.close()
             await browser.close()
 
-    _BL=["nike.com","adidas.com","jordan.com","ray-ban.com","rayban.com","louisvuitton.com","lv.com","gucci.com","balenciaga.com","prada.com","chanel.com","dior.com","burberry.com","newbalance.com","asics.com","puma.com","vans.com","converse.com","reebok.com","rolex.com","omega.com","cartier.com","hublot.com","apple.com","samsung.com","amazon.com","amazon.cn","walmart.com","target.com","bestbuy.com","ebay.com","aliexpress.com","dhgate.com","stockx.com","goat.com","farfetch.com","ssense.com","grailed.com","wikipedia.org","youtube.com","instagram.com","twitter.com","facebook.com","tiktok.com","baike.baidu.com"]
-    results=[r for r in results if not any(b in r.get("link","").lower() for b in _BL)]
     return results
 
 
@@ -862,113 +907,3 @@ async def _scrape_yupoo(query, brand, page, timeout=25000, max_results=6):
     except Exception as e:
         logger.warning("Yupoo scrape error: %s", e)
     return results
-
-
-# ── Brand cache & enrichment ──────────────────────────────────────────────────
-
-_BRAND_CACHE = {
-    "needoh": {"cn": "斯基林", "cat": "toy"},
-    "nice cube": {"cn": "斯基林", "cat": "toy"},
-    "squishy cube": {"cn": "斯基林", "cat": "toy"},
-    "stress ball": {"cn": "", "cat": "toy"},
-    "fidget": {"cn": "", "cat": "toy"},
-    "jordan": {"cn": "乔丹", "cat": "sneaker"},
-    "yeezy": {"cn": "椰子", "cat": "sneaker"},
-    "dunk": {"cn": "耐克", "cat": "sneaker"},
-    "air force": {"cn": "耐克", "cat": "sneaker"},
-    "samba": {"cn": "阿迪达斯", "cat": "sneaker"},
-    "new balance": {"cn": "新百伦", "cat": "sneaker"},
-    "asics": {"cn": "亚瑟士", "cat": "sneaker"},
-    "tech fleece": {"cn": "耐克", "cat": "clothing"},
-    "hellstar": {"cn": "地狱星", "cat": "clothing"},
-    "sp5der": {"cn": "蜘蛛", "cat": "clothing"},
-    "lv": {"cn": "路易威登", "cat": "bag"},
-    "louis vuitton": {"cn": "路易威登", "cat": "bag"},
-    "gucci": {"cn": "古驰", "cat": "bag"},
-    "lego": {"cn": "乐高", "cat": "lego"},
-    "lepin": {"cn": "乐拼", "cat": "lego"},
-    "rolex": {"cn": "劳力士", "cat": "watch"},
-    "omega": {"cn": "欧米茄", "cat": "watch"},
-    "airpods": {"cn": "", "cat": "electronics"},
-    "freight": {"cn": "", "cat": "freight"},
-    "forwarder": {"cn": "", "cat": "freight"},
-    "shipping": {"cn": "", "cat": "freight"},
-}
-
-_CAT_INJECT = {
-    "toy": "玩具厂 硅胶制品 减压球 工厂 微信 一手货源",
-    "sneaker": "鞋厂 莆田 运动鞋 过验 纯原 微信 一手货源",
-    "clothing": "服装厂 纯原 过验 卫衣 微信 一手货源",
-    "bag": "包包工厂 皮具厂 原单 真皮 微信 一手货源",
-    "watch": "手表厂 钟表 纯原 同机芯 微信 一手货源",
-    "electronics": "数码配件厂 工厂直营 批发 微信 一手货源",
-    "lego": "积木厂 兼容乐高 小颗粒积木 工厂 批发 微信",
-    "freight": "货代 美国专线 双清包税 敏感货专线 微信 DDP",
-}
-
-def get_brand_info(query):
-    ql = query.lower()
-    for key, info in _BRAND_CACHE.items():
-        if key in ql:
-            return info.copy()
-    return {"cn": "", "cat": "general"}
-
-def build_brand_aware_query(query, brand=""):
-    info = get_brand_info(query)
-    cn = info["cn"] or brand or ""
-    cat = info["cat"]
-    inject = _CAT_INJECT.get(cat, "厂家直销 一手货源 工厂 微信")
-    # Use CN brand name + Chinese category inject only (skip English query - confuses Baidu)
-    if cn:
-        return f"{cn} {inject}"
-    return f"{query} {inject}"
-
-_FF_ROUTES = {
-    "USA": ["美国专线", "中美专线", "美线"],
-    "UK": ["英国专线", "中英专线"],
-    "EU": ["欧洲专线", "中欧专线"],
-    "AU": ["澳洲专线"],
-    "CA": ["加拿大专线"],
-}
-
-_FF_HUBS = {
-    "putian": ["莆田货运", "莆田货代"],
-    "guangzhou": ["广州货代", "广州物流"],
-    "shenzhen": ["深圳货代"],
-    "yiwu": ["义乌货代"],
-}
-
-def build_freight_query(origin="", destination="USA", cargo_type="replica"):
-    parts = ["货代", "货运代理"]
-    parts.extend(_FF_ROUTES.get(destination.upper(), _FF_ROUTES["USA"]))
-    if cargo_type in ("replica", "sensitive"):
-        parts.extend(["敏感货", "仿牌", "双清包税", "DDP", "包税"])
-    hub = (origin or "").lower().strip()
-    parts.extend(_FF_HUBS.get(hub, []))
-    parts.append("微信")
-    seen = set()
-    out = []
-    for p in parts:
-        if p not in seen:
-            seen.add(p)
-            out.append(p)
-    return " ".join(out)
-
-def score_freight_result(title, snippet):
-    text = (title + " " + snippet).lower()
-    score = 0
-    if any(k in text for k in ("敏感货", "仿牌", "仿品")):
-        score += 25
-    if any(k in text for k in ("双清包税", "包清关", "ddp", "包税")):
-        score += 20
-    if any(k in text for k in ("美国专线", "中美专线", "美线")):
-        score += 15
-    if any(k in text for k in ("莆田", "广州", "义乌", "深圳", "福建")):
-        score += 10
-    if any(k in text for k in ("fedex", "dhl", "ups")):
-        score += 5
-    if any(k in text for k in ("不接仿牌", "只接普货", "只做普货")):
-        score += 30
-    if "海运" in text and "空运" not in text and "快递" not in text:
-        score -= 15
-    return max(0, min(100, score))
