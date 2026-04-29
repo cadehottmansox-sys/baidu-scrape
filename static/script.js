@@ -3760,3 +3760,216 @@ function showSkeleton(el,n){
     el.appendChild(d);
   }
 }
+// ======================= DOUYIN APIFY PATCH =======================
+// Paste this near the bottom of script.js, after your existing helper functions.
+// Then wire your Douyin button to call window.searchDouyinApify().
+
+(function(){
+  function escapeHtml(str){
+    return String(str || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function copyText(text, el){
+    if(!text) return;
+    navigator.clipboard.writeText(text).then(function(){
+      if(!el) return;
+      var old = el.textContent;
+      el.textContent = 'Copied!';
+      setTimeout(function(){ el.textContent = old; }, 1200);
+    }).catch(function(){});
+  }
+
+  function getDouyinSearchElements(){
+    return {
+      queryInput:
+        document.getElementById('douyinInput') ||
+        document.getElementById('trendInput') ||
+        document.getElementById('queryInput'),
+
+      brandInput:
+        document.getElementById('brandInput') ||
+        document.getElementById('brand'),
+
+      resultEl:
+        document.getElementById('douyinResult') ||
+        document.getElementById('trendResult') ||
+        document.getElementById('researchResults') ||
+        document.getElementById('results'),
+
+      button:
+        document.getElementById('douyinSearchBtn') ||
+        document.querySelector('[data-action="douyin-search"]')
+    };
+  }
+
+  function normalizeWechatList(item){
+    if(Array.isArray(item.wechat_ids)) {
+      return item.wechat_ids.map(function(w){
+        return typeof w === 'string' ? w : (w && (w.id || w.wechat || w.value)) || '';
+      }).filter(Boolean);
+    }
+    if(Array.isArray(item.wechats)) return item.wechats.filter(Boolean);
+    if(item.wechat) return [item.wechat];
+    return [];
+  }
+
+  function buildDouyinCard(item){
+    var wrap = document.createElement('div');
+    wrap.style.cssText = [
+      'background:linear-gradient(180deg, rgba(10,14,24,.92), rgba(7,10,18,.96))',
+      'border:1px solid rgba(34,211,238,.14)',
+      'border-radius:16px',
+      'padding:16px',
+      'margin-bottom:12px',
+      'box-shadow:0 10px 30px rgba(0,0,0,.22)'
+    ].join(';');
+
+    var title = item.title || item.author || item.nickname || 'Douyin supplier result';
+    var url = item.url || item.link || item.video_url || '#';
+    var desc = item.desc || item.snippet || item.author_sig || '';
+    var author = item.author || item.nickname || item.douyin || '';
+    var wechats = normalizeWechatList(item);
+    var stats = [];
+
+    if(item.platform) stats.push('Source: ' + item.platform);
+    else stats.push('Source: Douyin / Apify');
+
+    if(item.play_count) stats.push('Views: ' + Number(item.play_count).toLocaleString());
+    if(item.digg_count) stats.push('Likes: ' + Number(item.digg_count).toLocaleString());
+    if(item.comment_count) stats.push('Comments: ' + Number(item.comment_count).toLocaleString());
+    if(item.factory_score != null) stats.push('Factory score: ' + item.factory_score);
+
+    wrap.innerHTML = `
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px;">
+        <div style="min-width:0;flex:1;">
+          <div style="display:inline-flex;align-items:center;gap:8px;margin-bottom:8px;">
+            <span style="display:inline-block;background:rgba(34,211,238,.12);border:1px solid rgba(34,211,238,.35);color:#22d3ee;font-size:10px;font-weight:800;letter-spacing:.12em;padding:4px 8px;border-radius:999px;">DOUYIN APIFY</span>
+            ${author ? `<span style="color:#94a3b8;font-size:12px;">@${escapeHtml(author)}</span>` : ''}
+          </div>
+          <a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" style="display:block;color:#e2e8f0;font-size:15px;font-weight:700;line-height:1.35;text-decoration:none;margin-bottom:6px;">
+            ${escapeHtml(title)}
+          </a>
+          ${desc ? `<div style="color:#94a3b8;font-size:12px;line-height:1.6;margin-bottom:10px;">${escapeHtml(desc).slice(0, 260)}</div>` : ''}
+        </div>
+        <a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" style="white-space:nowrap;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#cbd5e1;padding:8px 12px;border-radius:10px;font-size:12px;text-decoration:none;">Open</a>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:${wechats.length ? '12px' : '0'};">
+        ${stats.map(function(stat){
+          return `<span style="display:inline-flex;align-items:center;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:#cbd5e1;font-size:11px;padding:6px 10px;border-radius:999px;">${escapeHtml(stat)}</span>`;
+        }).join('')}
+      </div>
+      ${wechats.length ? `
+        <div style="display:flex;flex-wrap:wrap;gap:8px;">
+          ${wechats.map(function(wx){
+            return `<button type="button" data-copy-wx="${escapeHtml(wx)}" style="background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.35);color:#4ade80;padding:7px 12px;border-radius:999px;font-size:12px;font-weight:700;cursor:pointer;">wx: ${escapeHtml(wx)}</button>`;
+          }).join('')}
+        </div>
+      ` : '<div style="color:#64748b;font-size:12px;">No WeChat extracted from this result.</div>'}
+    `;
+
+    wrap.querySelectorAll('[data-copy-wx]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        copyText(btn.getAttribute('data-copy-wx'), btn);
+      });
+    });
+
+    return wrap;
+  }
+
+  function renderDouyinApifyResults(payload, resultEl){
+    if(!resultEl) return;
+
+    var results = Array.isArray(payload && payload.results) ? payload.results : [];
+    resultEl.innerHTML = '';
+
+    var head = document.createElement('div');
+    head.style.cssText = 'margin-bottom:14px;padding:12px 14px;border:1px solid rgba(34,211,238,.14);background:rgba(34,211,238,.05);border-radius:14px;color:#cbd5e1;font-size:13px;';
+    head.innerHTML = '<strong style="color:#22d3ee;">Douyin via Apify</strong> · ' + results.length + ' result' + (results.length === 1 ? '' : 's');
+    resultEl.appendChild(head);
+
+    if(!results.length){
+      var empty = document.createElement('div');
+      empty.style.cssText = 'padding:16px;border-radius:14px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);color:#94a3b8;font-size:13px;line-height:1.6;';
+      empty.innerHTML = 'No Douyin supplier results came back from the Apify route. Try a broader product keyword, a Chinese keyword, or remove the brand filter.';
+      resultEl.appendChild(empty);
+      return;
+    }
+
+    results.forEach(function(item){
+      resultEl.appendChild(buildDouyinCard(item));
+    });
+  }
+
+  async function searchDouyinApify(){
+    var els = getDouyinSearchElements();
+    var q = els.queryInput && els.queryInput.value ? els.queryInput.value.trim() : '';
+    var brand = els.brandInput && els.brandInput.value ? els.brandInput.value.trim() : '';
+    var resultEl = els.resultEl;
+    var btn = els.button;
+
+    if(!q){
+      if(typeof showToast === 'function') showToast('Enter a product or supplier keyword first');
+      return;
+    }
+
+    if(resultEl){
+      resultEl.innerHTML = '<div style="padding:14px;border-radius:14px;border:1px solid rgba(34,211,238,.14);background:rgba(34,211,238,.05);color:#cbd5e1;font-size:13px;">Searching Douyin suppliers with Apify…</div>';
+    }
+
+    if(btn){
+      btn.disabled = true;
+      btn.dataset.prevText = btn.textContent;
+      btn.textContent = 'Searching...';
+    }
+
+    try {
+      var res = await fetch('/api/douyin-factory-search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({
+          query: q,
+          item: q,
+          brand: brand,
+          max_results: 12
+        })
+      });
+
+      var data = await res.json().catch(function(){ return {}; });
+
+      if(!res.ok){
+        throw new Error(data.error || 'Douyin Apify search failed');
+      }
+
+      renderDouyinApifyResults(data, resultEl);
+    } catch (err) {
+      if(resultEl){
+        resultEl.innerHTML = '<div style="padding:14px;border-radius:14px;border:1px solid rgba(248,113,113,.18);background:rgba(127,29,29,.18);color:#fecaca;font-size:13px;">' + escapeHtml(err.message || 'Search failed') + '</div>';
+      }
+      if(typeof showToast === 'function') showToast(err.message || 'Douyin search failed');
+    } finally {
+      if(btn){
+        btn.disabled = false;
+        btn.textContent = btn.dataset.prevText || 'Search Douyin';
+      }
+    }
+  }
+
+  window.searchDouyinApify = searchDouyinApify;
+
+  document.addEventListener('DOMContentLoaded', function(){
+    var els = getDouyinSearchElements();
+    if(els.button){
+      els.button.addEventListener('click', function(e){
+        e.preventDefault();
+        searchDouyinApify();
+      });
+    }
+  });
+})();
+// ===================== END DOUYIN APIFY PATCH =====================
