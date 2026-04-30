@@ -3730,95 +3730,90 @@ function showFreightModal() {
   b.onclick=runSmartSearch;
   ar.appendChild(b);
 })();
-
-// ── WeChat-Only Mode Subtabs ──────────────────────────────────────────────
-(function _initSupplierSubtabs(){
-  // Find the Supplier nav item and inject subtabs under it
-  function _inject(){
-    // Find the supplier tab button in the nav
-    var supBtn=document.querySelector('._ti[onclick*="supplier"],._ti[onclick*=\'sup\']');
-    if(!supBtn||document.getElementById('_wcSubtabs')) return;
-
-    var wrap=document.createElement('div');
-    wrap.id='_wcSubtabs';
-    wrap.style.cssText='display:none;flex-direction:column;gap:3px;padding:4px 0 4px 20px;margin-top:2px';
-
-    var modes=[
-      {id:'_wcsub_all',label:'🔍 Find Suppliers to Message',val:'supplier',desc:'Finds factory pages — easier to message'},
-      {id:'_wcsub_wc', label:'💬 WeChat IDs Only',           val:'wechat',  desc:'Only shows results with WeChat IDs'},
-    ];
-
-    modes.forEach(function(m){
-      var btn=document.createElement('div');
-      btn.id=m.id;
-      btn.style.cssText='padding:7px 10px;border-radius:8px;cursor:pointer;font-size:12px;color:#64748b;transition:all .15s;border:1px solid transparent';
-      btn.innerHTML='<span style="font-weight:600">'+m.label+'</span><div style="font-size:10px;color:#334155;margin-top:1px">'+m.desc+'</div>';
-      btn.dataset.val=m.val;
-      btn.onclick=function(){
-        // Set active style
-        wrap.querySelectorAll('div[id^=_wcsub_]').forEach(function(b){
-          b.style.background=''; b.style.borderColor='transparent'; b.style.color='#64748b';
-        });
-        btn.style.background='rgba(34,211,238,.08)';
-        btn.style.borderColor='rgba(34,211,238,.2)';
-        btn.style.color='#22d3ee';
-        // Store mode globally
-        window._sfWcMode=m.val;
-        // Open supplier tab
-        if(typeof _sfOT==='function') _sfOT('supplier');
-        else if(typeof showTab==='function') showTab('supplier');
-        // Show subtabs
-        wrap.style.display='flex';
-      };
-      wrap.appendChild(btn);
-    });
-
-    // Insert subtabs after the supplier button
-    supBtn.parentNode.insertBefore(wrap,supBtn.nextSibling);
-
-    // Show subtabs when supplier tab clicked
-    var origClick=supBtn.onclick;
-    supBtn.onclick=function(){
-      if(origClick) origClick.call(this);
-      wrap.style.display=wrap.style.display==='flex'?'none':'flex';
-    };
-
-    // Set default
-    document.getElementById('_wcsub_all').click();
-  }
-
-  // Patch the search call to apply wechat_only mode
-  var _origFetch=window.fetch;
-  window.fetch=function(url,opts){
-    if(typeof url==='string'&&url.includes('/search')&&opts&&opts.body){
-      try{
-        var body=JSON.parse(opts.body);
-        if(body&&typeof body==='object'){
-          if(window._sfWcMode==='wechat'){
-            body.wechat_only=true;
-          } else {
-            body.wechat_only=false;
-          }
-          opts=Object.assign({},opts,{body:JSON.stringify(body)});
-        }
-      }catch(e){}
+// ── Mode switching with info popup ────────────────────────────────────────
+(function _initModes(){
+  var _MODE_INFO={
+    general:{
+      title:'🔍 General Search',
+      body:'Searches Baidu across all platforms and returns factory pages, supplier listings, and contact info. Best for finding suppliers to message — you get links to their stores, profiles, and pages where you can reach out.',
+      color:'rgba(99,102,241,.8)'
+    },
+    hunter:{
+      title:'💬 WeChat Hunter',
+      body:'Specifically targets Weidian, Zhihu, Weibo, Weixin posts, and Douyin profiles where real WeChat IDs get posted publicly. Filters results so only ones with actual WeChat IDs show up. Slower but you get direct contacts.',
+      color:'rgba(34,211,238,.8)'
     }
-    return _origFetch.call(this,url,opts);
   };
 
-  // Run after DOM ready
-  if(document.readyState==='loading'){
-    document.addEventListener('DOMContentLoaded',function(){setTimeout(_inject,800);});
-  } else { setTimeout(_inject,800); }
+  function _showModePopup(mode){
+    var info=_MODE_INFO[mode];
+    if(!info) return;
+    var old=document.getElementById('_modePopup');
+    if(old) old.remove();
+    var overlay=document.createElement('div');
+    overlay.id='_modePopup';
+    overlay.style.cssText='position:fixed;inset:0;z-index:10001;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.7);backdrop-filter:blur(4px)';
+    var box=document.createElement('div');
+    box.style.cssText='background:#060c1c;border:1px solid '+info.color+';border-radius:18px;padding:28px 28px 22px;max-width:380px;width:90%;box-shadow:0 0 40px rgba(0,0,0,.6)';
+    box.innerHTML=
+      '<div style="font-size:18px;font-weight:800;color:#e2e8f0;margin-bottom:12px">'+info.title+'</div>'+
+      '<div style="font-size:13px;color:#94a3b8;line-height:1.7;margin-bottom:20px">'+info.body+'</div>'+
+      '<button id="_modePopupOk" style="width:100%;padding:11px;background:linear-gradient(135deg,rgba(34,211,238,.15),rgba(99,102,241,.15));border:1px solid rgba(34,211,238,.35);color:#22d3ee;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">Got it</button>';
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+    overlay.onclick=function(e){if(e.target===overlay)overlay.remove();};
+    document.getElementById('_modePopupOk').onclick=function(){overlay.remove();};
+  }
+
+  function _applyMode(mode,showPopup){
+    window._sfSearchMode=mode;
+    // Toggle wechat_only on search calls
+    var orig=window._sfFetchOrig||window.fetch;
+    if(!window._sfFetchOrig) window._sfFetchOrig=window.fetch;
+    window.fetch=function(url,opts){
+      if(typeof url==='string'&&(url.includes('/search')||url.endsWith('/search'))&&opts&&opts.body){
+        try{
+          var b=JSON.parse(opts.body);
+          if(b&&typeof b==='object'){
+            b.wechat_only=(mode==='hunter');
+            opts=Object.assign({},opts,{body:JSON.stringify(b)});
+          }
+        }catch(e){}
+      }
+      return orig.call(this,url,opts);
+    };
+    if(showPopup) _showModePopup(mode);
+  }
+
+  function _init(){
+    var genBtn=document.getElementById('supplierModeGeneral');
+    var huntBtn=document.getElementById('supplierModeHunter');
+    if(!genBtn||!huntBtn) return;
+
+    // Set default mode silently
+    _applyMode('general',false);
+
+    genBtn.onclick=function(){
+      genBtn.classList.add('active'); huntBtn.classList.remove('active');
+      _applyMode('general',true);
+    };
+    huntBtn.onclick=function(){
+      huntBtn.classList.add('active'); genBtn.classList.remove('active');
+      _applyMode('hunter',true);
+    };
+  }
+
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',_init);
+  else setTimeout(_init,400);
 })();
 
-// ── Copy button feedback ──────────────────────────────────────────────────
+// ── Copy button feedback ───────────────────────────────────────────────────
 document.addEventListener('click',function(e){
   var btn=e.target.closest('button');
   if(!btn) return;
   var txt=(btn.textContent||'').trim().toLowerCase();
   if(txt==='copy'||txt==='copy wechat'){
-    btn.textContent='✓ Copied!';
+    btn.textContent='\u2713 Copied!';
     btn.style.background='rgba(34,197,94,.2)';btn.style.color='#22c55e';
     setTimeout(function(){btn.textContent='Copy';btn.style.background='';btn.style.color='';},2000);
   }

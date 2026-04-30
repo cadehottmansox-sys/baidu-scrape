@@ -924,25 +924,39 @@ input[type="text"]:focus, input[type="search"]:focus, textarea:focus, select:foc
 
 
 
-/* ── Nav panel position fix ───────────────────────────────────────── */
-#_sfNavPanel {
-  position: fixed !important;
-  top: 0 !important;
-  right: -285px !important;
-  width: 285px !important;
-  height: 100vh !important;
-  z-index: 9999 !important;
-  overflow-y: auto !important;
-  transition: right 0.25s cubic-bezier(0.4,0,0.2,1) !important;
-  background: rgba(6,12,24,0.97) !important;
-  backdrop-filter: blur(20px) !important;
-  border-left: 1px solid rgba(34,211,238,0.12) !important;
-  box-shadow: -10px 0 40px rgba(0,0,0,0.5) !important;
+
+/* ── CORE LAYOUT ──────────────────────────────────────────────── */
+html,body{background:#04060f!important;min-height:100vh;}
+.app{display:block!important;position:relative!important;}
+
+/* ── Nav panel ────────────────────────────────────────────────── */
+#_sfNavPanel{
+  position:fixed!important;top:0!important;right:-300px!important;
+  width:285px!important;height:100vh!important;z-index:9999!important;
+  overflow-y:auto!important;
+  transition:right .25s cubic-bezier(.4,0,.2,1)!important;
+  background:rgba(4,6,15,.97)!important;
+  border-left:1px solid rgba(34,211,238,.12)!important;
+  box-shadow:-8px 0 32px rgba(0,0,0,.6)!important;
 }
-#_sfOverlay {
-  position: fixed !important;
-  inset: 0 !important;
-  background: rgba(0,0,0,0.5) !important;
-  z-index: 9998 !important;
-  display: none !important;
+#_sfNavPanel.open{right:0!important;}
+#_sfOverlay{
+  position:fixed!important;inset:0!important;
+  background:rgba(0,0,0,.5)!important;z-index:9998!important;
+  display:none!important;
+}
+#_sfOverlay.open{display:block!important;}
+
+/* ── Mode toggle chips ────────────────────────────────────────── */
+.chip{
+  padding:6px 14px!important;border-radius:20px!important;
+  background:rgba(255,255,255,.05)!important;
+  border:1px solid rgba(255,255,255,.08)!important;
+  color:#475569!important;font-size:12px!important;font-weight:600!important;
+  cursor:pointer!important;transition:all .18s!important;
+}
+.chip.active{
+  background:rgba(34,211,238,.12)!important;
+  border-color:rgba(34,211,238,.35)!important;
+  color:#22d3ee!important;
 }
