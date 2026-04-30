@@ -966,80 +966,82 @@ def create_app() -> Flask:
     return app
 
 app = create_app()
-# ========== WECHAT HUNTER ENDPOINT – ADD‑ON ==========
-@app.route("/api/wechat_hunter", methods=["POST"])
-@require_auth
-def wechat_hunter():
-    data = request.get_json(silent=True) or {}
-    query = data.get("query", "").strip()
-    brand = data.get("brand", "").strip()
-    max_results = min(int(data.get("max_results", 20)), 40)
+app = create_app(    # ========== WECHAT HUNTER ENDPOINT – INSIDE create_app() ==========
+    @app.route("/api/wechat_hunter", methods=["POST"])
+    @require_auth
+    def wechat_hunter():
+        from searcher import _do_scrapingdog, _contacts, _score, search_videos
+        import asyncio
 
-    if not query:
-        return jsonify({"error": "Query required"}), 400
+        data = request.get_json(silent=True) or {}
+        query = data.get("query", "").strip()
+        brand = data.get("brand", "").strip()
+        max_results = min(int(data.get("max_results", 20)), 40)
 
-    platform_queries = [
-        f"site:weidian.com {query} {brand} 微信 联系方式",
-        f"site:zhihu.com {query} {brand} 微信 微信号",
-        f"site:weibo.com {query} {brand} 微信 联系",
-        f"site:mp.weixin.qq.com {query} {brand} 微信 厂家",
-    ]
+        if not query:
+            return jsonify({"error": "Query required"}), 400
 
-    all_results = []
-    seen_links = set()
+        platform_queries = [
+            f"site:weidian.com {query} {brand} 微信 联系方式",
+            f"site:zhihu.com {query} {brand} 微信 微信号",
+            f"site:weibo.com {query} {brand} 微信 联系",
+            f"site:mp.weixin.qq.com {query} {brand} 微信 厂家",
+        ]
 
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    tasks = [loop.run_in_executor(None, _do_scrapingdog, q, max_results) for q in platform_queries]
-    batches = loop.run_until_complete(asyncio.gather(*tasks))
-    loop.close()
+        all_results = []
+        seen_links = set()
 
-    for batch in batches:
-        if not batch:
-            continue
-        for ref in batch:
-            link = ref.get("url", "").strip()
-            if not link or link in seen_links:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        tasks = [loop.run_in_executor(None, _do_scrapingdog, q, max_results) for q in platform_queries]
+        batches = loop.run_until_complete(asyncio.gather(*tasks))
+        loop.close()
+
+        for batch in batches:
+            if not batch:
                 continue
-            seen_links.add(link)
-            title = ref.get("title", "")
-            snippet = ref.get("snippet", "")
-            combined = f"{title} {snippet}"
-            contacts = _contacts(combined)
-            if not contacts["wechat_ids"]:
-                continue
-            sc = _score(title, snippet, link, "supplier", brand, query)
-            all_results.append({
-                "title": title[:120],
-                "link": link,
-                "snippet": snippet[:400],
-                "wechat_ids": contacts["wechat_ids"],
-                "emails": contacts["emails"],
-                "phones": contacts["phones"],
-                "factory_score": sc,
-                "wechat_quality": max((w["quality"] for w in contacts["wechat_ids"]), default=0),
-                "has_contact": True,
-                "has_verified_wechat": any(w["quality"] >= 3 for w in contacts["wechat_ids"]),
-                "is_factory_like": sc >= 3,
-                "platform": "WeChat Hunter",
-                "deep_scanned": False,
-            })
-            if len(all_results) >= max_results:
-                break
-        if len(all_results) >= max_results:
-            break
-
-    try:
-        from searcher import search_videos
-        video_results = loop.run_until_complete(search_videos(query, brand, mode="supplier", max_r=8))
-        for vr in video_results:
-            if vr.get("link") not in seen_links and vr.get("wechat_ids"):
-                all_results.append(vr)
+            for ref in batch:
+                link = ref.get("url", "").strip()
+                if not link or link in seen_links:
+                    continue
+                seen_links.add(link)
+                title = ref.get("title", "")
+                snippet = ref.get("snippet", "")
+                combined = f"{title} {snippet}"
+                contacts = _contacts(combined)
+                if not contacts.get("wechat_ids"):
+                    continue
+                sc = _score(title, snippet, link, "supplier", brand, query)
+                all_results.append({
+                    "title": title[:120],
+                    "link": link,
+                    "snippet": snippet[:400],
+                    "wechat_ids": contacts["wechat_ids"],
+                    "emails": contacts["emails"],
+                    "phones": contacts["phones"],
+                    "factory_score": sc,
+                    "wechat_quality": max((w["quality"] for w in contacts["wechat_ids"]), default=0),
+                    "has_contact": True,
+                    "has_verified_wechat": any(w["quality"] >= 3 for w in contacts["wechat_ids"]),
+                    "is_factory_like": sc >= 3,
+                    "platform": "WeChat Hunter",
+                    "deep_scanned": False,
+                })
                 if len(all_results) >= max_results:
                     break
-    except:
-        pass
+            if len(all_results) >= max_results:
+                break
 
-    all_results.sort(key=lambda r: (len(r["wechat_ids"]), r["factory_score"]), reverse=True)
-    return jsonify({"ok": True, "results": all_results[:max_results], "count": len(all_results)})
-# ========== END ADD‑ON ==========
+        try:
+            video_results = loop.run_until_complete(search_videos(query, brand, mode="supplier", max_r=8))
+            for vr in video_results:
+                if vr.get("link") not in seen_links and vr.get("wechat_ids"):
+                    all_results.append(vr)
+                    if len(all_results) >= max_results:
+                        break
+        except Exception:
+            pass
+
+        all_results.sort(key=lambda r: (len(r["wechat_ids"]), r["factory_score"]), reverse=True)
+        return jsonify({"ok": True, "results": all_results[:max_results], "count": len(all_results)})
+    # ========== END WECHAT HUNTER ==========)
