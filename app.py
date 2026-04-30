@@ -936,7 +936,7 @@ def create_app() -> Flask:
             app.logger.error("Image search error: %s", e)
             return jsonify({"error": str(e)}), 500
 
-    # ======================= NEW: BLOCKLIST API =======================
+    # ======================= BLOCKLIST API =======================
     @app.route("/api/block_domain", methods=["POST"])
     @require_auth
     def block_domain():
@@ -961,12 +961,8 @@ def create_app() -> Flask:
         session['exclude_1688'] = bool(data.get("exclude", True))
         session.modified = True
         return jsonify({"ok": True, "exclude_1688": session['exclude_1688']})
-    # ================================================================
 
-    return app
-
-app = create_app()
-app = create_app(    # ========== WECHAT HUNTER ENDPOINT – INSIDE create_app() ==========
+    # ========== WECHAT HUNTER ENDPOINT (INSIDE create_app) ==========
     @app.route("/api/wechat_hunter", methods=["POST"])
     @require_auth
     def wechat_hunter():
@@ -991,6 +987,7 @@ app = create_app(    # ========== WECHAT HUNTER ENDPOINT – INSIDE create_app()
         all_results = []
         seen_links = set()
 
+        # Run async tasks
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         tasks = [loop.run_in_executor(None, _do_scrapingdog, q, max_results) for q in platform_queries]
@@ -1032,6 +1029,7 @@ app = create_app(    # ========== WECHAT HUNTER ENDPOINT – INSIDE create_app()
             if len(all_results) >= max_results:
                 break
 
+        # Add videos (Douyin / XHS) – optional
         try:
             video_results = loop.run_until_complete(search_videos(query, brand, mode="supplier", max_r=8))
             for vr in video_results:
@@ -1044,4 +1042,29 @@ app = create_app(    # ========== WECHAT HUNTER ENDPOINT – INSIDE create_app()
 
         all_results.sort(key=lambda r: (len(r["wechat_ids"]), r["factory_score"]), reverse=True)
         return jsonify({"ok": True, "results": all_results[:max_results], "count": len(all_results)})
-    # ========== END WECHAT HUNTER ==========)
+
+    return app
+
+# Create the app instance
+app = create_app()
+
+# Global stats endpoints (outside create_app)
+@app.route("/api/global-stats")
+def global_stats():
+    import storage
+    stats = storage.read("sf_global_stats", {"total_searches": 0, "total_wechats": 0})
+    return jsonify(stats)
+
+@app.route("/api/global-stats/bump", methods=["POST"])
+def bump_global_stats():
+    import storage
+    data = request.get_json() or {}
+    stats = storage.read("sf_global_stats", {"total_searches": 0, "total_wechats": 0})
+    stats["total_searches"] = stats.get("total_searches", 0) + int(data.get("searches", 0))
+    stats["total_wechats"] = stats.get("total_wechats", 0) + int(data.get("wechats", 0))
+    storage.write("sf_global_stats", stats)
+    return jsonify(stats)
+
+if __name__ == "__main__":
+    port = int(os.getenv("PORT", 5001))
+    app.run(host="0.0.0.0", port=port, debug=os.getenv("FLASK_DEBUG","false").lower()=="true")
