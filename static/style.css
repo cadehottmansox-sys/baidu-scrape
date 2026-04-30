@@ -922,3 +922,27 @@ input[type="text"]:focus, input[type="search"]:focus, textarea:focus, select:foc
 
 
 
+
+
+/* ── Nav panel position fix ───────────────────────────────────────── */
+#_sfNavPanel {
+  position: fixed !important;
+  top: 0 !important;
+  right: -285px !important;
+  width: 285px !important;
+  height: 100vh !important;
+  z-index: 9999 !important;
+  overflow-y: auto !important;
+  transition: right 0.25s cubic-bezier(0.4,0,0.2,1) !important;
+  background: rgba(6,12,24,0.97) !important;
+  backdrop-filter: blur(20px) !important;
+  border-left: 1px solid rgba(34,211,238,0.12) !important;
+  box-shadow: -10px 0 40px rgba(0,0,0,0.5) !important;
+}
+#_sfOverlay {
+  position: fixed !important;
+  inset: 0 !important;
+  background: rgba(0,0,0,0.5) !important;
+  z-index: 9998 !important;
+  display: none !important;
+}
