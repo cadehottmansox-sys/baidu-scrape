@@ -924,39 +924,109 @@ input[type="text"]:focus, input[type="search"]:focus, textarea:focus, select:foc
 
 
 
-
-/* ── CORE LAYOUT ──────────────────────────────────────────────── */
-html,body{background:#04060f!important;min-height:100vh;}
-.app{display:block!important;position:relative!important;}
-
-/* ── Nav panel ────────────────────────────────────────────────── */
-#_sfNavPanel{
-  position:fixed!important;top:0!important;right:-300px!important;
-  width:285px!important;height:100vh!important;z-index:9999!important;
-  overflow-y:auto!important;
-  transition:right .25s cubic-bezier(.4,0,.2,1)!important;
-  background:rgba(4,6,15,.97)!important;
-  border-left:1px solid rgba(34,211,238,.12)!important;
-  box-shadow:-8px 0 32px rgba(0,0,0,.6)!important;
+/* ── Nav panel position fix ───────────────────────────────────────── */
+#_sfNavPanel {
+  position: fixed !important;
+  top: 0 !important;
+  right: -285px !important;
+  width: 285px !important;
+  height: 100vh !important;
+  z-index: 9999 !important;
+  overflow-y: auto !important;
+  transition: right 0.25s cubic-bezier(0.4,0,0.2,1) !important;
+  background: rgba(6,12,24,0.97) !important;
+  backdrop-filter: blur(20px) !important;
+  border-left: 1px solid rgba(34,211,238,0.12) !important;
+  box-shadow: -10px 0 40px rgba(0,0,0,0.5) !important;
 }
-#_sfNavPanel.open{right:0!important;}
-#_sfOverlay{
-  position:fixed!important;inset:0!important;
-  background:rgba(0,0,0,.5)!important;z-index:9998!important;
-  display:none!important;
+#_sfOverlay {
+  position: fixed !important;
+  inset: 0 !important;
+  background: rgba(0,0,0,0.5) !important;
+  z-index: 9998 !important;
+  display: none !important;
 }
-#_sfOverlay.open{display:block!important;}
 
-/* ── Mode toggle chips ────────────────────────────────────────── */
-.chip{
-  padding:6px 14px!important;border-radius:20px!important;
-  background:rgba(255,255,255,.05)!important;
-  border:1px solid rgba(255,255,255,.08)!important;
-  color:#475569!important;font-size:12px!important;font-weight:600!important;
-  cursor:pointer!important;transition:all .18s!important;
+
+/* ═══════════════════════════════════════════════════
+   CRITICAL UI FIXES — hamburger + nav panel + layout
+   ═══════════════════════════════════════════════════ */
+
+/* Hamburger button */
+#_sfMenuBtn {
+  position: fixed !important;
+  top: 16px !important;
+  right: 16px !important;
+  width: 36px !important;
+  height: 36px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 5px !important;
+  cursor: pointer !important;
+  z-index: 10000 !important;
+  background: rgba(255,255,255,0.06) !important;
+  border: 1px solid rgba(255,255,255,0.1) !important;
+  border-radius: 9px !important;
+  padding: 6px !important;
+  transition: background 0.2s !important;
 }
-.chip.active{
-  background:rgba(34,211,238,.12)!important;
-  border-color:rgba(34,211,238,.35)!important;
-  color:#22d3ee!important;
+#_sfMenuBtn:hover {
+  background: rgba(34,211,238,0.1) !important;
+  border-color: rgba(34,211,238,0.3) !important;
+}
+#_sfMenuBtn span {
+  display: block !important;
+  width: 18px !important;
+  height: 2px !important;
+  background: #94a3b8 !important;
+  border-radius: 2px !important;
+  transition: background 0.2s !important;
+}
+#_sfMenuBtn:hover span { background: #22d3ee !important; }
+
+/* Nav panel — fixed right drawer */
+#_sfNavPanel {
+  position: fixed !important;
+  top: 0 !important;
+  right: -300px !important;
+  width: 285px !important;
+  height: 100vh !important;
+  z-index: 9999 !important;
+  overflow-y: auto !important;
+  transition: right 0.25s cubic-bezier(0.4,0,0.2,1) !important;
+  background: rgba(4,6,15,0.97) !important;
+  border-left: 1px solid rgba(34,211,238,0.12) !important;
+  box-shadow: -8px 0 32px rgba(0,0,0,0.6) !important;
+}
+#_sfOverlay {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 9998 !important;
+  background: rgba(0,0,0,0.5) !important;
+  display: none !important;
+}
+
+/* App layout */
+.app { display: block !important; max-width: 780px !important; margin: 0 auto !important; padding: 0 16px 40px !important; }
+
+/* Mode chips */
+.chip {
+  display: inline-flex !important;
+  align-items: center !important;
+  padding: 5px 13px !important;
+  border-radius: 20px !important;
+  background: rgba(255,255,255,0.04) !important;
+  border: 1px solid rgba(255,255,255,0.08) !important;
+  color: #475569 !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: all 0.18s !important;
+}
+.chip.active, .chip-all.active {
+  background: rgba(34,211,238,0.1) !important;
+  border-color: rgba(34,211,238,0.35) !important;
+  color: #22d3ee !important;
 }
