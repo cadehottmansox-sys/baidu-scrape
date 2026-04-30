@@ -12,7 +12,7 @@ def _do_scrapingdog(query, max_results=10):
     if not api_key: return None
     try:
         r = _req.get("https://api.scrapingdog.com/baidu/search/",
-            params={"api_key": api_key, "query": query, "results": min(max_results*3,30), "country":"cn"},
+            params={"api_key": api_key, "query": query, "results": min(max_results*2,20), "country":"cn"},
             timeout=15)
         if r.status_code != 200: return None
         data = r.json()
@@ -383,164 +383,6 @@ def _score(title, snippet, link, mode, brand="", product=""):
     total = s + contact_bonus + factory_bonus - retail_penalty - generic_penalty + location_bonus + rep_platform_bonus
     return int(total)
 
-# ═══════════════════════════════════════════════════════════════════
-# yt-dlp EXTRACTOR — Douyin & Xiaohongshu video WeChat mining
-# ═══════════════════════════════════════════════════════════════════
-
-DOUYIN_RE  = re.compile(r'(?:douyin\.com/video/|douyin\.com/@[^/]+/video/|v\.douyin\.com/)([0-9A-Za-z]+)', re.I)
-XHS_RE     = re.compile(r'xiaohongshu\.com/(?:explore|discovery/item)/([a-f0-9]{24})', re.I)
-XHSALT_RE  = re.compile(r'xhslink\.com/|xiaohongshu\.com/', re.I)
-
-def _is_video_url(url):
-    if not url: return False
-    u = url.lower()
-    return any(d in u for d in ['douyin.com', 'v.douyin.com', 'xiaohongshu.com/explore',
-                                  'xiaohongshu.com/discovery', 'xhslink.com'])
-
-def _ytdlp_extract(url, timeout=25):
-    """Run yt-dlp --dump-json on a video URL, return parsed metadata dict or None."""
-    import subprocess, json as _json
-    try:
-        result = subprocess.run(
-            [
-                'yt-dlp',
-                '--dump-json',
-                '--no-download',
-                '--no-warnings',
-                '--quiet',
-                '--socket-timeout', '15',
-                '--extractor-args', 'douyin:api_hostname=www.iesdouyin.com',
-                url
-            ],
-            capture_output=True, text=True, timeout=timeout
-        )
-        if result.returncode != 0 or not result.stdout.strip():
-            logger.warning("yt-dlp failed for %s: %s", url[:60], result.stderr[:200])
-            return None
-        # yt-dlp may output multiple JSON lines for playlists; take the first
-        first_line = result.stdout.strip().split('\n')[0]
-        return _json.loads(first_line)
-    except Exception as e:
-        logger.warning("yt-dlp exception for %s: %s", url[:60], e)
-        return None
-
-def _extract_wechat_from_video_meta(meta):
-    """Extract WeChat IDs from yt-dlp metadata (description, title, uploader bio)."""
-    if not meta:
-        return {"wechat_ids": [], "emails": [], "phones": []}
-
-    parts = [
-        meta.get("title", ""),
-        meta.get("description", ""),
-        meta.get("uploader", ""),
-        meta.get("channel", ""),
-        meta.get("uploader_url", ""),
-        # Xiaohongshu stores bio here
-        meta.get("artist", ""),
-        meta.get("creator", ""),
-    ]
-    # Also dig into thumbnail URLs and tags for any embedded contact
-    tags = meta.get("tags") or []
-    if isinstance(tags, list):
-        parts.extend(tags)
-
-    combined = " ".join(str(p) for p in parts if p)
-    return _contacts(combined)
-
-async def _scan_video_url(url, mode="supplier"):
-    """Run yt-dlp on a single video URL, return a result dict or None."""
-    loop = asyncio.get_event_loop()
-    meta = await loop.run_in_executor(None, _ytdlp_extract, url)
-    if not meta:
-        return None
-
-    c = _extract_wechat_from_video_meta(meta)
-    title    = meta.get("title") or meta.get("uploader") or url
-    desc     = meta.get("description") or ""
-    uploader = meta.get("uploader") or ""
-    snippet  = f"{uploader} | {desc[:300]}" if desc else uploader
-
-    # Determine platform label
-    if "douyin" in url.lower():
-        plat = "Douyin"
-    elif "xiaohongshu" in url.lower() or "xhslink" in url.lower():
-        plat = "Xiaohongshu"
-    else:
-        plat = "Video"
-
-    sc = _score(title, snippet, url, mode)
-    # Boost: video descriptions with WeChat = very likely real supplier
-    if c["wechat_ids"]:
-        sc += 15
-    best_wq = max((w["quality"] for w in c["wechat_ids"]), default=0)
-
-    return {
-        "title": title[:120],
-        "link": url,
-        "snippet": snippet[:400],
-        "wechat_ids": c["wechat_ids"],
-        "emails": c["emails"],
-        "phones": c["phones"],
-        "factory_score": sc,
-        "wechat_quality": best_wq,
-        "has_contact": bool(c["wechat_ids"] or c["emails"] or c["phones"]),
-        "has_verified_wechat": best_wq >= 3,
-        "is_factory_like": sc >= 3,
-        "platform": plat,
-        "baidu_query": url,
-        "mode": mode,
-        "deep_scanned": True,  # video extraction counts as deep scan
-        "page_num": 1,
-        "variation": 0,
-    }
-
-async def search_videos(query, brand="", mode="supplier", max_r=8):
-    """
-    Search Scrapingdog for Douyin/XHS links matching the query,
-    then run yt-dlp on each to extract WeChats from video descriptions/bios.
-    Returns list of result dicts.
-    """
-    base = f"{brand} {query}".strip() if brand else query
-    zh   = _translate_to_zh(base)
-
-    # Build video-specific search queries
-    queries = [
-        f"{zh} 微信 douyin.com",
-        f"{base} wechat douyin supplier factory",
-        f"{zh} 工厂 xiaohongshu.com 微信",
-    ]
-
-    loop = asyncio.get_event_loop()
-    # Fire all Scrapingdog queries in parallel
-    tasks = [loop.run_in_executor(None, _do_scrapingdog, q, max_r * 2) for q in queries]
-    batches = await asyncio.gather(*tasks)
-
-    # Collect unique video URLs
-    seen_video_urls = set()
-    video_urls = []
-    for batch in batches:
-        if not batch:
-            continue
-        for ref in batch:
-            url = ref.get("url", "")
-            if url and _is_video_url(url) and url not in seen_video_urls:
-                seen_video_urls.add(url)
-                video_urls.append(url)
-
-    logger.info("Video search found %d unique video URLs for query: %s", len(video_urls), base[:60])
-
-    if not video_urls:
-        return []
-
-    # Extract WeChat from each video in parallel (cap at max_r videos to avoid timeout)
-    scan_tasks = [_scan_video_url(u, mode) for u in video_urls[:max_r]]
-    raw_results = await asyncio.gather(*scan_tasks)
-
-    results = [r for r in raw_results if r is not None]
-    # Sort: results with WeChat IDs first, then by score
-    results.sort(key=lambda r: (len(r["wechat_ids"]), r["factory_score"]), reverse=True)
-    return results
-
 def _find_chromium():
     cache=Path.home()/"Library"/"Caches"/"ms-playwright"
     for pat in ["chromium-*/chrome-mac-arm64/Chromium.app/Contents/MacOS/Chromium",
@@ -557,6 +399,37 @@ async def _launch(pw,headless):
         if path: return await pw.chromium.launch(headless=headless,executable_path=path)
         raise
 
+def _baidu_ai_search(query, count=20):
+    import requests
+    key = os.getenv("BAIDU_API_KEY", "")
+    if not key:
+        return None
+    try:
+        resp = requests.post(
+            "https://qianfan.baidubce.com/v2/ai_search",
+            headers={"Content-Type": "application/json", "Authorization": f"Bearer {key}"},
+            json={"messages": [{"role": "user", "content": query}], "resource_type_filter": [{"type": "web", "top_k": count}]},
+            timeout=30,
+        )
+        logger.info("Baidu AI Search status: %d", resp.status_code)
+        data = resp.json()
+        if resp.status_code != 200:
+            logger.warning("Baidu AI Search error: %s", resp.text[:200])
+            return None
+        results = []
+        refs = (data.get("search_results") or data.get("references") or data.get("results") or data.get("web_search_results") or [])
+        if not refs and "result" in data:
+            refs = data["result"].get("search_results") or data["result"].get("references") or []
+        for r in refs:
+            title = r.get("title") or r.get("name") or ""
+            url = r.get("url") or r.get("link") or r.get("id") or ""
+            snippet = r.get("content") or r.get("snippet") or r.get("summary") or ""
+            if title or url:
+                results.append({"title": title, "url": url, "snippet": snippet})
+        return results if results else None
+    except Exception as e:
+        logger.warning("Baidu AI Search exception: %s", e)
+        return None
 
 def _parse_baidu_html(html, full_q, platform_label, mode, seen_links, max_r, page_num):
     import html as html_module
@@ -611,63 +484,52 @@ async def _baidu_search(page, full_q, max_r, timeout, delay, seen_links, platfor
     pn = (page_num - 1) * 10
     url = f"https://www.baidu.com/s?wd={quote_plus(full_q)}&pn={pn}&rn=20"
 
-    # ── Scrapingdog first: run 3 query variations in parallel ────────
-    def _zh_variant(q):
-        """Add Chinese supplier injection to the query."""
-        return q + " 微信 工厂 联系方式"
+    if os.getenv("BAIDU_API_KEY"):
+        api_results = await asyncio.get_event_loop().run_in_executor(None, lambda: _baidu_ai_search(full_q, count=max_r))
+        if api_results:
+            for r in api_results:
+                href = r["url"]
+                title = r["title"]
+                snippet = r["snippet"]
+                if not title or href in seen_links or _is_blocked(href): continue
+                c = _contacts(" ".join([title, snippet, href]))
+                sc = _score(title, snippet, href, mode)
+                best_wq = max((w["quality"] for w in c["wechat_ids"]), default=0)
+                results.append({
+                    "title": title, "link": href or url, "snippet": snippet,
+                    "wechat_ids": c["wechat_ids"], "emails": c["emails"], "phones": c["phones"],
+                    "factory_score": sc, "wechat_quality": best_wq,
+                    "has_contact": bool(c["wechat_ids"] or c["emails"] or c["phones"]),
+                    "has_verified_wechat": best_wq >= 3, "is_factory_like": sc >= 3,
+                    "platform": platform_label, "baidu_query": full_q, "mode": mode,
+                    "deep_scanned": False, "page_num": page_num, "variation": 0,
+                })
+                seen_links.add(href)
+            if results:
+                return results
+        sd_refs = await asyncio.get_event_loop().run_in_executor(None, _do_scrapingdog, full_q, max_r)
+        if sd_refs:
+            for ref in sd_refs[:max_r]:
+                if len(results) >= max_r: break
+                title = ref.get("title","")
+                href = ref.get("url","")
+                snippet = ref.get("snippet","")
+                combined = " ".join(filter(None,[title,snippet,href]))
+                c = _contacts(combined)
+                sc = _score(title,snippet,href,mode)
+                best_wq = max((w["quality"] for w in c["wechat_ids"]),default=0)
+                results.append({
+                    "title":title,"link":href or url,"snippet":snippet,
+                    "wechat_ids":c["wechat_ids"],"emails":c["emails"],"phones":c["phones"],
+                    "factory_score":sc,"wechat_quality":best_wq,
+                    "has_contact":bool(c["wechat_ids"] or c["emails"] or c["phones"]),
+                    "has_verified_wechat":best_wq>=3,"is_factory_like":sc>=3,
+                    "platform":platform_label,"baidu_query":full_q,"mode":mode,
+                    "deep_scanned":False,"page_num":page_num,"variation":0,
+                })
+            if results:
+                return results
 
-    def _en_variant(q):
-        """Add English rep/supplier signals."""
-        return q + " wechat supplier factory replica"
-
-    def _platform_variant(q):
-        """Platform-specific injection."""
-        return q + " yupoo weidian 1688 微信号"
-
-    loop = asyncio.get_event_loop()
-    sd_tasks = [
-        loop.run_in_executor(None, _do_scrapingdog, full_q, max_r),
-        loop.run_in_executor(None, _do_scrapingdog, _zh_variant(full_q), max_r),
-        loop.run_in_executor(None, _do_scrapingdog, _en_variant(full_q), max_r),
-    ]
-    sd_all = await asyncio.gather(*sd_tasks)
-    # Merge deduplicated results across all 3 variants
-    sd_merged = []
-    sd_seen = set()
-    for batch in sd_all:
-        if not batch:
-            continue
-        for ref in batch:
-            href = ref.get("url", "")
-            if href and href not in sd_seen:
-                sd_seen.add(href)
-                sd_merged.append(ref)
-    sd_refs = sd_merged[:max_r * 3]
-    if sd_refs:
-        for ref in sd_refs[:max_r * 3]:
-            if len(results) >= max_r * 3: break
-            title   = ref.get("title", "")
-            href    = ref.get("url", "")
-            snippet = ref.get("snippet", "")
-            if not title or href in seen_links or _is_blocked(href): continue
-            combined = " ".join(filter(None, [title, snippet, href]))
-            c  = _contacts(combined)
-            sc = _score(title, snippet, href, mode)
-            best_wq = max((w["quality"] for w in c["wechat_ids"]), default=0)
-            results.append({
-                "title": title, "link": href or url, "snippet": snippet,
-                "wechat_ids": c["wechat_ids"], "emails": c["emails"], "phones": c["phones"],
-                "factory_score": sc, "wechat_quality": best_wq,
-                "has_contact": bool(c["wechat_ids"] or c["emails"] or c["phones"]),
-                "has_verified_wechat": best_wq >= 3, "is_factory_like": sc >= 3,
-                "platform": platform_label, "baidu_query": full_q, "mode": mode,
-                "deep_scanned": False, "page_num": page_num, "variation": 0,
-            })
-            seen_links.add(href)
-        if results:
-            return results
-
-    # ── Playwright fallback if Scrapingdog returns nothing ────────────
     try:
         await page.goto(url, wait_until="domcontentloaded", timeout=timeout)
         try:
@@ -691,7 +553,7 @@ async def _baidu_search(page, full_q, max_r, timeout, delay, seen_links, platfor
             return results
 
         for i in range(total):
-            if len(results) >= max_r * 3: break
+            if len(results) >= max_r: break
             block = blocks.nth(i)
             title = ""
             href = ""
@@ -843,10 +705,34 @@ def _cross_validate_wechats(wechat_ids, existing_results):
 
 async def verify_wechat_via_baidu(wechat_id, page, timeout=15000):
     import requests as req
+    key = os.getenv("BAIDU_API_KEY", "")
     sources = []
     score = 0
     if re.search(r"[a-zA-Z]", wechat_id) and re.search(r"[0-9]", wechat_id) and len(wechat_id) >= 6:
         score += 20
+    if key:
+        try:
+            resp = req.post(
+                "https://qianfan.baidubce.com/v2/ai_search",
+                headers={"Content-Type": "application/json", "Authorization": f"Bearer {key}"},
+                json={"messages": [{"role": "user", "content": f"微信号 {wechat_id} 厂家 供应商"}], "resource_type_filter": [{"type": "web", "top_k": 10}]},
+                timeout=20,
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                refs = data.get("references", [])
+                for r in refs:
+                    combined = (r.get("content","") + r.get("title","") + r.get("url","")).lower()
+                    if wechat_id.lower() in combined:
+                        url = r.get("url","")
+                        title = r.get("title","")
+                        sources.append({"url": url, "title": title})
+                        if any(d in url for d in ["1688","taobao","weidian","yupoo","ptx","nkt","莆田"]):
+                            score += 25
+                        else:
+                            score += 15
+        except Exception as e:
+            logger.warning("WeChat verify error: %s", e)
     if re.match(r"^[a-z]{2,4}\d{3,6}$", wechat_id, re.I):
         score += 15
     if score >= 60 or len(sources) >= 3:
@@ -923,20 +809,6 @@ async def search_platform(
                     _, inject, _ = detect_product_intent(query)
                     full_q = f"{base} {inject}"
                 results = await _baidu_search(page, full_q, max_r, timeout, delay, seen_links, "Baidu", mode, page_num)
-
-            
-            # ── yt-dlp video extraction (Douyin / Xiaohongshu) ─────────────
-            try:
-                video_results = await search_videos(query, brand=brand, mode=mode, max_r=5)
-                if video_results:
-                    seen_video = {r["link"] for r in results}
-                    for vr in video_results:
-                        if vr["link"] not in seen_video:
-                            results.append(vr)
-                            seen_video.add(vr["link"])
-                    logger.info("Video extraction added %d results", len(video_results))
-            except Exception as ve:
-                logger.warning("Video search error: %s", ve)
 
             results.sort(key=lambda r: r["factory_score"]*2 + r["wechat_quality"], reverse=True)
 
@@ -1034,289 +906,4 @@ async def _scrape_yupoo(query, brand, page, timeout=25000, max_results=6):
                 continue
     except Exception as e:
         logger.warning("Yupoo scrape error: %s", e)
-    return results
-# ═══════════════════════════════════════════════════════════════════
-# SIMPLE VIDEO SEARCH — DOUYIN + XHS VIA SCRAPINGDOG + YT‑DLP
-# Standalone helper so Cade can call it without touching core search.
-# Usage example from app.py:
-#   from searcher import simple_video_search
-#   results = asyncio.run(simple_video_search("Nike Tech Fleece"))
-# ═══════════════════════════════════════════════════════════════════
-
-import subprocess
-
-_DOUYIN_DOMAINS = ("douyin.com", "v.douyin.com")
-_XHS_DOMAINS    = ("xiaohongshu.com", "xhslink.com")
-
-
-def _is_video_like_url(url: str) -> bool:
-    if not url:
-        return False
-    u = url.lower()
-    # Very loose: accept any Douyin / XHS URL, we let yt‑dlp decide later
-    return any(d in u for d in (*_DOUYIN_DOMAINS, *_XHS_DOMAINS))
-
-
-def _ytdlp_dump(url: str, timeout: int = 25):
-    """Run yt‑dlp --dump-json on a single URL. Returns parsed dict or None."""
-    try:
-        proc = subprocess.run(
-            [
-                "yt-dlp",
-                "--dump-json",
-                "--no-download",
-                "--no-warnings",
-                "--quiet",
-                "--socket-timeout", "15",
-            ],
-            capture_output=True,
-            text=True,
-            timeout=timeout,
-        )
-        if proc.returncode != 0 or not proc.stdout.strip():
-            logger.warning("yt-dlp failed (%s): %s", url[:60], proc.stderr[:200])
-            return None
-        # First JSON line is enough for single-video URLs
-        line = proc.stdout.strip().split("\n")[0]
-        import json as _json
-        return _json.loads(line)
-    except Exception as e:
-        logger.warning("yt-dlp exception for %s: %s", url[:60], e)
-        return None
-
-
-def _contacts_from_meta(meta: dict):
-    """Reuse existing contact extraction on concatenated metadata fields."""
-    if not meta:
-        return {"wechat_ids": [], "emails": [], "phones": []}
-
-    parts = [
-        meta.get("title", ""),
-        meta.get("description", ""),
-        meta.get("uploader", ""),
-        meta.get("channel", ""),
-        meta.get("uploader_url", ""),
-        meta.get("artist", ""),
-        meta.get("creator", ""),
-    ]
-    tags = meta.get("tags") or []
-    if isinstance(tags, list):
-        parts.extend(tags)
-
-    combined = " ".join(str(p) for p in parts if p)
-    return _contacts(combined)
-
-
-async def simple_video_search(item_name: str, max_results: int = 6, mode: str = "supplier"):
-    """
-    Very simple helper: search Baidu for Douyin + XHS videos using Scrapingdog
-    with a loose query of the form 'replica (ITEM NAME) factory', then run
-    yt‑dlp on any matching video URLs to extract WeChat/contact info.
-
-    Returns a list of result dicts shaped like the normal search results.
-    """
-    if not item_name:
-        return []
-
-    # 1) Build loose, English‑style queries
-    base = item_name.strip()
-    q1 = f"replica {base} factory douyin 微信"
-    q2 = f"replica {base} factory xiaohongshu 微信"
-    q3 = f"{base} 微信 工厂 视频"
-
-    queries = [q1, q2, q3]
-    logger.info("simple_video_search queries: %s", queries)
-
-    # 2) Hit Scrapingdog in series (simple + safe)
-    video_urls = []
-    seen = set()
-    for q in queries:
-        refs = _do_scrapingdog(q, max_results=10) or []
-        for ref in refs:
-            url = (ref.get("url") or "").strip()
-            if url and _is_video_like_url(url) and url not in seen:
-                seen.add(url)
-                video_urls.append(url)
-        if len(video_urls) >= max_results:
-            break
-
-    logger.info("simple_video_search found %d candidate video URLs for %s", len(video_urls), base)
-
-    if not video_urls:
-        return []
-
-    # 3) Run yt‑dlp on each candidate (in parallel)
-    loop = asyncio.get_event_loop()
-    tasks = [loop.run_in_executor(None, _ytdlp_dump, u) for u in video_urls[:max_results]]
-    metas = await asyncio.gather(*tasks)
-
-    results = []
-    for url, meta in zip(video_urls, metas):
-        if not meta:
-            continue
-
-        contacts = _contacts_from_meta(meta)
-        title = meta.get("title") or meta.get("uploader") or url
-        desc  = meta.get("description") or ""
-        uploader = meta.get("uploader") or ""
-
-        snippet = f"{uploader} | {desc[:280]}" if desc else uploader
-        plat = "Douyin" if any(d in url.lower() for d in _DOUYIN_DOMAINS) else (
-            "Xiaohongshu" if any(d in url.lower() for d in _XHS_DOMAINS) else "Video"
-        )
-
-        score = _score(title, snippet, url, mode)
-        if contacts["wechat_ids"]:
-            score += 15  # boost videos that actually have WeChat IDs
-
-        best_wq = max((w["quality"] for w in contacts["wechat_ids"]), default=0)
-
-        results.append({
-            "title": title[:120],
-            "link": url,
-            "snippet": snippet[:400] or "Video result",
-            "wechat_ids": contacts["wechat_ids"],
-            "emails": contacts["emails"],
-            "phones": contacts["phones"],
-            "factory_score": score,
-            "wechat_quality": best_wq,
-            "has_contact": bool(contacts["wechat_ids"] or contacts["emails"] or contacts["phones"]),
-            "has_verified_wechat": best_wq >= 3,
-            "is_factory_like": score >= 3,
-            "platform": plat,
-            "baidu_query": f"replica {base} factory",
-            "mode": mode,
-            "deep_scanned": True,
-            "page_num": 1,
-            "variation": 0,
-        })
-
-    # Sort: contacts first, then by score
-    results.sort(key=lambda r: (len(r["wechat_ids"]), r["factory_score"]), reverse=True)
-    return results
-# ═══════════════════════════════════════════════════════════════════
-# DOUYIN FACTORY SEARCH VIA APIFY (APPEND-ONLY BLOCK)
-# Requires env var: APIFY_TOKEN
-# ═══════════════════════════════════════════════════════════════════
-
-import requests as _req  # safe: _req name unlikely to collide
-
-APIFY_TOKEN = os.getenv("APIFY_TOKEN", "")
-
-
-def _sf_build_replica_query(brand: str, item: str) -> str:
-    """
-    Build a rep-focused Chinese query likely to hit factory sellers.
-    Example: 'Nike Jordan 4 纯原 过验 工厂 微信'
-    """
-    parts = []
-    if brand:
-        parts.append(brand.strip())
-    if item:
-        parts.append(item.strip())
-    parts.extend(["纯原", "过验", "工厂", "微信"])
-    return " ".join(p for p in parts if p)
-
-
-def _sf_contacts_from_text(text: str):
-    """Use existing contact extractor on text blob."""
-    return _contacts(text or "")
-
-
-async def douyin_search_apify(brand: str, item: str, max_results: int = 20, mode: str = "supplier"):
-    """
-    Search Douyin via Apify Douyin scraper and return results shaped like
-    the normal SourceFinder cards.
-
-    This is *append-only* — nothing else in searcher.py needs to call it
-    yet. You can hit it from app.py or the Douyin tab.
-    """
-    if not APIFY_TOKEN:
-        logger.warning("APIFY_TOKEN not set; douyin_search_apify disabled")
-        return []
-
-    keyword = _sf_build_replica_query(brand, item)
-    if not keyword:
-        return []
-
-    logger.info("Douyin Apify search keyword: %s", keyword)
-
-    # 1) Start Apify actor run
-    act_id = "automation-lab~douyin-analytics-scraper"
-    run_url = f"https://api.apify.com/v2/acts/{act_id}/runs"
-    params = {"token": APIFY_TOKEN}
-    payload = {
-        "mode": "search",
-        "keywords": [keyword],
-        "searchType": "video",
-        "maxResults": max_results,
-    }
-
-    try:
-        run_resp = _req.post(run_url, params=params, json=payload, timeout=60)
-        run_resp.raise_for_status()
-        run_data = run_resp.json()
-        dataset_id = run_data.get("defaultDatasetId")
-        if not dataset_id:
-            logger.warning("Apify Douyin run missing datasetId: %s", run_data)
-            return []
-    except Exception as e:
-        logger.warning("Apify Douyin start error: %s", e)
-        return []
-
-    # 2) Fetch dataset items
-    data_url = f"https://api.apify.com/v2/datasets/{dataset_id}/items"
-    try:
-        items = _req.get(data_url, params={"token": APIFY_TOKEN}, timeout=60).json()
-    except Exception as e:
-        logger.warning("Apify Douyin dataset fetch error: %s", e)
-        return []
-
-    if not isinstance(items, list):
-        logger.warning("Apify Douyin items not a list: %s", type(items))
-        return []
-
-    results = []
-    for it in items[:max_results]:
-        url = (it.get("videoUrl") or it.get("url") or "").strip()
-        if not url:
-            continue
-
-        title = (it.get("title") or "").strip()
-        desc = (it.get("desc") or it.get("description") or "").strip()
-        author = (it.get("authorNickname") or it.get("author") or "").strip()
-        sig = (it.get("authorSignature") or "").strip()
-
-        text_blob = " ".join(t for t in [title, desc, author, sig] if t)
-        contacts = _sf_contacts_from_text(text_blob)
-
-        snippet = f"{author} | {desc[:260]}" if desc else (title or author or "Douyin seller")
-        score = _score(title or snippet, snippet, url, mode)
-        if contacts["wechat_ids"]:
-            score += 20  # boost videos that actually expose WeChat
-
-        best_wq = max((w["quality"] for w in contacts["wechat_ids"]), default=0)
-
-        results.append({
-            "title": (title or snippet)[:120],
-            "link": url,
-            "snippet": snippet[:400],
-            "wechat_ids": contacts["wechat_ids"],
-            "emails": contacts["emails"],
-            "phones": contacts["phones"],
-            "factory_score": score,
-            "wechat_quality": best_wq,
-            "has_contact": bool(contacts["wechat_ids"] or contacts["emails"] or contacts["phones"]),
-            "has_verified_wechat": best_wq >= 3,
-            "is_factory_like": score >= 3,
-            "platform": "Douyin",
-            "baidu_query": keyword,
-            "mode": mode,
-            "deep_scanned": True,
-            "page_num": 1,
-            "variation": 0,
-        })
-
-    results.sort(key=lambda r: (len(r["wechat_ids"]), r["factory_score"]), reverse=True)
-    logger.info("Douyin Apify returned %d results for %s", len(results), keyword)
     return results
